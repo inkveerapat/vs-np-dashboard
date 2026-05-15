@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VS NP Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #f0efe8;
+    --text2: #888780;
+    --text3: #555450;
+    --accent: #c8f542;
+    --accent-dim: rgba(200,245,66,0.12);
+    --ink: #4da8f5;
+    --fang: #5ce0a8;
+    --combined: #c8f542;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── PASSWORD GATE ── */
+  #gate {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .gate-box {
+    width: 320px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .gate-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+  .gate-title {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .gate-input-wrap { position: relative; }
+  .gate-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px 44px 12px 16px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .gate-input:focus { border-color: var(--accent); }
+  .gate-input::placeholder { color: var(--text3); }
+  .gate-toggle {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: var(--text3);
+    font-size: 18px; line-height: 1; padding: 0;
+  }
+  .gate-btn {
+    background: var(--accent);
+    color: #0d0d0d;
+    border: none;
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity .15s;
+    width: 100%;
+  }
+  .gate-btn:hover { opacity: .88; }
+  .gate-error {
+    font-size: 12px;
+    color: #f06b6b;
+    font-family: var(--font-mono);
+    display: none;
+  }
+  .gate-error.show { display: block; }
+
+  /* ── MAIN LAYOUT ── */
+  #app { display: none; min-height: 100vh; }
+  #app.visible { display: block; }
+
+  .topbar {
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 52px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(13,13,13,0.92);
+    backdrop-filter: blur(8px);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: var(--text2);
+  }
+  .topbar-sep { color: var(--text3); }
+  .topbar-title { font-size: 13px; font-weight: 500; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .last-updated { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+  .refresh-btn {
+    background: none; border: 1px solid var(--border2); border-radius: var(--radius);
+    color: var(--text2); font-size: 12px; padding: 5px 12px; cursor: pointer;
+    font-family: var(--font-sans); transition: all .15s;
+  }
+  .refresh-btn:hover { border-color: var(--border2); color: var(--text); background: var(--surface); }
+  .logout-btn {
+    background: none; border: none; color: var(--text3); font-size: 12px;
+    cursor: pointer; font-family: var(--font-mono); letter-spacing: .04em;
+    padding: 0; transition: color .15s;
+  }
+  .logout-btn:hover { color: var(--text2); }
+
+  .main { max-width: 1100px; margin: 0 auto; padding: 36px 32px 64px; }
+
+  /* ── PAGE HEADER ── */
+  .page-header { margin-bottom: 40px; }
+  .page-header-row { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .page-title { font-size: 28px; font-weight: 300; letter-spacing: -.02em; }
+  .page-title strong { font-weight: 500; }
+  .page-subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; font-family: var(--font-mono); }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 28px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .tab {
+    font-size: 13px; font-weight: 400; padding: 8px 18px 10px;
+    background: none; border: none; color: var(--text3); cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: all .15s; font-family: var(--font-sans); letter-spacing: .01em;
+  }
+  .tab:hover { color: var(--text2); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+
+  /* ── METRIC CARDS ── */
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+  }
+  .metric-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); font-family: var(--font-mono); margin-bottom: 6px; }
+  .metric-val { font-size: 22px; font-weight: 500; color: var(--text); letter-spacing: -.02em; font-family: var(--font-mono); }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: var(--font-mono); }
+  .metric-sub.pos { color: #5ce0a8; }
+  .metric-sub.neg { color: #f06b6b; }
+
+  /* ── CHART AREA ── */
+  .chart-section { position: relative; }
+  .chart-wrap { position: relative; width: 100%; height: 340px; }
+  .chart-loading {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 12px; color: var(--text3); letter-spacing: .06em;
+  }
+
+  /* ── LEGEND ── */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 18px; }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text3); cursor: pointer;
+    padding: 3px 0; transition: color .15s; user-select: none;
+  }
+  .legend-item:hover { color: var(--text2); }
+  .legend-item.hidden { opacity: .3; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── CUSTOM TOOLTIP ── */
+  .chart-tooltip {
+    position: absolute;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-lg);
+    padding: 12px 16px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 20;
+    min-width: 200px;
+    display: none;
+  }
+  .tt-month { font-family: var(--font-mono); font-size: 11px; color: var(--text3); letter-spacing: .06em; margin-bottom: 8px; text-transform: uppercase; }
+  .tt-row { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 2px 0; color: var(--text2); }
+  .tt-row-label { display: flex; align-items: center; gap: 6px; }
+  .tt-dot { width: 6px; height: 6px; border-radius: 1px; flex-shrink: 0; }
+  .tt-val { font-family: var(--font-mono); color: var(--text); }
+  .tt-total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 6px; font-weight: 500; color: var(--text); }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    margin-top: 32px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #5ce0a8; flex-shrink: 0; }
+  .status-dot.loading { background: #f0b429; }
+  .status-dot.error { background: #f06b6b; }
+
+  /* ── ERROR ── */
+  .error-box {
+    background: rgba(240,107,107,0.06);
+    border: 1px solid rgba(240,107,107,0.2);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: #f06b6b;
+    display: none;
+  }
+  .error-box.show { display: block; }
+
+  @media (max-width: 600px) {
+    .topbar { padding: 0 16px; }
+    .main { padding: 24px 16px 48px; }
+    .tab { padding: 8px 12px 10px; font-size: 12px; }
+    .metric-val { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PASSWORD GATE -->
+<div id="gate">
+  <div class="gate-box">
+    <div>
+      <p class="gate-label">Protected</p>
+      <h1 class="gate-title">VS NP<br>Dashboard</h1>
+    </div>
+    <div>
+      <div class="gate-input-wrap">
+        <input class="gate-input" type="password" id="pwd-input" placeholder="Enter password" autocomplete="current-password">
+        <button class="gate-toggle" id="pwd-toggle" type="button" aria-label="Toggle password visibility">⌥</button>
+      </div>
+      <p class="gate-error" id="gate-error">Incorrect password</p>
+    </div>
+    <button class="gate-btn" id="gate-submit">Unlock →</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <nav class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-name">VS NP</span>
+      <span class="topbar-sep">·</span>
+      <span class="topbar-title">Net Worth Dashboard</span>
+    </div>
+    <div class="topbar-right">
+      <span class="last-updated" id="last-updated">—</span>
+      <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
+      <button class="logout-btn" id="logout-btn">lock</button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="page-header-row">
+        <div>
+          <h1 class="page-title">Net Worth <strong>Overview</strong></h1>
+          <p class="page-subtitle" id="data-range">Loading data…</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="ink">Ink</button>
+      <button class="tab" data-tab="fang">Fang</button>
+      <button class="tab" data-tab="household">Household</button>
+    </div>
+
+    <div id="metric-grid" class="metric-grid"></div>
+
+    <div class="error-box" id="error-box">Failed to load data. Check that your Google Sheet is published to the web.</div>
+
+    <div class="chart-section">
+      <div style="position: relative;">
+        <div class="chart-wrap">
+          <canvas id="main-chart" role="img" aria-label="Net worth over time chart"></canvas>
+          <div class="chart-loading" id="chart-loading">Loading…</div>
+        </div>
+        <div class="chart-tooltip" id="chart-tooltip"></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Fetching data from Google Sheets…</span>
+    </div>
+  </main>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG — change password here
+// ─────────────────────────────────────────────
+const PASSWORD = 'vsnp2024';
+
+const INK_CSV_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=0&single=true&output=csv';
+const FANG_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=576373003&single=true&output=csv';
+
+// Row indices (0-based) for each sheet
+const INK_CONFIG = {
+  labelRow: 1,          // Row 2 = month labels
+  componentRows: [3,4,5,6,7,8],  // Rows 4-9 (0-based: 3-8)
+  totalRow: 15,          // Row 16 (0-based: 15)
+  dataStartCol: 1,       // Col B (0-based: 1)
+  dataEndCol: 25,        // Col Z (0-based: 25)
+  componentNames: ['Cash','Dividend portfolio','Growth portfolio','Tax-saving portfolio','Crypto','Provident fund'],
+  colors: ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#f472b6','#fb923c'],
+};
+
+const FANG_CONFIG = {
+  labelRow: 1,
+  componentRows: [3,4,5,6,7],  // Rows 4-8 (0-based)
+  totalRow: 9,           // Row 10 (0-based: 9)
+  dataStartCol: 1,
+  dataEndCol: 10,        // Col K (0-based: 10)
+  componentNames: ['Cash portfolio','Mutual fund','Thai stocks','US stocks','Provident fund'],
+  colors: ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#fb923c'],
+};
+
+// ─────────────────────────────────────────────
+// PASSWORD GATE
+// ─────────────────────────────────────────────
+const SESSION_KEY = 'vsnp_auth';
+
+function checkAuth() {
+  return sessionStorage.getItem(SESSION_KEY) === 'true';
+}
+
+function unlock() {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  sessionStorage.setItem(SESSION_KEY, 'true');
+  init();
+}
+
+document.getElementById('gate-submit').addEventListener('click', () => {
+  const val = document.getElementById('pwd-input').value;
+  if (val === PASSWORD) {
+    unlock();
+  } else {
+    const err = document.getElementById('gate-error');
+    err.classList.add('show');
+    document.getElementById('pwd-input').value = '';
+    setTimeout(() => err.classList.remove('show'), 2500);
+  }
+});
+
+document.getElementById('pwd-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('gate-submit').click();
+});
+
+let pwdVisible = false;
+document.getElementById('pwd-toggle').addEventListener('click', () => {
+  pwdVisible = !pwdVisible;
+  document.getElementById('pwd-input').type = pwdVisible ? 'text' : 'password';
+});
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  sessionStorage.removeItem(SESSION_KEY);
+  location.reload();
+});
+
+if (checkAuth()) unlock();
+
+// ─────────────────────────────────────────────
+// CSV PARSING
+// ─────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.split('\n').map(l => {
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < l.length; i++) {
+      const c = l[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else cur += c;
+    }
+    cols.push(cur.trim());
+    return cols;
+  });
+  return lines;
+}
+
+function numVal(s) {
+  if (!s) return 0;
+  const n = parseFloat(s.replace(/[^0-9.\-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function extractData(rows, config) {
+  const labelRow = rows[config.labelRow] || [];
+  const months = [];
+  for (let c = config.dataStartCol; c <= config.dataEndCol; c++) {
+    const lbl = labelRow[c] || '';
+    if (!lbl || lbl === '' || lbl.toLowerCase().includes('budget') || lbl.toLowerCase().includes('target')) continue;
+    // Only include columns where total row has a non-zero value
+    const totalRow = rows[config.totalRow] || [];
+    const tv = numVal(totalRow[c]);
+    if (tv === 0) continue;
+    months.push({ col: c, label: formatMonthLabel(lbl) });
+  }
+
+  const components = config.componentRows.map((ri, idx) => {
+    const row = rows[ri] || [];
+    return {
+      name: config.componentNames[idx],
+      color: config.colors[idx],
+      values: months.map(m => numVal(row[m.col]))
+    };
+  });
+
+  const totalRow = rows[config.totalRow] || [];
+  const totals = months.map(m => numVal(totalRow[m.col]));
+
+  return { months: months.map(m => m.label), components, totals };
+}
+
+function formatMonthLabel(raw) {
+  if (!raw) return raw;
+  // Already formatted like "Mar 24" or date-like
+  raw = raw.trim();
+  // Try to parse as date
+  const d = new Date(raw);
+  if (!isNaN(d.getTime())) {
+    return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+  }
+  return raw;
+}
+
+// ─────────────────────────────────────────────
+// FETCH
+// ─────────────────────────────────────────────
+let inkData = null, fangData = null;
+
+async function fetchSheet(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return parseCSV(await res.text());
+}
+
+async function loadData() {
+  setStatus('loading', 'Fetching from Google Sheets…');
+  document.getElementById('chart-loading').style.display = 'flex';
+  document.getElementById('error-box').classList.remove('show');
+  try {
+    const [inkRows, fangRows] = await Promise.all([
+      fetchSheet(INK_CSV_URL),
+      fetchSheet(FANG_CSV_URL)
+    ]);
+    inkData  = extractData(inkRows, INK_CONFIG);
+    fangData = extractData(fangRows, FANG_CONFIG);
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    setStatus('ok', 'Live · Google Sheets · Auto-updates on refresh');
+    document.getElementById('chart-loading').style.display = 'none';
+    return true;
+  } catch (e) {
+    setStatus('error', 'Failed to load: ' + e.message);
+    document.getElementById('error-box').classList.add('show');
+    document.getElementById('chart-loading').style.display = 'none';
+    return false;
+  }
+}
+
+function setStatus(state, msg) {
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot' + (state === 'loading' ? ' loading' : state === 'error' ? ' error' : '');
+  document.getElementById('status-text').textContent = msg;
+}
+
+// ─────────────────────────────────────────────
+// FORMATTING
+// ─────────────────────────────────────────────
+function fmtM(v) {
+  const abs = Math.abs(v);
+  if (abs >= 1e6) return '฿' + (v/1e6).toFixed(2) + 'M';
+  if (abs >= 1e3) return '฿' + (v/1e3).toFixed(0) + 'K';
+  return '฿' + Math.round(v).toLocaleString();
+}
+
+function fmtPct(a, b) {
+  if (!b || b === 0) return '—';
+  const d = (a - b) / b * 100;
+  return (d >= 0 ? '+' : '') + d.toFixed(1) + '%';
+}
+
+// ─────────────────────────────────────────────
+// CHARTS
+// ─────────────────────────────────────────────
+let chartInstance = null;
+let hiddenSeries = new Set();
+let currentTab = 'ink';
+
+function hexAlpha(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function buildDatasets(tab) {
+  if (tab === 'ink' || tab === 'fang') {
+    const d = tab === 'ink' ? inkData : fangData;
+    const datasets = d.components
+      .filter(c => !hiddenSeries.has(c.name))
+      .map(c => ({
+        label: c.name,
+        data: c.values,
+        borderColor: c.color,
+        backgroundColor: hexAlpha(c.color, 0.15),
+        borderWidth: 1.5,
+        fill: 'origin',
+        tension: 0.4,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+        pointBackgroundColor: c.color,
+        stack: 'stack'
+      }));
+    datasets.push({
+      label: '__total__',
+      data: d.totals,
+      borderColor: 'rgba(255,255,255,0.35)',
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [4,3],
+      fill: false,
+      tension: 0.4,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      stack: undefined
+    });
+    return { labels: d.months, datasets };
+  } else {
+    // Household — align timelines
+    const inkMonths = inkData.months;
+    const fangMonths = fangData.months;
+    // Find offset: where does fang start in ink's timeline
+    const fangStart = inkMonths.indexOf(fangMonths[0]);
+    const combined = inkData.totals.map((v, i) => {
+      const fi = fangStart !== -1 ? i - fangStart : -1;
+      return v + (fi >= 0 && fi < fangData.totals.length ? fangData.totals[fi] : 0);
+    });
+    const fangAligned = inkMonths.map((_, i) => {
+      const fi = fangStart !== -1 ? i - fangStart : -1;
+      return fi >= 0 && fi < fangData.totals.length ? fangData.totals[fi] : null;
+    });
+    return {
+      labels: inkMonths,
+      datasets: [
+        {
+          label: 'Ink',
+          data: inkData.totals,
+          borderColor: '#4da8f5',
+          backgroundColor: hexAlpha('#4da8f5', 0.08),
+          borderWidth: 2, fill: false, tension: 0.4,
+          pointRadius: 2, pointHoverRadius: 5, pointBackgroundColor: '#4da8f5'
+        },
+        {
+          label: 'Fang',
+          data: fangAligned,
+          borderColor: '#5ce0a8',
+          backgroundColor: hexAlpha('#5ce0a8', 0.08),
+          borderWidth: 2, fill: false, tension: 0.4,
+          pointRadius: 2, pointHoverRadius: 5, pointBackgroundColor: '#5ce0a8',
+          spanGaps: false
+        },
+        {
+          label: 'Household total',
+          data: combined,
+          borderColor: '#c8f542',
+          backgroundColor: hexAlpha('#c8f542', 0.06),
+          borderWidth: 2, borderDash: [5,3], fill: false, tension: 0.4,
+          pointRadius: 0, pointHoverRadius: 5, pointBackgroundColor: '#c8f542'
+        }
+      ]
+    };
+  }
+}
+
+function renderChart(tab) {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  const { labels, datasets } = buildDatasets(tab);
+
+  const ctx = document.getElementById('main-chart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: false,
+          external: externalTooltip
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          ticks: {
+            color: '#555450',
+            font: { family: "'DM Mono', monospace", size: 10 },
+            maxRotation: 45, autoSkip: true, maxTicksLimit: 13
+          },
+          border: { color: 'rgba(255,255,255,0.06)' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+          ticks: {
+            color: '#555450',
+            font: { family: "'DM Mono', monospace", size: 10 },
+            callback: v => fmtM(v)
+          },
+          border: { color: 'rgba(255,255,255,0.06)' },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+function externalTooltip(context) {
+  const tt = document.getElementById('chart-tooltip');
+  if (context.tooltip.opacity === 0) { tt.style.display = 'none'; return; }
+  const t = context.tooltip;
+  const month = t.title[0] || '';
+
+  const visiblePoints = t.dataPoints.filter(p =>
+    p.dataset.label !== '__total__' && p.raw !== null && p.raw !== undefined
+  );
+  const totalPoint = t.dataPoints.find(p => p.dataset.label === '__total__');
+  const hhPoint    = t.dataPoints.find(p => p.dataset.label === 'Household total');
+
+  let html = `<div class="tt-month">${month}</div>`;
+  visiblePoints.forEach(p => {
+    html += `<div class="tt-row">
+      <span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span>
+      <span class="tt-val">${fmtM(p.raw)}</span>
+    </div>`;
+  });
+  if (totalPoint) {
+    html += `<div class="tt-row tt-total"><span>Total</span><span class="tt-val">${fmtM(totalPoint.raw)}</span></div>`;
+  } else if (hhPoint && hhPoint.raw !== null) {
+    html += `<div class="tt-row tt-total"><span>Household</span><span class="tt-val">${fmtM(hhPoint.raw)}</span></div>`;
+  }
+  tt.innerHTML = html;
+  tt.style.display = 'block';
+
+  const canvasRect = context.chart.canvas.getBoundingClientRect();
+  const wrapRect = tt.parentElement.getBoundingClientRect();
+  let left = t.caretX + 18;
+  if (left + 220 > wrapRect.width) left = t.caretX - 230;
+  tt.style.left = Math.max(0, left) + 'px';
+  tt.style.top  = Math.max(0, t.caretY - 20) + 'px';
+}
+
+// ─────────────────────────────────────────────
+// LEGEND
+// ─────────────────────────────────────────────
+function renderLegend(tab) {
+  const leg = document.getElementById('legend');
+  if (tab === 'household') {
+    leg.innerHTML = [
+      { name: 'Ink', color: '#4da8f5' },
+      { name: 'Fang', color: '#5ce0a8' },
+      { name: 'Household total', color: '#c8f542' }
+    ].map(item => `
+      <span class="legend-item">
+        <span class="legend-dot" style="background:${item.color}"></span>${item.name}
+      </span>`).join('');
+    return;
+  }
+  const d = tab === 'ink' ? inkData : fangData;
+  leg.innerHTML = d.components.map(c => `
+    <span class="legend-item ${hiddenSeries.has(c.name) ? 'hidden' : ''}" data-name="${c.name}" onclick="toggleSeries('${c.name}')">
+      <span class="legend-dot" style="background:${c.color}"></span>${c.name}
+    </span>`).join('');
+}
+
+function toggleSeries(name) {
+  if (hiddenSeries.has(name)) hiddenSeries.delete(name);
+  else hiddenSeries.add(name);
+  renderLegend(currentTab);
+  renderChart(currentTab);
+}
+
+// ─────────────────────────────────────────────
+// METRIC CARDS
+// ─────────────────────────────────────────────
+function renderMetrics(tab) {
+  const grid = document.getElementById('metric-grid');
+  let cards = [];
+
+  if (tab === 'ink') {
+    const d = inkData;
+    const last = d.totals[d.totals.length - 1];
+    const prev = d.totals[d.totals.length - 2];
+    const first = d.totals[0];
+    const mom = fmtPct(last, prev);
+    cards = [
+      { label: 'Current net worth', val: fmtM(last), sub: mom + ' MoM', subClass: parseFloat(mom) >= 0 ? 'pos' : 'neg' },
+      { label: 'All-time growth',   val: fmtPct(last, first), sub: 'Since ' + d.months[0], subClass: '' },
+      { label: 'Peak',              val: fmtM(Math.max(...d.totals)), sub: d.months[d.totals.indexOf(Math.max(...d.totals))], subClass: '' },
+      { label: 'Months tracked',    val: d.months.length, sub: d.months[0] + ' → ' + d.months[d.months.length-1], subClass: '' },
+    ];
+  } else if (tab === 'fang') {
+    const d = fangData;
+    const last = d.totals[d.totals.length - 1];
+    const prev = d.totals[d.totals.length - 2];
+    const first = d.totals[0];
+    const mom = fmtPct(last, prev);
+    cards = [
+      { label: 'Current net worth', val: fmtM(last), sub: mom + ' MoM', subClass: parseFloat(mom) >= 0 ? 'pos' : 'neg' },
+      { label: 'All-time growth',   val: fmtPct(last, first), sub: 'Since ' + d.months[0], subClass: '' },
+      { label: 'Peak',              val: fmtM(Math.max(...d.totals)), sub: d.months[d.totals.indexOf(Math.max(...d.totals))], subClass: '' },
+      { label: 'Months tracked',    val: d.months.length, sub: d.months[0] + ' → ' + d.months[d.months.length-1], subClass: '' },
+    ];
+  } else {
+    const inkLast  = inkData.totals[inkData.totals.length - 1];
+    const fangLast = fangData.totals[fangData.totals.length - 1];
+    const total    = inkLast + fangLast;
+    const inkFirst = inkData.totals[0];
+    // prev household = prev ink + prev fang
+    const inkPrev  = inkData.totals[inkData.totals.length - 2];
+    const fangPrev = fangData.totals[fangData.totals.length - 2];
+    const totalPrev = inkPrev + fangPrev;
+    const mom = fmtPct(total, totalPrev);
+    cards = [
+      { label: 'Household net worth', val: fmtM(total), sub: mom + ' MoM', subClass: parseFloat(mom) >= 0 ? 'pos' : 'neg' },
+      { label: "Ink's share",         val: (inkLast/total*100).toFixed(0) + '%', sub: fmtM(inkLast), subClass: '' },
+      { label: "Fang's share",        val: (fangLast/total*100).toFixed(0) + '%', sub: fmtM(fangLast), subClass: '' },
+      { label: 'Data since',          val: inkData.months[0], sub: 'Ink started first', subClass: '' },
+    ];
+  }
+
+  grid.innerHTML = cards.map(c => `
+    <div class="metric-card">
+      <p class="metric-label">${c.label}</p>
+      <p class="metric-val">${c.val}</p>
+      <p class="metric-sub ${c.subClass}">${c.sub}</p>
+    </div>`).join('');
+}
+
+// ─────────────────────────────────────────────
+// DATA RANGE LABEL
+// ─────────────────────────────────────────────
+function renderDataRange(tab) {
+  const el = document.getElementById('data-range');
+  if (tab === 'ink') {
+    el.textContent = `${inkData.months[0]} → ${inkData.months[inkData.months.length-1]} · ${inkData.months.length} months`;
+  } else if (tab === 'fang') {
+    el.textContent = `${fangData.months[0]} → ${fangData.months[fangData.months.length-1]} · ${fangData.months.length} months`;
+  } else {
+    el.textContent = `Ink from ${inkData.months[0]} · Fang from ${fangData.months[0]}`;
+  }
+}
+
+// ─────────────────────────────────────────────
+// TAB SWITCHING
+// ─────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+    hiddenSeries.clear();
+    renderAll(currentTab);
+  });
+});
+
+function renderAll(tab) {
+  renderMetrics(tab);
+  renderLegend(tab);
+  renderChart(tab);
+  renderDataRange(tab);
+}
+
+// ─────────────────────────────────────────────
+// REFRESH
+// ─────────────────────────────────────────────
+document.getElementById('refresh-btn').addEventListener('click', async () => {
+  const ok = await loadData();
+  if (ok) renderAll(currentTab);
+});
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+async function init() {
+  const ok = await loadData();
+  if (ok) renderAll('ink');
+}
+</script>
+</body>
+</html>
