@@ -116,7 +116,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v1.2</span>
+      <span class="version-badge">v1.3</span>
       <span class="last-updated" id="last-updated">—</span>
       <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
       <button class="logout-btn" id="logout-btn">lock</button>
@@ -156,7 +156,7 @@
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const VERSION  = 'v1.2';
+const VERSION  = 'v1.3';
 const PASSWORD = 'vsnp2026';
 
 const INK_CSV_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=0&single=true&output=csv';
@@ -169,16 +169,16 @@ const FANG_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_
 // Fang sheet: similar structure — month labels in row 2 (idx 1), data rows 4-8 (idx 3-7)
 
 const INK_CONFIG = {
-  monthLabelRow: 2,           // 0-based row index containing month names (Row 3)
-  componentRows: [3,4,5,6,7,8], // 0-based: rows 4-9
-  dataStartCol: 1,            // 0-based col B
+  monthLabelRow: 0,           // Row 0 (0-based): "Mar 2024", "Apr 2024" ... "Apr-2026"
+  componentRows: [3,4,5,6,7,8], // Rows 3-8: Cash, Dividend, Growth, Tax-saving, Crypto, PVD
+  dataStartCol: 1,            // Col B (0-based)
   componentNames: ['Cash','Dividend portfolio','Growth portfolio','Tax-saving portfolio','Crypto','Provident fund'],
   colors: ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#f472b6','#fb923c'],
 };
 
 const FANG_CONFIG = {
-  monthLabelRow: 1,           // 0-based: row 2 contains month labels for Fang
-  componentRows: [3,4,5,6,7], // 0-based: rows 4-8
+  monthLabelRow: 0,           // Row 0 (0-based): "Jul-2025", "Aug 2025" ... "Apr-2026"
+  componentRows: [3,4,5,6,7], // Rows 3-7: Cash, Mutual fund, Thai stock, US stock, PVD
   dataStartCol: 1,
   componentNames: ['Cash portfolio','Mutual fund','Thai stocks','US stocks','Provident fund'],
   colors: ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#fb923c'],
@@ -250,11 +250,16 @@ function extractData(rows, config) {
     if (!lbl) { emptyStreak++; if (emptyStreak > 10) break; continue; }
     emptyStreak = 0;
 
-    // Skip year-header rows that bleed into wrong columns, budget/target cols
+    // Skip non-month labels (year group headers, budget cols, etc)
+    // Valid month labels look like "Mar 2024", "Apr-2026", "Jul-2025"
+    // Invalid: "2024 Actual", "Market value", "2026 Projected", "Budget"
     const lblLower = lbl.toLowerCase();
-    if (lblLower.includes('actual') || lblLower.includes('budget') ||
-        lblLower.includes('target') || lblLower.includes('projected') ||
-        lblLower.includes('percentage') || lblLower.includes('goal')) continue;
+    const isYearHeader = /^\d{4}/.test(lbl);          // starts with 4-digit year
+    const isMarketValue = lblLower.includes('market value');
+    const isBudgetTarget = lblLower.includes('budget') || lblLower.includes('target') ||
+                           lblLower.includes('projected') || lblLower.includes('goal') ||
+                           lblLower.includes('percentage') || lblLower.includes('actual');
+    if (isYearHeader || isMarketValue || isBudgetTarget) continue;
 
     // Check at least one component row has a real value here
     const hasValue = config.componentRows.some(ri => {
@@ -306,7 +311,7 @@ async function loadData() {
     }
 
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
-    setStatus('ok', 'Live · Google Sheets · v1.2 · Auto-updates on refresh');
+    setStatus('ok', 'Live · Google Sheets · v1.3 · Auto-updates on refresh');
     document.getElementById('chart-loading').style.display = 'none';
     return true;
   } catch(e) {
