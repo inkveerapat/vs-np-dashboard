@@ -328,28 +328,26 @@
 // ─────────────────────────────────────────────
 // CONFIG — change password here
 // ─────────────────────────────────────────────
-const PASSWORD = 'vsnp2024';
+const PASSWORD = 'vsnp2026';
 
 const INK_CSV_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=0&single=true&output=csv';
 const FANG_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=576373003&single=true&output=csv';
 
 // Row indices (0-based) for each sheet
 const INK_CONFIG = {
-  labelRow: 1,          // Row 2 = month labels
-  componentRows: [3,4,5,6,7,8],  // Rows 4-9 (0-based: 3-8)
-  totalRow: 15,          // Row 16 (0-based: 15)
-  dataStartCol: 1,       // Col B (0-based: 1)
-  dataEndCol: 25,        // Col Z (0-based: 25)
+  labelRow: 1,         // Row 2 (0-based: 1) — month name labels
+  componentRows: [3,4,5,6,7,8], // Rows 4-9 (0-based 3-8): Cash, Dividend, Growth, Tax-saving, Crypto, PVD
+  dataStartCol: 1,     // Col B (0-based: 1) — first month column
+  // dataEndCol is NOT used — we auto-detect the rightmost column with data
   componentNames: ['Cash','Dividend portfolio','Growth portfolio','Tax-saving portfolio','Crypto','Provident fund'],
   colors: ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#f472b6','#fb923c'],
 };
 
 const FANG_CONFIG = {
-  labelRow: 1,
-  componentRows: [3,4,5,6,7],  // Rows 4-8 (0-based)
-  totalRow: 9,           // Row 10 (0-based: 9)
-  dataStartCol: 1,
-  dataEndCol: 10,        // Col K (0-based: 10)
+  labelRow: 1,         // Row 2 (0-based: 1) — month name labels
+  componentRows: [3,4,5,6,7], // Rows 4-8 (0-based 3-7): Cash, MF, Thai, US, PVD
+  dataStartCol: 1,     // Col B (0-based: 1) — first month column
+  // dataEndCol is NOT used — we auto-detect the rightmost column with data
   componentNames: ['Cash portfolio','Mutual fund','Thai stocks','US stocks','Provident fund'],
   colors: ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#fb923c'],
 };
@@ -426,17 +424,32 @@ function numVal(s) {
 
 function extractData(rows, config) {
   const labelRow = rows[config.labelRow] || [];
-  const months = [];
-  for (let c = config.dataStartCol; c <= config.dataEndCol; c++) {
-    const lbl = labelRow[c] || '';
-    if (!lbl || lbl === '' || lbl.toLowerCase().includes('budget') || lbl.toLowerCase().includes('target')) continue;
-    // Only include columns where total row has a non-zero value
-    const totalRow = rows[config.totalRow] || [];
-    const tv = numVal(totalRow[c]);
-    if (tv === 0) continue;
-    months.push({ col: c, label: formatMonthLabel(lbl) });
+
+  // Find rightmost column with any non-zero value in component rows
+  // Scan generously so new months are auto-detected
+  let lastDataCol = config.dataStartCol - 1;
+  const maxScan = Math.max(labelRow.length, 300);
+  for (let c = config.dataStartCol; c < maxScan; c++) {
+    const hasValue = config.componentRows.some(ri => numVal((rows[ri] || [])[c]) !== 0);
+    if (hasValue) lastDataCol = c;
   }
 
+  // Build months: every col from dataStartCol to lastDataCol
+  // that has a non-empty label in row 1 AND at least one non-zero component value
+  const months = [];
+  for (let c = config.dataStartCol; c <= lastDataCol; c++) {
+    const lbl = (labelRow[c] || '').trim();
+    if (!lbl) continue;
+    const hasValue = config.componentRows.some(ri => numVal((rows[ri] || [])[c]) !== 0);
+    if (!hasValue) continue;
+    months.push({ col: c, label: lbl });
+  }
+
+  if (months.length === 0) {
+    return { months: [], components: [], totals: [], firstLabel: '', lastLabel: '' };
+  }
+
+  // Build component series
   const components = config.componentRows.map((ri, idx) => {
     const row = rows[ri] || [];
     return {
@@ -446,22 +459,19 @@ function extractData(rows, config) {
     };
   });
 
-  const totalRow = rows[config.totalRow] || [];
-  const totals = months.map(m => numVal(totalRow[m.col]));
+  // Total per month = sum of all component rows (not the total row, which may be stale)
+  const totals = months.map(m =>
+    config.componentRows.reduce((sum, ri) => sum + numVal((rows[ri] || [])[m.col]), 0)
+  );
 
-  return { months: months.map(m => m.label), components, totals };
-}
-
-function formatMonthLabel(raw) {
-  if (!raw) return raw;
-  // Already formatted like "Mar 24" or date-like
-  raw = raw.trim();
-  // Try to parse as date
-  const d = new Date(raw);
-  if (!isNaN(d.getTime())) {
-    return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
-  }
-  return raw;
+  const labels = months.map(m => m.label);
+  return {
+    months: labels,
+    components,
+    totals,
+    firstLabel: labels[0],
+    lastLabel: labels[labels.length - 1]
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -729,43 +739,44 @@ function renderMetrics(tab) {
 
   if (tab === 'ink') {
     const d = inkData;
-    const last = d.totals[d.totals.length - 1];
-    const prev = d.totals[d.totals.length - 2];
+    // last = rightmost month with data, prev = one before that
+    const last  = d.totals[d.totals.length - 1];
+    const prev  = d.totals[d.totals.length - 2];
     const first = d.totals[0];
-    const mom = fmtPct(last, prev);
+    const mom   = fmtPct(last, prev);
+    const peakIdx = d.totals.indexOf(Math.max(...d.totals));
     cards = [
-      { label: 'Current net worth', val: fmtM(last), sub: mom + ' MoM', subClass: parseFloat(mom) >= 0 ? 'pos' : 'neg' },
-      { label: 'All-time growth',   val: fmtPct(last, first), sub: 'Since ' + d.months[0], subClass: '' },
-      { label: 'Peak',              val: fmtM(Math.max(...d.totals)), sub: d.months[d.totals.indexOf(Math.max(...d.totals))], subClass: '' },
-      { label: 'Months tracked',    val: d.months.length, sub: d.months[0] + ' → ' + d.months[d.months.length-1], subClass: '' },
+      { label: 'Current net worth', val: fmtM(last),              sub: mom + ' MoM',               subClass: parseFloat(mom) >= 0 ? 'pos' : 'neg' },
+      { label: 'All-time growth',   val: fmtPct(last, first),     sub: 'Since ' + d.firstLabel,    subClass: '' },
+      { label: 'Peak',              val: fmtM(Math.max(...d.totals)), sub: d.months[peakIdx],       subClass: '' },
+      { label: 'Months tracked',    val: d.months.length,         sub: d.firstLabel + ' → ' + d.lastLabel, subClass: '' },
     ];
   } else if (tab === 'fang') {
     const d = fangData;
-    const last = d.totals[d.totals.length - 1];
-    const prev = d.totals[d.totals.length - 2];
+    const last  = d.totals[d.totals.length - 1];
+    const prev  = d.totals[d.totals.length - 2];
     const first = d.totals[0];
-    const mom = fmtPct(last, prev);
+    const mom   = fmtPct(last, prev);
+    const peakIdx = d.totals.indexOf(Math.max(...d.totals));
     cards = [
-      { label: 'Current net worth', val: fmtM(last), sub: mom + ' MoM', subClass: parseFloat(mom) >= 0 ? 'pos' : 'neg' },
-      { label: 'All-time growth',   val: fmtPct(last, first), sub: 'Since ' + d.months[0], subClass: '' },
-      { label: 'Peak',              val: fmtM(Math.max(...d.totals)), sub: d.months[d.totals.indexOf(Math.max(...d.totals))], subClass: '' },
-      { label: 'Months tracked',    val: d.months.length, sub: d.months[0] + ' → ' + d.months[d.months.length-1], subClass: '' },
+      { label: 'Current net worth', val: fmtM(last),              sub: mom + ' MoM',               subClass: parseFloat(mom) >= 0 ? 'pos' : 'neg' },
+      { label: 'All-time growth',   val: fmtPct(last, first),     sub: 'Since ' + d.firstLabel,    subClass: '' },
+      { label: 'Peak',              val: fmtM(Math.max(...d.totals)), sub: d.months[peakIdx],       subClass: '' },
+      { label: 'Months tracked',    val: d.months.length,         sub: d.firstLabel + ' → ' + d.lastLabel, subClass: '' },
     ];
   } else {
-    const inkLast  = inkData.totals[inkData.totals.length - 1];
-    const fangLast = fangData.totals[fangData.totals.length - 1];
-    const total    = inkLast + fangLast;
-    const inkFirst = inkData.totals[0];
-    // prev household = prev ink + prev fang
-    const inkPrev  = inkData.totals[inkData.totals.length - 2];
-    const fangPrev = fangData.totals[fangData.totals.length - 2];
+    const inkLast   = inkData.totals[inkData.totals.length - 1];
+    const fangLast  = fangData.totals[fangData.totals.length - 1];
+    const total     = inkLast + fangLast;
+    const inkPrev   = inkData.totals[inkData.totals.length - 2];
+    const fangPrev  = fangData.totals[fangData.totals.length - 2];
     const totalPrev = inkPrev + fangPrev;
     const mom = fmtPct(total, totalPrev);
     cards = [
-      { label: 'Household net worth', val: fmtM(total), sub: mom + ' MoM', subClass: parseFloat(mom) >= 0 ? 'pos' : 'neg' },
-      { label: "Ink's share",         val: (inkLast/total*100).toFixed(0) + '%', sub: fmtM(inkLast), subClass: '' },
-      { label: "Fang's share",        val: (fangLast/total*100).toFixed(0) + '%', sub: fmtM(fangLast), subClass: '' },
-      { label: 'Data since',          val: inkData.months[0], sub: 'Ink started first', subClass: '' },
+      { label: 'Household net worth', val: fmtM(total),                           sub: mom + ' MoM',      subClass: parseFloat(mom) >= 0 ? 'pos' : 'neg' },
+      { label: "Ink's share",         val: (inkLast/total*100).toFixed(0) + '%',  sub: fmtM(inkLast),     subClass: '' },
+      { label: "Fang's share",        val: (fangLast/total*100).toFixed(0) + '%', sub: fmtM(fangLast),    subClass: '' },
+      { label: 'Data since',          val: inkData.firstLabel,                    sub: 'Ink started first', subClass: '' },
     ];
   }
 
@@ -783,11 +794,11 @@ function renderMetrics(tab) {
 function renderDataRange(tab) {
   const el = document.getElementById('data-range');
   if (tab === 'ink') {
-    el.textContent = `${inkData.months[0]} → ${inkData.months[inkData.months.length-1]} · ${inkData.months.length} months`;
+    el.textContent = `${inkData.firstLabel} → ${inkData.lastLabel} · ${inkData.months.length} months`;
   } else if (tab === 'fang') {
-    el.textContent = `${fangData.months[0]} → ${fangData.months[fangData.months.length-1]} · ${fangData.months.length} months`;
+    el.textContent = `${fangData.firstLabel} → ${fangData.lastLabel} · ${fangData.months.length} months`;
   } else {
-    el.textContent = `Ink from ${inkData.months[0]} · Fang from ${fangData.months[0]}`;
+    el.textContent = `Ink from ${inkData.firstLabel} · Fang from ${fangData.firstLabel}`;
   }
 }
 
