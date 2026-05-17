@@ -13,7 +13,7 @@
     --bg: #0d0d0d; --surface: #161616; --surface2: #1e1e1e;
     --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
     --text: #f0efe8; --text2: #888780; --text3: #555450;
-    --accent: #c8f542;
+    --accent: #c8f542; --green: #5ce0a8; --red: #f06b6b; --amber: #f0b429;
     --font-sans: 'DM Sans', sans-serif; --font-mono: 'DM Mono', monospace;
     --radius: 8px; --radius-lg: 12px;
   }
@@ -33,7 +33,7 @@
   .gate-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text3); font-size: 15px; line-height: 1; padding: 0; }
   .gate-btn { background: var(--accent); color: #0d0d0d; border: none; border-radius: var(--radius); padding: 12px 20px; font-family: var(--font-sans); font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity .15s; width: 100%; }
   .gate-btn:hover { opacity: .88; }
-  .gate-error { font-size: 12px; color: #f06b6b; font-family: var(--font-mono); display: none; }
+  .gate-error { font-size: 12px; color: var(--red); font-family: var(--font-mono); display: none; }
   .gate-error.show { display: block; }
 
   /* APP */
@@ -67,8 +67,27 @@
   .metric-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); font-family: var(--font-mono); margin-bottom: 6px; }
   .metric-val { font-size: 22px; font-weight: 500; color: var(--text); letter-spacing: -.02em; font-family: var(--font-mono); }
   .metric-sub { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: var(--font-mono); }
-  .metric-sub.pos { color: #5ce0a8; }
-  .metric-sub.neg { color: #f06b6b; }
+  .metric-sub.pos { color: var(--green); }
+  .metric-sub.neg { color: var(--red); }
+
+  /* GOAL SECTION */
+  .goal-section { margin-bottom: 36px; }
+  .goal-section-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 14px; }
+  .goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .goal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
+  .goal-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .goal-card-title { font-size: 12px; font-weight: 500; color: var(--text); }
+  .goal-card-icon { font-size: 16px; opacity: .6; }
+  .goal-card-current { font-family: var(--font-mono); font-size: 18px; font-weight: 500; color: var(--text); margin-bottom: 12px; }
+  /* Progress bar row */
+  .goal-bars { display: flex; flex-direction: column; gap: 10px; }
+  .goal-bar-row { display: flex; flex-direction: column; gap: 4px; }
+  .goal-bar-meta { display: flex; justify-content: space-between; align-items: center; }
+  .goal-bar-label { font-family: var(--font-mono); font-size: 10px; color: var(--text3); letter-spacing: .04em; }
+  .goal-bar-pct { font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+  .goal-bar-track { height: 5px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .goal-bar-fill { height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+  .goal-bar-target { font-family: var(--font-mono); font-size: 10px; color: var(--text3); text-align: right; margin-top: 1px; }
 
   /* LINE CHART */
   .chart-wrap { position: relative; width: 100%; height: 340px; }
@@ -95,9 +114,11 @@
   .donut-card-body { display: flex; align-items: center; gap: 18px; }
   .donut-canvas-wrap { position: relative; width: 128px; height: 128px; flex-shrink: 0; }
   .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-  .donut-center-pct { font-family: var(--font-mono); font-size: 15px; font-weight: 500; color: var(--text); line-height: 1.2; }
-  .donut-center-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 3px; text-align: center; max-width: 80px; }
-  .donut-center-name { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 1px; text-align: center; max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .donut-center-total { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; text-align: center; max-width: 86px; }
+  .donut-center-label { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 2px; text-align: center; }
+  .donut-center-hover-pct { font-family: var(--font-mono); font-size: 15px; font-weight: 500; color: var(--text); line-height: 1.2; display: none; }
+  .donut-center-hover-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 3px; text-align: center; max-width: 80px; display: none; }
+  .donut-center-hover-name { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 1px; text-align: center; max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: none; }
   .donut-leg { flex: 1; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
   .donut-leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); }
   .donut-leg-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
@@ -107,17 +128,17 @@
 
   /* STATUS */
   .status-bar { margin-top: 32px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
-  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #5ce0a8; flex-shrink: 0; }
-  .status-dot.loading { background: #f0b429; animation: pulse 1s infinite; }
-  .status-dot.error { background: #f06b6b; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .status-dot.loading { background: var(--amber); animation: pulse 1s infinite; }
+  .status-dot.error { background: var(--red); }
   @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
-  .error-box { background: rgba(240,107,107,0.06); border: 1px solid rgba(240,107,107,0.2); border-radius: var(--radius); padding: 16px; font-family: var(--font-mono); font-size: 12px; color: #f06b6b; display: none; margin-bottom: 20px; }
+  .error-box { background: rgba(240,107,107,0.06); border: 1px solid rgba(240,107,107,0.2); border-radius: var(--radius); padding: 16px; font-family: var(--font-mono); font-size: 12px; color: var(--red); display: none; margin-bottom: 20px; }
   .error-box.show { display: block; }
 
   @media (max-width: 640px) {
     .topbar { padding: 0 16px; } .main { padding: 24px 16px 48px; }
     .tab { padding: 8px 12px 10px; font-size: 12px; } .metric-val { font-size: 18px; }
-    .donut-grid { grid-template-columns: 1fr; }
+    .donut-grid { grid-template-columns: 1fr; } .goal-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -129,7 +150,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v1.4</p>
+      <p class="gate-version">v1.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -151,7 +172,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v1.4</span>
+      <span class="version-badge">v1.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635; Refresh</button>
       <button class="logout-btn" id="logout-btn">lock</button>
@@ -170,9 +191,17 @@
       <button class="tab" data-tab="household">Household</button>
     </div>
 
+    <!-- METRIC CARDS -->
     <div id="metric-grid" class="metric-grid"></div>
     <div class="error-box" id="error-box"></div>
 
+    <!-- GOAL PROGRESS -->
+    <div class="goal-section" id="goal-section">
+      <p class="goal-section-title">Goal Progress</p>
+      <div class="goal-grid" id="goal-grid"></div>
+    </div>
+
+    <!-- LINE CHART -->
     <div style="position:relative;">
       <div class="chart-wrap">
         <canvas id="main-chart"></canvas>
@@ -199,7 +228,7 @@
 // ════════════════════════════════════════════════════
 // CONFIG
 // ════════════════════════════════════════════════════
-const VERSION  = 'v1.4';
+const VERSION  = 'v1.5';
 const PASSWORD = 'vsnp2026';
 
 const BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=';
@@ -210,20 +239,29 @@ const FANG_CSV_URL = csv(576373003);
 
 const INK_CONFIG = {
   monthLabelRow: 0,
-  componentRows: [3,4,5,6,7,8],
+  componentRows: [3,4,5,6,7,8],   // Cash=3, Dividend=4, Growth=5, Tax=6, Crypto=7, PVD=8
   dataStartCol: 1,
   componentNames: ['Cash','Dividend portfolio','Growth portfolio','Tax-saving portfolio','Crypto','Provident fund'],
   colors: ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#f472b6','#fb923c'],
+  cashComponentIdx: 0,             // index of Cash in componentRows
 };
 const FANG_CONFIG = {
   monthLabelRow: 0,
-  componentRows: [3,4,5,6,7],
+  componentRows: [3,4,5,6,7],     // Cash=3, MF=4, Thai=5, US=6, PVD=7
   dataStartCol: 1,
   componentNames: ['Cash portfolio','Mutual fund','Thai stocks','US stocks','Provident fund'],
   colors: ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#fb923c'],
+  cashComponentIdx: 0,
 };
 
-// Donut configs — nameCol & valueCol are 0-based; rowStart/rowEnd are 0-based row indices
+// Goals (all in THB)
+const GOALS = {
+  ink:       { cash: { st: 500000,    lt: 8000000  }, invest: { st: 15000000, lt: 40000000 } },
+  fang:      { cash: { st: 500000,    lt: 8000000  }, invest: { st: 15000000, lt: 40000000 } },
+  household: { cash: { st: 1000000,   lt: 16000000 }, invest: { st: 30000000, lt: 80000000 } },
+};
+
+// Donut portfolio configs
 const INK_DONUTS = [
   { title:'Growth portfolio',     url:csv(353664994),  nameCol:1, valueCol:2, rowStart:23, rowEnd:39 },
   { title:'Dividend portfolio',   url:csv(1618449229), nameCol:1, valueCol:2, rowStart:23, rowEnd:39 },
@@ -292,26 +330,21 @@ function parseCSV(text) {
     return cols;
   });
 }
-
 function numVal(s) {
   if (!s) return 0;
   const n = parseFloat(String(s).replace(/[^0-9.\-]/g,''));
   return isNaN(n) ? 0 : n;
 }
-
 async function fetchCSV(url) {
   const res = await fetch(url + '&_=' + Date.now());
-  if (!res.ok) throw new Error('HTTP ' + res.status + ' for ' + url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
   return parseCSV(await res.text());
 }
-
-// Detect currency from raw cell string
 function detectCurrency(raw) {
   const s = String(raw||'');
   if (s.includes('$')) return 'USD';
   return 'THB';
 }
-
 function fmtCurrency(val, currency) {
   if (currency === 'USD') return '$' + val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   return '\u0e3f' + Math.round(val).toLocaleString('th-TH');
@@ -336,7 +369,6 @@ function extractData(rows, config) {
     months.push({ col:c, label:lbl });
   }
   if (!months.length) return { months:[], components:[], totals:[], firstLabel:'', lastLabel:'' };
-
   const components = config.componentRows.map((ri,idx) => ({
     name:  config.componentNames[idx],
     color: config.colors[idx],
@@ -386,7 +418,6 @@ async function loadData() {
     if (!inkData.months.length || !fangData.months.length)
       throw new Error('No data found \u2014 check sheet is published');
 
-    // Fetch all donut CSVs in parallel
     const [inkDRows, fangDRows] = await Promise.all([
       Promise.all(INK_DONUTS.map(d  => fetchCSV(d.url))),
       Promise.all(FANG_DONUTS.map(d => fetchCSV(d.url))),
@@ -407,14 +438,13 @@ async function loadData() {
     return false;
   }
 }
-
 function setStatus(state, msg) {
   document.getElementById('status-dot').className = 'status-dot' + (state==='loading'?' loading':state==='error'?' error':'');
   document.getElementById('status-text').textContent = msg;
 }
 
 // ════════════════════════════════════════════════════
-// FORMAT HELPERS
+// FORMAT
 // ════════════════════════════════════════════════════
 function fmtM(v) {
   const a = Math.abs(v);
@@ -433,6 +463,91 @@ function hexA(hex,a) {
 }
 
 // ════════════════════════════════════════════════════
+// GOAL HELPERS — get latest cash & investible values
+// ════════════════════════════════════════════════════
+function getLatestValues(d, config) {
+  // Last month index
+  const idx = d.totals.length - 1;
+  const cashIdx = config.cashComponentIdx;
+  const cash = d.components[cashIdx].values[idx];
+  const invest = d.totals[idx] - cash;
+  return { cash, invest };
+}
+
+function goalColor(pct) {
+  if (pct >= 100) return '#5ce0a8';
+  if (pct >= 60)  return '#c8f542';
+  if (pct >= 30)  return '#f0b429';
+  return '#f06b6b';
+}
+
+function goalBarHTML(label, current, target, targetLabel) {
+  const pct = Math.min(current / target * 100, 100);
+  const color = goalColor(pct);
+  const pctStr = pct.toFixed(1) + '%';
+  return `
+    <div class="goal-bar-row">
+      <div class="goal-bar-meta">
+        <span class="goal-bar-label">${label}</span>
+        <span class="goal-bar-pct" style="color:${color}">${pctStr}</span>
+      </div>
+      <div class="goal-bar-track">
+        <div class="goal-bar-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div class="goal-bar-target">Target: ${fmtM(target)}</div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════
+// RENDER GOALS
+// ════════════════════════════════════════════════════
+function renderGoals(tab) {
+  const grid = document.getElementById('goal-grid');
+  let cashVal, investVal, goals;
+
+  if (tab === 'ink') {
+    const v = getLatestValues(inkData, INK_CONFIG);
+    cashVal = v.cash; investVal = v.invest; goals = GOALS.ink;
+  } else if (tab === 'fang') {
+    const v = getLatestValues(fangData, FANG_CONFIG);
+    cashVal = v.cash; investVal = v.invest; goals = GOALS.fang;
+  } else {
+    const vi = getLatestValues(inkData,  INK_CONFIG);
+    const vf = getLatestValues(fangData, FANG_CONFIG);
+    cashVal   = vi.cash   + vf.cash;
+    investVal = vi.invest + vf.invest;
+    goals = GOALS.household;
+  }
+
+  const cashPctST   = Math.min(cashVal   / goals.cash.st   * 100, 100);
+  const investPctST = Math.min(investVal / goals.invest.st * 100, 100);
+
+  grid.innerHTML = `
+    <div class="goal-card">
+      <div class="goal-card-header">
+        <span class="goal-card-title">Cash</span>
+        <span class="goal-card-icon">&#128176;</span>
+      </div>
+      <div class="goal-card-current">${fmtM(cashVal)}</div>
+      <div class="goal-bars">
+        ${goalBarHTML('Short-term', cashVal, goals.cash.st, fmtM(goals.cash.st))}
+        ${goalBarHTML('Long-term',  cashVal, goals.cash.lt, fmtM(goals.cash.lt))}
+      </div>
+    </div>
+    <div class="goal-card">
+      <div class="goal-card-header">
+        <span class="goal-card-title">Investible Assets</span>
+        <span class="goal-card-icon">&#128200;</span>
+      </div>
+      <div class="goal-card-current">${fmtM(investVal)}</div>
+      <div class="goal-bars">
+        ${goalBarHTML('Short-term', investVal, goals.invest.st, fmtM(goals.invest.st))}
+        ${goalBarHTML('Long-term',  investVal, goals.invest.lt, fmtM(goals.invest.lt))}
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════
 // METRICS
 // ════════════════════════════════════════════════════
 function renderMetrics(tab) {
@@ -440,9 +555,9 @@ function renderMetrics(tab) {
     const last=d.totals[d.totals.length-1], prev=d.totals[d.totals.length-2]??last, first=d.totals[0];
     const mom=fmtPct(last,prev), peak=Math.max(...d.totals);
     return [
-      {label:'Current net worth', val:fmtM(last),          sub:mom+' MoM',                      cls:parseFloat(mom)>=0?'pos':'neg'},
-      {label:'All-time growth',   val:fmtPct(last,first),  sub:'Since '+d.firstLabel,            cls:''},
-      {label:'Peak',              val:fmtM(peak),          sub:d.months[d.totals.indexOf(peak)], cls:''},
+      {label:'Current net worth', val:fmtM(last),          sub:mom+' MoM',                         cls:parseFloat(mom)>=0?'pos':'neg'},
+      {label:'All-time growth',   val:fmtPct(last,first),  sub:'Since '+d.firstLabel,               cls:''},
+      {label:'Peak',              val:fmtM(peak),          sub:d.months[d.totals.indexOf(peak)],    cls:''},
       {label:'Months tracked',    val:d.months.length,     sub:d.firstLabel+' \u2192 '+d.lastLabel, cls:''},
     ];
   }
@@ -557,11 +672,8 @@ function toggleS(name) {
 function renderDonuts(tab) {
   const section=document.getElementById('donut-section');
   const grid=document.getElementById('donut-grid');
-
-  // Destroy existing chart instances
   Object.values(donutInstances).forEach(c=>c.destroy());
   donutInstances={};
-
   if (tab==='household') { section.style.display='none'; return; }
   section.style.display='block';
 
@@ -569,12 +681,23 @@ function renderDonuts(tab) {
 
   grid.innerHTML = list.map((d,idx) => {
     if (!d.assets.length) return `<div class="donut-card"><p class="donut-card-title">${d.title}</p><p class="donut-empty">No data</p></div>`;
+
+    // Compute portfolio total — sum all asset values. Currency: use the most common or first currency.
+    const totalVal = d.assets.reduce((s,a)=>s+a.value,0);
+    // Determine the dominant currency for the total display
+    const currencies = d.assets.map(a=>a.currency);
+    const hasMixed = currencies.some(c=>c!==currencies[0]);
+    // If mixed currencies, show THB total only (can't meaningfully add USD+THB)
+    const totalCurrency = hasMixed ? 'THB' : currencies[0];
+    const totalStr = fmtCurrency(totalVal, totalCurrency);
+
     const legItems = d.assets.map((a,ai)=>`
       <div class="donut-leg-item">
         <span class="donut-leg-dot" style="background:${PALETTE[ai%PALETTE.length]}"></span>
         <span class="donut-leg-name" title="${a.name}">${a.name}</span>
         <span class="donut-leg-pct">${a.pct.toFixed(1)}%</span>
       </div>`).join('');
+
     return `
       <div class="donut-card">
         <p class="donut-card-title">${d.title}</p>
@@ -582,9 +705,11 @@ function renderDonuts(tab) {
           <div class="donut-canvas-wrap">
             <canvas id="dc-${tab}-${idx}" width="128" height="128"></canvas>
             <div class="donut-center" id="dctr-${tab}-${idx}">
-              <span class="donut-center-pct">—</span>
-              <span class="donut-center-val">hover</span>
-              <span class="donut-center-name">&nbsp;</span>
+              <span class="donut-center-total">${totalStr}</span>
+              <span class="donut-center-label">total</span>
+              <span class="donut-center-hover-pct"></span>
+              <span class="donut-center-hover-val"></span>
+              <span class="donut-center-hover-name"></span>
             </div>
           </div>
           <div class="donut-leg">${legItems}</div>
@@ -592,7 +717,6 @@ function renderDonuts(tab) {
       </div>`;
   }).join('');
 
-  // Build charts after DOM is ready
   requestAnimationFrame(() => {
     list.forEach((d, idx) => {
       if (!d.assets.length) return;
@@ -601,6 +725,18 @@ function renderDonuts(tab) {
       if (!canvas || !center) return;
 
       const colors = d.assets.map((_,ai) => PALETTE[ai % PALETTE.length]);
+      const totalVal = d.assets.reduce((s,a)=>s+a.value,0);
+      const currencies = d.assets.map(a=>a.currency);
+      const hasMixed = currencies.some(c=>c!==currencies[0]);
+      const totalCurrency = hasMixed ? 'THB' : currencies[0];
+      const totalStr = fmtCurrency(totalVal, totalCurrency);
+
+      // Center DOM elements
+      const totalEl  = center.querySelector('.donut-center-total');
+      const labelEl  = center.querySelector('.donut-center-label');
+      const hPctEl   = center.querySelector('.donut-center-hover-pct');
+      const hValEl   = center.querySelector('.donut-center-hover-val');
+      const hNameEl  = center.querySelector('.donut-center-hover-name');
 
       const chart = new Chart(canvas.getContext('2d'), {
         type: 'doughnut',
@@ -618,24 +754,27 @@ function renderDonuts(tab) {
           responsive: false,
           cutout: '70%',
           animation: { duration: 400 },
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false }
-          },
+          plugins: { legend:{ display:false }, tooltip:{ enabled:false } },
           onHover: (_evt, elements) => {
-            const pctEl  = center.querySelector('.donut-center-pct');
-            const valEl  = center.querySelector('.donut-center-val');
-            const nameEl = center.querySelector('.donut-center-name');
             if (elements.length > 0) {
               const i = elements[0].index;
               const a = d.assets[i];
-              pctEl.textContent  = a.pct.toFixed(1) + '%';
-              valEl.textContent  = fmtCurrency(a.value, a.currency);
-              nameEl.textContent = a.name;
+              // Hide total, show hover info
+              totalEl.style.display  = 'none';
+              labelEl.style.display  = 'none';
+              hPctEl.style.display   = 'block';
+              hValEl.style.display   = 'block';
+              hNameEl.style.display  = 'block';
+              hPctEl.textContent  = a.pct.toFixed(1) + '%';
+              hValEl.textContent  = fmtCurrency(a.value, a.currency);
+              hNameEl.textContent = a.name;
             } else {
-              pctEl.textContent  = '—';
-              valEl.textContent  = 'hover';
-              nameEl.textContent = '\u00a0';
+              // Restore total
+              totalEl.style.display  = 'block';
+              labelEl.style.display  = 'block';
+              hPctEl.style.display   = 'none';
+              hValEl.style.display   = 'none';
+              hNameEl.style.display  = 'none';
             }
           }
         }
@@ -662,6 +801,7 @@ document.querySelectorAll('.tab').forEach(btn => {
 function renderAll(tab) {
   renderMetrics(tab);
   renderDataRange(tab);
+  renderGoals(tab);
   renderLegend(tab);
   renderChart(tab);
   renderDonuts(tab);
