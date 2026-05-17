@@ -17,7 +17,7 @@
     --font-sans: 'DM Sans', sans-serif; --font-mono: 'DM Mono', monospace;
     --radius: 8px; --radius-lg: 12px;
   }
-  html, body { height: 100%; }
+  html, body { height: 100%; overflow-x: hidden; }
   body { background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
 
   /* GATE */
@@ -39,19 +39,22 @@
   /* APP */
   #app { display: none; min-height: 100vh; }
   #app.visible { display: block; }
-  .topbar { border-bottom: 1px solid var(--border); padding: 0 32px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; background: rgba(13,13,13,0.92); backdrop-filter: blur(8px); }
-  .topbar-left { display: flex; align-items: center; gap: 12px; }
-  .topbar-name { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; color: var(--text2); }
-  .topbar-sep { color: var(--text3); }
-  .topbar-title { font-size: 13px; font-weight: 500; }
-  .topbar-right { display: flex; align-items: center; gap: 16px; }
-  .last-updated { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
-  .version-badge { font-family: var(--font-mono); font-size: 10px; color: var(--text3); background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; letter-spacing: .04em; }
-  .refresh-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 12px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; }
+  /* TOPBAR — desktop: single row. Mobile: two rows stacked */
+  .topbar { border-bottom: 1px solid var(--border); padding: 0 20px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); gap: 8px; }
+  .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 1; overflow: hidden; }
+  .topbar-name { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; color: var(--text2); white-space: nowrap; }
+  .topbar-sep { color: var(--text3); flex-shrink: 0; }
+  .topbar-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .last-updated { font-family: var(--font-mono); font-size: 11px; color: var(--text3); white-space: nowrap; }
+  .version-badge { font-family: var(--font-mono); font-size: 10px; color: var(--text3); background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; letter-spacing: .04em; white-space: nowrap; }
+  .refresh-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; }
   .refresh-btn:hover { color: var(--text); background: var(--surface); }
-  .logout-btn { background: none; border: none; color: var(--text3); font-size: 12px; cursor: pointer; font-family: var(--font-mono); letter-spacing: .04em; padding: 0; transition: color .15s; }
+  /* Icon-only refresh on mobile */
+  .refresh-btn .refresh-label { display: inline; }
+  .logout-btn { background: none; border: none; color: var(--text3); font-size: 12px; cursor: pointer; font-family: var(--font-mono); letter-spacing: .04em; padding: 0; transition: color .15s; white-space: nowrap; }
   .logout-btn:hover { color: var(--text2); }
-  .main { max-width: 1100px; margin: 0 auto; padding: 36px 32px 64px; }
+  .main { max-width: 1100px; margin: 0 auto; padding: 36px 32px 64px; width: 100%; }
   .page-header { margin-bottom: 40px; }
   .page-title { font-size: 28px; font-weight: 300; letter-spacing: -.02em; }
   .page-title strong { font-weight: 500; }
@@ -147,10 +150,65 @@
   /* When privacy mode is on, blur chart Y-axis */
   body.privacy .y-axis-blur { filter: blur(6px); pointer-events: none; }
 
-  @media (max-width: 640px) {
-    .topbar { padding: 0 16px; } .main { padding: 24px 16px 48px; }
-    .tab { padding: 8px 12px 10px; font-size: 12px; } .metric-val { font-size: 18px; }
-    .donut-grid { grid-template-columns: 1fr; } .goal-grid { grid-template-columns: 1fr; }
+  @media (max-width: 480px) {
+    /* Topbar — hide less important items, keep core controls */
+    .topbar { padding: 0 14px; height: auto; min-height: 52px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; gap: 6px; }
+    .topbar-left { flex: 1 1 100%; justify-content: flex-start; }
+    .topbar-right { flex: 1 1 100%; justify-content: flex-end; gap: 6px; }
+    .topbar-sep { display: none; }
+    .topbar-title { display: none; }            /* "Net Worth Dashboard" hidden — redundant on mobile */
+    .version-badge { display: none; }          /* version hidden to save space */
+    .last-updated { display: none; }           /* shown in status bar instead */
+    .refresh-btn .refresh-label { display: none; }  /* text hidden, show icon only via content swap */
+
+    /* Main content */
+    .main { padding: 20px 14px 48px; }
+    .page-title { font-size: 20px; }
+    .page-subtitle { font-size: 11px; }
+
+    /* Tabs */
+    .tabs { gap: 0; }
+    .tab { flex: 1; text-align: center; padding: 8px 6px 10px; font-size: 12px; }
+
+    /* Metric cards — 2 columns on phone */
+    .metric-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+    .metric-card { padding: 12px 12px; }
+    .metric-val { font-size: 16px; }
+    .metric-label { font-size: 9px; }
+    .metric-sub { font-size: 10px; }
+
+    /* Goals — stack single column */
+    .goal-grid { grid-template-columns: 1fr; gap: 10px; }
+    .goal-card { padding: 14px 14px; }
+    .goal-card-current { font-size: 15px; }
+
+    /* Chart — shorter on phone */
+    .chart-wrap { height: 220px; }
+    .legend { gap: 6px 12px; margin-top: 12px; }
+    .legend-item { font-size: 10px; }
+
+    /* Donuts — single column, smaller */
+    .donut-grid { grid-template-columns: 1fr; gap: 12px; }
+    .donut-card { padding: 14px; }
+    .donut-canvas-wrap { width: 110px; height: 110px; }
+    .donut-card-body { gap: 12px; }
+
+    /* Chart tooltip — narrower */
+    .chart-tooltip { min-width: 160px; font-size: 11px; padding: 10px 12px; max-width: calc(100vw - 28px); }
+
+    /* Privacy btn */
+    .privacy-btn { font-size: 11px; padding: 4px 8px; }
+  }
+
+  @media (min-width: 481px) and (max-width: 768px) {
+    .topbar { padding: 0 16px; }
+    .version-badge { display: none; }
+    .last-updated { display: none; }
+    .main { padding: 28px 20px 56px; }
+    .metric-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .goal-grid { grid-template-columns: 1fr 1fr; }
+    .chart-wrap { height: 260px; }
+    .donut-grid { grid-template-columns: 1fr; }
     .privacy-btn { font-size: 11px; padding: 5px 8px; }
   }
 </style>
@@ -163,7 +221,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v1.6</p>
+      <p class="gate-version">v1.7</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -185,9 +243,9 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v1.6</span>
+      <span class="version-badge">v1.7</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
-      <button class="refresh-btn" id="refresh-btn">&#8635; Refresh</button>
+      <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
       <button class="logout-btn" id="logout-btn">lock</button>
     </div>
@@ -244,7 +302,7 @@
 // ════════════════════════════════════════════════════
 // CONFIG
 // ════════════════════════════════════════════════════
-const VERSION  = 'v1.6';
+const VERSION  = 'v1.7';
 const PASSWORD = 'vsnp2026';
 
 // ════════════════════════════════════════════════════
