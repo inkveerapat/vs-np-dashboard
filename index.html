@@ -135,10 +135,23 @@
   .error-box { background: rgba(240,107,107,0.06); border: 1px solid rgba(240,107,107,0.2); border-radius: var(--radius); padding: 16px; font-family: var(--font-mono); font-size: 12px; color: var(--red); display: none; margin-bottom: 20px; }
   .error-box.show { display: block; }
 
+  /* PRIVACY TOGGLE */
+  .privacy-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 12px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; }
+  .privacy-btn:hover { color: var(--text); background: var(--surface); }
+  .privacy-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(200,245,66,0.06); }
+
+  /* MASKED NUMBER — blurred placeholder */
+  .num-mask { display: inline-block; background: var(--surface2); color: transparent; border-radius: 4px; user-select: none; min-width: 4em; height: 1em; vertical-align: middle; filter: blur(0); position: relative; }
+  .num-mask::after { content: '••••••'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: .75em; letter-spacing: .1em; filter: blur(0); }
+
+  /* When privacy mode is on, blur chart Y-axis */
+  body.privacy .y-axis-blur { filter: blur(6px); pointer-events: none; }
+
   @media (max-width: 640px) {
     .topbar { padding: 0 16px; } .main { padding: 24px 16px 48px; }
     .tab { padding: 8px 12px 10px; font-size: 12px; } .metric-val { font-size: 18px; }
     .donut-grid { grid-template-columns: 1fr; } .goal-grid { grid-template-columns: 1fr; }
+    .privacy-btn { font-size: 11px; padding: 5px 8px; }
   }
 </style>
 </head>
@@ -150,7 +163,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v1.5</p>
+      <p class="gate-version">v1.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -172,9 +185,10 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v1.5</span>
+      <span class="version-badge">v1.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635; Refresh</button>
+      <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
       <button class="logout-btn" id="logout-btn">lock</button>
     </div>
   </nav>
@@ -206,6 +220,8 @@
       <div class="chart-wrap">
         <canvas id="main-chart"></canvas>
         <div class="chart-loading" id="chart-loading">Loading&hellip;</div>
+        <!-- Y-axis blur overlay (privacy mode) -->
+        <div id="yaxis-blur" style="position:absolute;top:0;left:0;width:64px;height:100%;pointer-events:none;backdrop-filter:blur(0px);transition:backdrop-filter .2s;" aria-hidden="true"></div>
       </div>
       <div class="chart-tooltip" id="chart-tooltip"></div>
     </div>
@@ -228,8 +244,36 @@
 // ════════════════════════════════════════════════════
 // CONFIG
 // ════════════════════════════════════════════════════
-const VERSION  = 'v1.5';
+const VERSION  = 'v1.6';
 const PASSWORD = 'vsnp2026';
+
+// ════════════════════════════════════════════════════
+// PRIVACY MODE
+// ════════════════════════════════════════════════════
+let privacyMode = false;
+
+// Returns masked string when privacy is on, else the real value
+function mask(val) {
+  return privacyMode ? '••••••' : val;
+}
+
+function applyPrivacyMode() {
+  const btn = document.getElementById('privacy-btn');
+  const yBlur = document.getElementById('yaxis-blur');
+  if (privacyMode) {
+    btn.innerHTML = '&#129640; Show';
+    btn.classList.add('active');
+    document.body.classList.add('privacy');
+    if (yBlur) yBlur.style.backdropFilter = 'blur(8px)';
+  } else {
+    btn.innerHTML = '&#128065; Hide';
+    btn.classList.remove('active');
+    document.body.classList.remove('privacy');
+    if (yBlur) yBlur.style.backdropFilter = 'blur(0px)';
+  }
+  // Re-render everything so masked/unmasked values update
+  if (inkData && fangData) renderAll(currentTab);
+}
 
 const BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=';
 const csv  = gid => BASE + gid + '&single=true&output=csv';
@@ -312,6 +356,10 @@ document.getElementById('pwd-toggle').addEventListener('click', () => {
   document.getElementById('pwd-input').type = pwdVis ? 'text' : 'password';
 });
 document.getElementById('logout-btn').addEventListener('click', () => { sessionStorage.removeItem(SK); location.reload(); });
+document.getElementById('privacy-btn').addEventListener('click', () => {
+  privacyMode = !privacyMode;
+  applyPrivacyMode();
+});
 if (checkAuth()) unlock();
 
 // ════════════════════════════════════════════════════
@@ -494,7 +542,7 @@ function goalBarHTML(label, current, target, targetLabel) {
       <div class="goal-bar-track">
         <div class="goal-bar-fill" style="width:${pct}%;background:${color}"></div>
       </div>
-      <div class="goal-bar-target">Target: ${fmtM(target)}</div>
+      <div class="goal-bar-target">Target: ${mask(fmtM(target))}</div>
     </div>`;
 }
 
@@ -528,7 +576,7 @@ function renderGoals(tab) {
         <span class="goal-card-title">Cash</span>
         <span class="goal-card-icon">&#128176;</span>
       </div>
-      <div class="goal-card-current">${fmtM(cashVal)}</div>
+      <div class="goal-card-current">${mask(fmtM(cashVal))}</div>
       <div class="goal-bars">
         ${goalBarHTML('Short-term', cashVal, goals.cash.st, fmtM(goals.cash.st))}
         ${goalBarHTML('Long-term',  cashVal, goals.cash.lt, fmtM(goals.cash.lt))}
@@ -539,7 +587,7 @@ function renderGoals(tab) {
         <span class="goal-card-title">Investible Assets</span>
         <span class="goal-card-icon">&#128200;</span>
       </div>
-      <div class="goal-card-current">${fmtM(investVal)}</div>
+      <div class="goal-card-current">${mask(fmtM(investVal))}</div>
       <div class="goal-bars">
         ${goalBarHTML('Short-term', investVal, goals.invest.st, fmtM(goals.invest.st))}
         ${goalBarHTML('Long-term',  investVal, goals.invest.lt, fmtM(goals.invest.lt))}
@@ -555,10 +603,10 @@ function renderMetrics(tab) {
     const last=d.totals[d.totals.length-1], prev=d.totals[d.totals.length-2]??last, first=d.totals[0];
     const mom=fmtPct(last,prev), peak=Math.max(...d.totals);
     return [
-      {label:'Current net worth', val:fmtM(last),          sub:mom+' MoM',                         cls:parseFloat(mom)>=0?'pos':'neg'},
-      {label:'All-time growth',   val:fmtPct(last,first),  sub:'Since '+d.firstLabel,               cls:''},
-      {label:'Peak',              val:fmtM(peak),          sub:d.months[d.totals.indexOf(peak)],    cls:''},
-      {label:'Months tracked',    val:d.months.length,     sub:d.firstLabel+' \u2192 '+d.lastLabel, cls:''},
+      {label:'Current net worth', val:mask(fmtM(last)),          sub:mom+' MoM',                         cls:parseFloat(mom)>=0?'pos':'neg'},
+      {label:'All-time growth',   val:fmtPct(last,first),        sub:'Since '+d.firstLabel,               cls:''},
+      {label:'Peak',              val:mask(fmtM(peak)),          sub:d.months[d.totals.indexOf(peak)],    cls:''},
+      {label:'Months tracked',    val:d.months.length,           sub:d.firstLabel+' \u2192 '+d.lastLabel, cls:''},
     ];
   }
   let cards;
@@ -568,10 +616,10 @@ function renderMetrics(tab) {
     const iL=inkData.totals[inkData.totals.length-1], fL=fangData.totals[fangData.totals.length-1], tot=iL+fL;
     const mom=fmtPct(tot,(inkData.totals[inkData.totals.length-2]??iL)+(fangData.totals[fangData.totals.length-2]??fL));
     cards=[
-      {label:'Household net worth', val:fmtM(tot),                      sub:mom+' MoM',          cls:parseFloat(mom)>=0?'pos':'neg'},
-      {label:"Ink's share",         val:(iL/tot*100).toFixed(0)+'%',    sub:fmtM(iL),            cls:''},
-      {label:"Fang's share",        val:(fL/tot*100).toFixed(0)+'%',    sub:fmtM(fL),            cls:''},
-      {label:'Data since',          val:inkData.firstLabel,             sub:'Ink started first', cls:''},
+      {label:'Household net worth', val:mask(fmtM(tot)),                    sub:mom+' MoM',          cls:parseFloat(mom)>=0?'pos':'neg'},
+      {label:"Ink's share",         val:(iL/tot*100).toFixed(0)+'%',        sub:mask(fmtM(iL)),      cls:''},
+      {label:"Fang's share",        val:(fL/tot*100).toFixed(0)+'%',        sub:mask(fmtM(fL)),      cls:''},
+      {label:'Data since',          val:inkData.firstLabel,                 sub:'Ink started first', cls:''},
     ];
   }
   document.getElementById('metric-grid').innerHTML = cards.map(c =>
@@ -625,7 +673,7 @@ function renderChart(tab) {
       plugins:{legend:{display:false}, tooltip:{enabled:false, external:extTooltip}},
       scales:{
         x:{grid:{color:'rgba(255,255,255,0.04)',drawBorder:false}, ticks:{color:'#555450',font:{family:"'DM Mono',monospace",size:10},maxRotation:45,autoSkip:true,maxTicksLimit:14}, border:{color:'rgba(255,255,255,0.06)'}},
-        y:{grid:{color:'rgba(255,255,255,0.04)',drawBorder:false}, ticks:{color:'#555450',font:{family:"'DM Mono',monospace",size:10},callback:v=>fmtM(v)}, border:{color:'rgba(255,255,255,0.06)'}, beginAtZero:true}
+        y:{grid:{color:'rgba(255,255,255,0.04)',drawBorder:false}, ticks:{color:'#555450',font:{family:"'DM Mono',monospace",size:10},callback:v=>mask(fmtM(v))}, border:{color:'rgba(255,255,255,0.06)'}, beginAtZero:true}
       }
     }
   });
@@ -639,9 +687,9 @@ function extTooltip(ctx) {
   const totPt=t.dataPoints.find(p=>p.dataset.label==='__total__');
   const hhPt=t.dataPoints.find(p=>p.dataset.label==='Household total');
   let html=`<div class="tt-month">${t.title[0]||''}</div>`;
-  vis.forEach(p=>{html+=`<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${fmtM(p.raw)}</span></div>`;});
-  if (totPt) html+=`<div class="tt-row tt-total"><span>Total</span><span class="tt-val">${fmtM(totPt.raw)}</span></div>`;
-  else if (hhPt&&hhPt.raw!==null) html+=`<div class="tt-row tt-total"><span>Household</span><span class="tt-val">${fmtM(hhPt.raw)}</span></div>`;
+  vis.forEach(p=>{html+=`<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${mask(fmtM(p.raw))}</span></div>`;});
+  if (totPt) html+=`<div class="tt-row tt-total"><span>Total</span><span class="tt-val">${mask(fmtM(totPt.raw))}</span></div>`;
+  else if (hhPt&&hhPt.raw!==null) html+=`<div class="tt-row tt-total"><span>Household</span><span class="tt-val">${mask(fmtM(hhPt.raw))}</span></div>`;
   tt.innerHTML=html; tt.style.display='block';
   const wr=tt.parentElement.getBoundingClientRect();
   let l=t.caretX+18; if(l+220>wr.width)l=t.caretX-230;
@@ -705,7 +753,7 @@ function renderDonuts(tab) {
           <div class="donut-canvas-wrap">
             <canvas id="dc-${tab}-${idx}" width="128" height="128"></canvas>
             <div class="donut-center" id="dctr-${tab}-${idx}">
-              <span class="donut-center-total">${totalStr}</span>
+              <span class="donut-center-total">${mask(totalStr)}</span>
               <span class="donut-center-label">total</span>
               <span class="donut-center-hover-pct"></span>
               <span class="donut-center-hover-val"></span>
@@ -766,11 +814,12 @@ function renderDonuts(tab) {
               hValEl.style.display   = 'block';
               hNameEl.style.display  = 'block';
               hPctEl.textContent  = a.pct.toFixed(1) + '%';
-              hValEl.textContent  = fmtCurrency(a.value, a.currency);
+              hValEl.textContent  = mask(fmtCurrency(a.value, a.currency));
               hNameEl.textContent = a.name;
             } else {
               // Restore total
               totalEl.style.display  = 'block';
+              totalEl.textContent    = mask(totalStr);
               labelEl.style.display  = 'block';
               hPctEl.style.display   = 'none';
               hValEl.style.display   = 'none';
