@@ -115,13 +115,20 @@
   .donut-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 20px 18px; }
   .donut-card-title { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 16px; }
   .donut-card-body { display: flex; align-items: center; gap: 18px; }
-  .donut-canvas-wrap { position: relative; width: 128px; height: 128px; flex-shrink: 0; }
-  .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-  .donut-center-total { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; text-align: center; max-width: 86px; }
-  .donut-center-label { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 2px; text-align: center; }
-  .donut-center-hover-pct { font-family: var(--font-mono); font-size: 15px; font-weight: 500; color: var(--text); line-height: 1.2; display: none; }
-  .donut-center-hover-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 3px; text-align: center; max-width: 80px; display: none; }
-  .donut-center-hover-name { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 1px; text-align: center; max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: none; }
+  .donut-canvas-wrap { position: relative; flex-shrink: 0; }
+  .donut-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;          /* stays inside the hole regardless of canvas size */
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: none; text-align: center;
+  }
+  .donut-center-total { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; word-break: break-all; }
+  .donut-center-label { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 2px; }
+  .donut-center-hover-pct { font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.2; display: none; }
+  .donut-center-hover-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 2px; word-break: break-all; display: none; }
+  .donut-center-hover-name { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: none; }
   .donut-leg { flex: 1; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
   .donut-leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); }
   .donut-leg-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
@@ -221,7 +228,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v1.7</p>
+      <p class="gate-version">v1.8</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -243,7 +250,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v1.7</span>
+      <span class="version-badge">v1.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
@@ -302,7 +309,7 @@
 // ════════════════════════════════════════════════════
 // CONFIG
 // ════════════════════════════════════════════════════
-const VERSION  = 'v1.7';
+const VERSION  = 'v1.8';
 const PASSWORD = 'vsnp2026';
 
 // ════════════════════════════════════════════════════
@@ -788,6 +795,9 @@ function renderDonuts(tab) {
   grid.innerHTML = list.map((d,idx) => {
     if (!d.assets.length) return `<div class="donut-card"><p class="donut-card-title">${d.title}</p><p class="donut-empty">No data</p></div>`;
 
+    // Sort assets highest % to lowest
+    d.assets = [...d.assets].sort((a,b) => b.pct - a.pct);
+
     // Compute portfolio total — sum all asset values. Currency: use the most common or first currency.
     const totalVal = d.assets.reduce((s,a)=>s+a.value,0);
     // Determine the dominant currency for the total display
@@ -809,7 +819,7 @@ function renderDonuts(tab) {
         <p class="donut-card-title">${d.title}</p>
         <div class="donut-card-body">
           <div class="donut-canvas-wrap">
-            <canvas id="dc-${tab}-${idx}" width="128" height="128"></canvas>
+            <canvas id="dc-${tab}-${idx}"></canvas>
             <div class="donut-center" id="dctr-${tab}-${idx}">
               <span class="donut-center-total">${mask(totalStr)}</span>
               <span class="donut-center-label">total</span>
@@ -829,6 +839,16 @@ function renderDonuts(tab) {
       const canvas = document.getElementById(`dc-${tab}-${idx}`);
       const center = document.getElementById(`dctr-${tab}-${idx}`);
       if (!canvas || !center) return;
+
+      // Assets already sorted in HTML pass above (d.assets mutated via spread+sort)
+      // Set canvas to explicit pixel size for reliable centering
+      const SZ = 120;
+      canvas.width  = SZ;
+      canvas.height = SZ;
+      canvas.style.width  = SZ + 'px';
+      canvas.style.height = SZ + 'px';
+      canvas.parentElement.style.width  = SZ + 'px';
+      canvas.parentElement.style.height = SZ + 'px';
 
       const colors = d.assets.map((_,ai) => PALETTE[ai % PALETTE.length]);
       const totalVal = d.assets.reduce((s,a)=>s+a.value,0);
@@ -853,12 +873,12 @@ function renderDonuts(tab) {
             backgroundColor: colors,
             borderColor: '#161616',
             borderWidth: 2,
-            hoverOffset: 8,
+            hoverOffset: 6,
           }]
         },
         options: {
           responsive: false,
-          cutout: '70%',
+          cutout: '68%',
           animation: { duration: 400 },
           plugins: { legend:{ display:false }, tooltip:{ enabled:false } },
           onHover: (_evt, elements) => {
