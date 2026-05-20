@@ -230,7 +230,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v2.1</p>
+      <p class="gate-version">v2.2</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -251,7 +251,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v2.1</span>
+      <span class="version-badge">v2.2</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
@@ -314,7 +314,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v2.1';
+const VERSION  = 'v2.2';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -460,7 +460,6 @@ function fmtCurrency(val, currency) {
 }
 
 // MASTER TRACKER EXTRACT
-// Retain the standard reference structure from design specifications.
 function extractData(rows, config) {
   const labelRow = rows[config.monthLabelRow] || [];
   const months = [];
@@ -810,16 +809,12 @@ function renderChart(tab) {
   });
 }
 
-// ENHANCEMENT: Tooltip asset elements now sort by value descending
 function extTooltip(ctx) {
   const tt=document.getElementById('chart-tooltip');
   if (ctx.tooltip.opacity===0){tt.style.display='none';return;}
   const t=ctx.tooltip;
   
-  // Filter out system placeholders
   const vis=t.dataPoints.filter(p=>p.dataset.label!=='__total__'&&p.raw!==null);
-  
-  // Sort individual asset values descending (Highest -> Lowest)
   vis.sort((a, b) => b.raw - a.raw);
   
   const totPt=t.dataPoints.find(p=>p.dataset.label==='__total__');
@@ -1007,7 +1002,6 @@ function renderDonuts(tab) {
 }
 
 // TABS & RENDER
-// ENHANCEMENT: Removed any layout/view scroll jumping triggers when tabs are switched
 let currentTab = 'ink';
 document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1022,7 +1016,6 @@ document.querySelectorAll('.tab').forEach(btn => {
 });
 
 // FILTER BAR
-// ENHANCEMENT: Removed any layout/view scroll jumping triggers when filters are adjusted
 function renderFilter(tab) {
   const scroll = document.getElementById('filter-scroll');
   let months;
@@ -1045,11 +1038,22 @@ function renderFilter(tab) {
   }).join('');
 }
 
+// ENHANCEMENT: One-way directional syncing (Top-Down only)
 function selectFilter(tab, fi) {
   const months = tab === 'household' ? inkData.months
                : tab === 'ink'       ? inkData.months
                :                       fangData.months;
   filterState[tab] = (fi >= months.length - 1) ? -1 : fi;
+  
+  // Apply top-down sync target
+  const targetMonthLabel = months[fi];
+  if (tab === 'ink' || tab === 'fang') {
+    donutFilterState[tab] = targetMonthLabel;
+  } else if (tab === 'household') {
+    donutFilterState.ink  = targetMonthLabel;
+    donutFilterState.fang = targetMonthLabel;
+  }
+  
   renderAll(tab);
 }
 
