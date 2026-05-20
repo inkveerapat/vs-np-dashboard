@@ -246,7 +246,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v2.0</p>
+      <p class="gate-version">v2.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -268,7 +268,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v2.0</span>
+      <span class="version-badge">v2.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
@@ -339,7 +339,7 @@
 // ════════════════════════════════════════════════════
 // CONFIG
 // ════════════════════════════════════════════════════
-const VERSION  = 'v2.0';
+const VERSION  = 'v2.1';
 const PASSWORD = 'vsnp2026';
 
 // ════════════════════════════════════════════════════
@@ -419,12 +419,14 @@ const INK_DONUTS = [
   { title:'Tax-saving portfolio', url:csv(1424875369), assetRowStart:3,  assetRowEnd:10, currencyRow:12 },
   // Crypto: assets rows 4-10 (0-based 3-9), currency row 12 (0-based 11)
   { title:'Crypto',               url:csv(1578394134), assetRowStart:3,  assetRowEnd:9,  currencyRow:11 },
-  // Cash: assets rows 3-10 (0-based 2-9), currency row 12 (0-based 11)
-  { title:'Cash',                 url:csv(1773567471), assetRowStart:2,  assetRowEnd:9,  currencyRow:11 },
+  // Cash: assets rows 4-10 (0-based 3-9), currency row 12 (0-based 11)
+  // Note: sheet row 3 (0-based 2) is the MV header row, so assets start at 0-based 3
+  { title:'Cash',                 url:csv(1773567471), assetRowStart:3,  assetRowEnd:9,  currencyRow:11 },
 ];
 const FANG_DONUTS = [
-  // Cash: assets rows 3-11 (0-based 2-10), currency row 13 (0-based 12)
-  { title:'Cash portfolio',       url:csv(825635991),  assetRowStart:2,  assetRowEnd:10, currencyRow:12 },
+  // Cash: assets rows 4-11 (0-based 3-10), currency row 13 (0-based 12)
+  // Note: sheet row 3 (0-based 2) is the MV header row, so assets start at 0-based 3
+  { title:'Cash portfolio',       url:csv(825635991),  assetRowStart:3,  assetRowEnd:10, currencyRow:12 },
   // Mutual fund: assets rows 4-28 (0-based 3-27), currency row 30 (0-based 29)
   { title:'Mutual fund',          url:csv(1253576610), assetRowStart:3,  assetRowEnd:27, currencyRow:29 },
   // Thai stock: assets rows 4-13 (0-based 3-12), currency row 15 (0-based 14)
@@ -551,20 +553,29 @@ function detectPortfolioCurrency(rows, config) {
   return cell.includes('usd') ? 'USD' : 'THB';
 }
 
-// Find all "Market Value" columns in row 2 (0-based), paired with their month label from row 1
-// Returns array of { col, monthLabel } sorted by col ascending
-function findMarketValueCols(rows) {
-  const headerRow = rows[2] || [];  // row 3 (0-based index 2)
-  const monthRow  = rows[1] || [];  // row 2 (0-based index 1)
-  const yearRow   = rows[0] || [];  // row 1 (0-based index 0)
+// Find all "Market Value" columns, with configurable row indices
+// yearRowIdx: which row has year labels (null if none)
+// monthRowIdx: which row has month labels
+// mvHeaderRowIdx: which row has "Market Value" text
+function findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHeaderRowIdx) {
+  const headerRow = rows[mvHeaderRowIdx] || [];
+  const monthRow  = rows[monthRowIdx]    || [];
+  const yearRow   = yearRowIdx !== null ? (rows[yearRowIdx] || []) : [];
   const result = [];
   for (let c = 1; c < headerRow.length; c++) {
     const hdr = (headerRow[c] || '').trim().toLowerCase();
     if (hdr === 'market value') {
-      // Build month label: combine year + month
       const month = (monthRow[c] || '').trim();
-      const year  = (yearRow[c]  || '').trim();
       if (!month) continue;
+      // Year: look in yearRow at same col, or scan left for nearest non-empty year
+      let year = yearRowIdx !== null ? (yearRow[c] || '').trim() : '';
+      if (!year && yearRowIdx !== null) {
+        // Merged cells: scan left for nearest year label
+        for (let lc = c - 1; lc >= 1; lc--) {
+          const y = (yearRow[lc] || '').trim();
+          if (y && /\d{4}/.test(y)) { year = y; break; }
+        }
+      }
       const label = year ? `${month} ${year}` : month;
       result.push({ col: c, monthLabel: label });
     }
@@ -591,8 +602,11 @@ function extractAssetsForCol(rows, config, col, currency) {
 // Extract all months' data for a portfolio sheet
 // Returns { months: [{label, col}], byMonth: { label: [assets] }, currency }
 function extractDonutAllMonths(rows, config) {
-  const currency = detectPortfolioCurrency(rows, config);
-  const mvCols   = findMarketValueCols(rows);
+  const currency    = detectPortfolioCurrency(rows, config);
+  const yearRowIdx  = config.yearRowIdx  !== undefined ? config.yearRowIdx  : 0;
+  const monthRowIdx = config.monthRowIdx !== undefined ? config.monthRowIdx : 1;
+  const mvHdrIdx    = config.mvHeaderRowIdx !== undefined ? config.mvHeaderRowIdx : 2;
+  const mvCols      = findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHdrIdx);
   const byMonth  = {};
   const months   = [];
   for (const { col, monthLabel } of mvCols) {
