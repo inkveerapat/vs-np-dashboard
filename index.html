@@ -246,7 +246,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v1.9</p>
+      <p class="gate-version">v2.0</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -268,7 +268,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v1.9</span>
+      <span class="version-badge">v2.0</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
@@ -318,7 +318,13 @@
 
     <!-- DONUT SECTION -->
     <div class="donut-section" id="donut-section" style="display:none;">
-      <p class="donut-section-title">Asset Allocation Breakdown</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <p class="donut-section-title" style="margin:0;padding:0;border:none;">Asset Allocation Breakdown</p>
+        <div class="filter-bar" id="donut-filter-bar" style="margin:0;flex:0 1 auto;max-width:100%;">
+          <span class="filter-label">Viewing</span>
+          <div class="filter-scroll" id="donut-filter-scroll"></div>
+        </div>
+      </div>
       <div class="donut-grid" id="donut-grid"></div>
     </div>
 
@@ -333,7 +339,7 @@
 // ════════════════════════════════════════════════════
 // CONFIG
 // ════════════════════════════════════════════════════
-const VERSION  = 'v1.9';
+const VERSION  = 'v2.0';
 const PASSWORD = 'vsnp2026';
 
 // ════════════════════════════════════════════════════
@@ -395,20 +401,38 @@ const GOALS = {
 };
 
 // Donut portfolio configs
+// Extraction logic:
+//   row 0 = year labels, row 1 = month labels, row 2 = "Market Value" headers
+//   rightmost col in row 2 with "Market Value" = current month col
+//   assetRows (0-based): rows containing individual asset names+values
+//   currencyRow (0-based): row whose col A contains "total (usd)" if USD, else THB
+//   nameCol: col index for asset name (always col 0, col A)
+//   valCol determined dynamically from the rightmost "Market Value" col
 const INK_DONUTS = [
-  { title:'Growth portfolio',     url:csv(353664994),  nameCol:1, valueCol:2, rowStart:23, rowEnd:39 },
-  { title:'Dividend portfolio',   url:csv(1618449229), nameCol:1, valueCol:2, rowStart:23, rowEnd:39 },
-  { title:'Provident fund',       url:csv(381603952),  nameCol:1, valueCol:2, rowStart:23, rowEnd:39 },
-  { title:'Tax-saving portfolio', url:csv(1424875369), nameCol:1, valueCol:2, rowStart:23, rowEnd:39 },
-  { title:'Crypto',               url:csv(1578394134), nameCol:1, valueCol:2, rowStart:23, rowEnd:39 },
-  { title:'Cash',                 url:csv(1773567471), nameCol:1, valueCol:2, rowStart:23, rowEnd:39 },
+  // Growth portfolio: assets rows 4-16 (0-based 3-15), currency row 19 (0-based 18)
+  { title:'Growth portfolio',     url:csv(353664994),  assetRowStart:3,  assetRowEnd:15, currencyRow:18 },
+  // Dividend portfolio: assets rows 4-8 (0-based 3-7), currency row 10 (0-based 9)
+  { title:'Dividend portfolio',   url:csv(1618449229), assetRowStart:3,  assetRowEnd:7,  currencyRow:9  },
+  // Provident fund: assets rows 4-9 (0-based 3-8), currency row 11 (0-based 10)
+  { title:'Provident fund',       url:csv(381603952),  assetRowStart:3,  assetRowEnd:8,  currencyRow:10 },
+  // Tax-saving portfolio: assets rows 4-11 (0-based 3-10), currency row 13 (0-based 12)
+  { title:'Tax-saving portfolio', url:csv(1424875369), assetRowStart:3,  assetRowEnd:10, currencyRow:12 },
+  // Crypto: assets rows 4-10 (0-based 3-9), currency row 12 (0-based 11)
+  { title:'Crypto',               url:csv(1578394134), assetRowStart:3,  assetRowEnd:9,  currencyRow:11 },
+  // Cash: assets rows 3-10 (0-based 2-9), currency row 12 (0-based 11)
+  { title:'Cash',                 url:csv(1773567471), assetRowStart:2,  assetRowEnd:9,  currencyRow:11 },
 ];
 const FANG_DONUTS = [
-  { title:'Cash portfolio',       url:csv(825635991),  nameCol:1, valueCol:2, rowStart:33, rowEnd:69 },
-  { title:'Mutual fund',          url:csv(1253576610), nameCol:1, valueCol:2, rowStart:33, rowEnd:69 },
-  { title:'Thai stock portfolio', url:csv(748123998),  nameCol:1, valueCol:2, rowStart:33, rowEnd:69 },
-  { title:'US stock portfolio',   url:csv(672939154),  nameCol:1, valueCol:2, rowStart:33, rowEnd:69 },
-  { title:'Provident fund',       url:csv(753946380),  nameCol:1, valueCol:2, rowStart:33, rowEnd:69 },
+  // Cash: assets rows 3-11 (0-based 2-10), currency row 13 (0-based 12)
+  { title:'Cash portfolio',       url:csv(825635991),  assetRowStart:2,  assetRowEnd:10, currencyRow:12 },
+  // Mutual fund: assets rows 4-28 (0-based 3-27), currency row 30 (0-based 29)
+  { title:'Mutual fund',          url:csv(1253576610), assetRowStart:3,  assetRowEnd:27, currencyRow:29 },
+  // Thai stock: assets rows 4-13 (0-based 3-12), currency row 15 (0-based 14)
+  { title:'Thai stock portfolio', url:csv(748123998),  assetRowStart:3,  assetRowEnd:12, currencyRow:14 },
+  // US stock: assets rows 4-13 (0-based 3-12), currency row 15 (0-based 14)
+  { title:'US stock portfolio',   url:csv(672939154),  assetRowStart:3,  assetRowEnd:12, currencyRow:14 },
+  // Provident fund: assets rows 4-7 (0-based 3-6), currency row 9 (0-based 8)
+  { title:'Provident fund',       url:csv(753946380),  assetRowStart:3,  assetRowEnd:6,  currencyRow:8  },
 ];
 
 const PALETTE = [
@@ -517,29 +541,78 @@ function extractData(rows, config) {
 }
 
 // ════════════════════════════════════════════════════
-// DONUT EXTRACT
+// DONUT EXTRACT — new method
 // ════════════════════════════════════════════════════
-function extractDonut(rows, config) {
+
+// Detect currency for a portfolio sheet:
+// col A of currencyRow contains "total (usd)" if USD
+function detectPortfolioCurrency(rows, config) {
+  const cell = ((rows[config.currencyRow] || [])[0] || '').toLowerCase();
+  return cell.includes('usd') ? 'USD' : 'THB';
+}
+
+// Find all "Market Value" columns in row 2 (0-based), paired with their month label from row 1
+// Returns array of { col, monthLabel } sorted by col ascending
+function findMarketValueCols(rows) {
+  const headerRow = rows[2] || [];  // row 3 (0-based index 2)
+  const monthRow  = rows[1] || [];  // row 2 (0-based index 1)
+  const yearRow   = rows[0] || [];  // row 1 (0-based index 0)
+  const result = [];
+  for (let c = 1; c < headerRow.length; c++) {
+    const hdr = (headerRow[c] || '').trim().toLowerCase();
+    if (hdr === 'market value') {
+      // Build month label: combine year + month
+      const month = (monthRow[c] || '').trim();
+      const year  = (yearRow[c]  || '').trim();
+      if (!month) continue;
+      const label = year ? `${month} ${year}` : month;
+      result.push({ col: c, monthLabel: label });
+    }
+  }
+  return result;
+}
+
+// Extract assets for a specific column
+function extractAssetsForCol(rows, config, col, currency) {
   const assets = [];
-  for (let r=config.rowStart; r<=Math.min(config.rowEnd, rows.length-1); r++) {
+  for (let r = config.assetRowStart; r <= Math.min(config.assetRowEnd, rows.length-1); r++) {
     const row  = rows[r] || [];
-    const rawN = (row[config.nameCol]  || '').trim();
-    const rawV = (row[config.valueCol] || '').trim();
-    if (!rawN || !rawV) continue;
-    const val = numVal(rawV);
+    const name = (row[0] || '').trim();   // col A = asset name
+    const raw  = (row[col] || '').trim(); // specified col = market value
+    if (!name || !raw) continue;
+    const val  = numVal(raw);
     if (val <= 0) continue;
-    assets.push({ name:rawN, value:val, currency:detectCurrency(rawV) });
+    assets.push({ name, value: val, currency });
   }
   const total = assets.reduce((s,a) => s+a.value, 0);
   return assets.map(a => ({ ...a, pct: total>0 ? a.value/total*100 : 0 }));
+}
+
+// Extract all months' data for a portfolio sheet
+// Returns { months: [{label, col}], byMonth: { label: [assets] }, currency }
+function extractDonutAllMonths(rows, config) {
+  const currency = detectPortfolioCurrency(rows, config);
+  const mvCols   = findMarketValueCols(rows);
+  const byMonth  = {};
+  const months   = [];
+  for (const { col, monthLabel } of mvCols) {
+    const assets = extractAssetsForCol(rows, config, col, currency);
+    if (assets.length === 0) continue; // skip months with no data
+    byMonth[monthLabel] = assets;
+    if (!months.includes(monthLabel)) months.push(monthLabel);
+  }
+  return { months, byMonth, currency };
 }
 
 // ════════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════════
 let inkData=null, fangData=null;
-let inkDonuts=[], fangDonuts=[];
+// inkDonutData/fangDonutData: array of { title, months, byMonth, currency }
+let inkDonutData=[], fangDonutData=[];
 let donutInstances={};
+// Separate filter state for donut section (shared across all portfolios in a tab)
+const donutFilterState = { ink: null, fang: null }; // null = latest
 // filterIdx: index into the *current tab's* month array. -1 means latest (default)
 // We store per-tab so switching tabs remembers each tab's filter
 const filterState = { ink: -1, fang: -1, household: -1 };
@@ -590,8 +663,11 @@ async function loadData() {
       Promise.all(INK_DONUTS.map(d  => fetchCSV(d.url))),
       Promise.all(FANG_DONUTS.map(d => fetchCSV(d.url))),
     ]);
-    inkDonuts  = INK_DONUTS.map((d,i)  => ({ title:d.title, assets:extractDonut(inkDRows[i],  d) }));
-    fangDonuts = FANG_DONUTS.map((d,i) => ({ title:d.title, assets:extractDonut(fangDRows[i], d) }));
+    inkDonutData  = INK_DONUTS.map((d,i)  => ({ title:d.title, ...extractDonutAllMonths(inkDRows[i],  d) }));
+    fangDonutData = FANG_DONUTS.map((d,i) => ({ title:d.title, ...extractDonutAllMonths(fangDRows[i], d) }));
+    // Reset donut filters to latest
+    donutFilterState.ink  = null;
+    donutFilterState.fang = null;
 
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'Live \u00b7 Google Sheets \u00b7 ' + VERSION + ' \u00b7 Auto-updates on refresh');
@@ -858,6 +934,57 @@ function toggleS(name) {
 // ════════════════════════════════════════════════════
 // DONUT CHARTS
 // ════════════════════════════════════════════════════
+// DONUT FILTER
+// ════════════════════════════════════════════════════
+function getDonutMonths(tab) {
+  // Union of all available months across all portfolios for this tab, sorted chronologically
+  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  const monthSet = new Set();
+  list.forEach(d => d.months.forEach(m => monthSet.add(m)));
+  // Sort by the order they appear in any portfolio's months array (preserves chronological order)
+  // Use the portfolio with the most months as the reference order
+  let refMonths = [];
+  list.forEach(d => { if (d.months.length > refMonths.length) refMonths = d.months; });
+  const sorted = [...monthSet].sort((a, b) => {
+    const ai = refMonths.indexOf(a), bi = refMonths.indexOf(b);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return 0;
+  });
+  return sorted;
+}
+
+function renderDonutFilter(tab) {
+  const scroll = document.getElementById('donut-filter-scroll');
+  if (!scroll) return;
+  const months = getDonutMonths(tab);
+  if (!months.length) { scroll.innerHTML = ''; return; }
+  // Latest = last in the sorted array
+  const latest = months[months.length - 1];
+  const active = donutFilterState[tab] || latest;
+  // Pills: latest first
+  scroll.innerHTML = [...months].reverse().map(m => {
+    const isLatest = m === latest;
+    const isActive = m === active;
+    return `<button class="filter-pill ${isActive ? 'active' : ''}"
+      onclick="selectDonutFilter('${tab}','${m}')">${m}${isLatest ? ' ✦' : ''}</button>`;
+  }).join('');
+  // Scroll active into view
+  requestAnimationFrame(() => {
+    const active_el = scroll.querySelector('.filter-pill.active');
+    if (active_el) active_el.scrollIntoView({ inline:'center', block:'nearest', behavior:'smooth' });
+  });
+}
+
+function selectDonutFilter(tab, month) {
+  donutFilterState[tab] = month;
+  renderDonuts(tab);
+}
+
+// ════════════════════════════════════════════════════
+// RENDER DONUTS
+// ════════════════════════════════════════════════════
 function renderDonuts(tab) {
   const section=document.getElementById('donut-section');
   const grid=document.getElementById('donut-grid');
@@ -866,22 +993,39 @@ function renderDonuts(tab) {
   if (tab==='household') { section.style.display='none'; return; }
   section.style.display='block';
 
-  const list = tab==='ink' ? inkDonuts : fangDonuts;
+  const list = tab==='ink' ? inkDonutData : fangDonutData;
 
-  grid.innerHTML = list.map((d,idx) => {
-    if (!d.assets.length) return `<div class="donut-card"><p class="donut-card-title">${d.title}</p><p class="donut-empty">No data</p></div>`;
+  // Determine active month for filter
+  const allMonths = getDonutMonths(tab);
+  const latest    = allMonths[allMonths.length - 1];
+  const activeMonth = donutFilterState[tab] || latest;
 
-    // Sort assets highest % to lowest
-    d.assets = [...d.assets].sort((a,b) => b.pct - a.pct);
+  // Render filter bar
+  renderDonutFilter(tab);
 
-    // Compute portfolio total — sum all asset values. Currency: use the most common or first currency.
+  // For each portfolio, get assets for the active month
+  // (fall back to latest available month for that portfolio if activeMonth not in its data)
+  const resolvedList = list.map(d => {
+    let assets = d.byMonth[activeMonth];
+    if (!assets || !assets.length) {
+      // Find the latest month available for this portfolio that is <= activeMonth
+      const available = d.months.filter(m => {
+        const ai = allMonths.indexOf(m), ac = allMonths.indexOf(activeMonth);
+        return ai <= ac;
+      });
+      const fallback = available[available.length - 1];
+      assets = fallback ? (d.byMonth[fallback] || []) : [];
+    }
+    // Sort by pct descending
+    assets = [...assets].sort((a,b) => b.pct - a.pct);
+    return { title: d.title, assets, currency: d.currency };
+  });
+
+  grid.innerHTML = resolvedList.map((d,idx) => {
+    if (!d.assets.length) return `<div class="donut-card"><p class="donut-card-title">${d.title}</p><p class="donut-empty">No data for this period</p></div>`;
+
     const totalVal = d.assets.reduce((s,a)=>s+a.value,0);
-    // Determine the dominant currency for the total display
-    const currencies = d.assets.map(a=>a.currency);
-    const hasMixed = currencies.some(c=>c!==currencies[0]);
-    // If mixed currencies, show THB total only (can't meaningfully add USD+THB)
-    const totalCurrency = hasMixed ? 'THB' : currencies[0];
-    const totalStr = fmtCurrency(totalVal, totalCurrency);
+    const totalStr = fmtCurrency(totalVal, d.currency);
 
     const legItems = d.assets.map((a,ai)=>`
       <div class="donut-leg-item">
@@ -910,74 +1054,49 @@ function renderDonuts(tab) {
   }).join('');
 
   requestAnimationFrame(() => {
-    list.forEach((d, idx) => {
+    resolvedList.forEach((d, idx) => {
       if (!d.assets.length) return;
       const canvas = document.getElementById(`dc-${tab}-${idx}`);
       const center = document.getElementById(`dctr-${tab}-${idx}`);
       if (!canvas || !center) return;
 
-      // Assets already sorted in HTML pass above (d.assets mutated via spread+sort)
-      // Set canvas to explicit pixel size for reliable centering
       const SZ = 120;
-      canvas.width  = SZ;
-      canvas.height = SZ;
-      canvas.style.width  = SZ + 'px';
-      canvas.style.height = SZ + 'px';
-      canvas.parentElement.style.width  = SZ + 'px';
-      canvas.parentElement.style.height = SZ + 'px';
+      canvas.width  = SZ; canvas.height = SZ;
+      canvas.style.width = SZ+'px'; canvas.style.height = SZ+'px';
+      canvas.parentElement.style.width = SZ+'px'; canvas.parentElement.style.height = SZ+'px';
 
-      const colors = d.assets.map((_,ai) => PALETTE[ai % PALETTE.length]);
+      const colors   = d.assets.map((_,ai) => PALETTE[ai % PALETTE.length]);
       const totalVal = d.assets.reduce((s,a)=>s+a.value,0);
-      const currencies = d.assets.map(a=>a.currency);
-      const hasMixed = currencies.some(c=>c!==currencies[0]);
-      const totalCurrency = hasMixed ? 'THB' : currencies[0];
-      const totalStr = fmtCurrency(totalVal, totalCurrency);
+      const totalStr = fmtCurrency(totalVal, d.currency);
 
-      // Center DOM elements
-      const totalEl  = center.querySelector('.donut-center-total');
-      const labelEl  = center.querySelector('.donut-center-label');
-      const hPctEl   = center.querySelector('.donut-center-hover-pct');
-      const hValEl   = center.querySelector('.donut-center-hover-val');
-      const hNameEl  = center.querySelector('.donut-center-hover-name');
+      const totalEl = center.querySelector('.donut-center-total');
+      const labelEl = center.querySelector('.donut-center-label');
+      const hPctEl  = center.querySelector('.donut-center-hover-pct');
+      const hValEl  = center.querySelector('.donut-center-hover-val');
+      const hNameEl = center.querySelector('.donut-center-hover-name');
 
       const chart = new Chart(canvas.getContext('2d'), {
         type: 'doughnut',
         data: {
           labels: d.assets.map(a=>a.name),
-          datasets: [{
-            data: d.assets.map(a=>a.pct),
-            backgroundColor: colors,
-            borderColor: '#161616',
-            borderWidth: 2,
-            hoverOffset: 6,
-          }]
+          datasets: [{ data:d.assets.map(a=>a.pct), backgroundColor:colors, borderColor:'#161616', borderWidth:2, hoverOffset:6 }]
         },
         options: {
-          responsive: false,
-          cutout: '68%',
-          animation: { duration: 400 },
-          plugins: { legend:{ display:false }, tooltip:{ enabled:false } },
+          responsive: false, cutout: '68%', animation: { duration:400 },
+          plugins: { legend:{display:false}, tooltip:{enabled:false} },
           onHover: (_evt, elements) => {
             if (elements.length > 0) {
               const i = elements[0].index;
               const a = d.assets[i];
-              // Hide total, show hover info
-              totalEl.style.display  = 'none';
-              labelEl.style.display  = 'none';
-              hPctEl.style.display   = 'block';
-              hValEl.style.display   = 'block';
-              hNameEl.style.display  = 'block';
+              totalEl.style.display = 'none'; labelEl.style.display = 'none';
+              hPctEl.style.display = 'block'; hValEl.style.display = 'block'; hNameEl.style.display = 'block';
               hPctEl.textContent  = a.pct.toFixed(1) + '%';
               hValEl.textContent  = mask(fmtCurrency(a.value, a.currency));
               hNameEl.textContent = a.name;
             } else {
-              // Restore total
-              totalEl.style.display  = 'block';
-              totalEl.textContent    = mask(totalStr);
-              labelEl.style.display  = 'block';
-              hPctEl.style.display   = 'none';
-              hValEl.style.display   = 'none';
-              hNameEl.style.display  = 'none';
+              totalEl.style.display = 'block'; totalEl.textContent = mask(totalStr);
+              labelEl.style.display = 'block';
+              hPctEl.style.display = 'none'; hValEl.style.display = 'none'; hNameEl.style.display = 'none';
             }
           }
         }
@@ -997,8 +1116,9 @@ document.querySelectorAll('.tab').forEach(btn => {
     btn.classList.add('active');
     currentTab = btn.dataset.tab;
     hiddenSeries.clear();
-    // Reset filter to latest when switching tabs
+    // Reset filters to latest when switching tabs
     filterState[currentTab] = -1;
+    donutFilterState[currentTab] = null;
     renderAll(currentTab);
   });
 });
