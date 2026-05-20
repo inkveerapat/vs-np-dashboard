@@ -39,7 +39,6 @@
   /* APP */
   #app { display: none; min-height: 100vh; }
   #app.visible { display: block; }
-  /* TOPBAR — desktop: single row. Mobile: two rows stacked */
   .topbar { border-bottom: 1px solid var(--border); padding: 0 20px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); gap: 8px; }
   .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 1; overflow: hidden; }
   .topbar-name { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; color: var(--text2); white-space: nowrap; }
@@ -50,7 +49,6 @@
   .version-badge { font-family: var(--font-mono); font-size: 10px; color: var(--text3); background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; letter-spacing: .04em; white-space: nowrap; }
   .refresh-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; }
   .refresh-btn:hover { color: var(--text); background: var(--surface); }
-  /* Icon-only refresh on mobile */
   .refresh-btn .refresh-label { display: inline; }
   .logout-btn { background: none; border: none; color: var(--text3); font-size: 12px; cursor: pointer; font-family: var(--font-mono); letter-spacing: .04em; padding: 0; transition: color .15s; white-space: nowrap; }
   .logout-btn:hover { color: var(--text2); }
@@ -82,7 +80,6 @@
   .goal-card-title { font-size: 12px; font-weight: 500; color: var(--text); }
   .goal-card-icon { font-size: 16px; opacity: .6; }
   .goal-card-current { font-family: var(--font-mono); font-size: 18px; font-weight: 500; color: var(--text); margin-bottom: 12px; }
-  /* Progress bar row */
   .goal-bars { display: flex; flex-direction: column; gap: 10px; }
   .goal-bar-row { display: flex; flex-direction: column; gap: 4px; }
   .goal-bar-meta { display: flex; justify-content: space-between; align-items: center; }
@@ -120,7 +117,7 @@
     position: absolute;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 60%;          /* stays inside the hole regardless of canvas size */
+    width: 60%;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     pointer-events: none; text-align: center;
   }
@@ -150,60 +147,48 @@
   .privacy-btn:hover { color: var(--text); background: var(--surface); }
   .privacy-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(200,245,66,0.06); }
 
-  /* MASKED NUMBER — blurred placeholder */
   .num-mask { display: inline-block; background: var(--surface2); color: transparent; border-radius: 4px; user-select: none; min-width: 4em; height: 1em; vertical-align: middle; filter: blur(0); position: relative; }
   .num-mask::after { content: '••••••'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: .75em; letter-spacing: .1em; filter: blur(0); }
 
-  /* When privacy mode is on, blur chart Y-axis */
   body.privacy .y-axis-blur { filter: blur(6px); pointer-events: none; }
 
   @media (max-width: 480px) {
-    /* Topbar — hide less important items, keep core controls */
     .topbar { padding: 0 14px; height: auto; min-height: 52px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; gap: 6px; }
     .topbar-left { flex: 1 1 100%; justify-content: flex-start; }
     .topbar-right { flex: 1 1 100%; justify-content: flex-end; gap: 6px; }
     .topbar-sep { display: none; }
-    .topbar-title { display: none; }            /* "Net Worth Dashboard" hidden — redundant on mobile */
-    .version-badge { display: none; }          /* version hidden to save space */
-    .last-updated { display: none; }           /* shown in status bar instead */
-    .refresh-btn .refresh-label { display: none; }  /* text hidden, show icon only via content swap */
+    .topbar-title { display: none; }
+    .version-badge { display: none; }
+    .last-updated { display: none; }
+    .refresh-btn .refresh-label { display: none; }
 
-    /* Main content */
     .main { padding: 20px 14px 48px; }
     .page-title { font-size: 20px; }
     .page-subtitle { font-size: 11px; }
 
-    /* Tabs */
     .tabs { gap: 0; }
     .tab { flex: 1; text-align: center; padding: 8px 6px 10px; font-size: 12px; }
 
-    /* Metric cards — 2 columns on phone */
     .metric-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
     .metric-card { padding: 12px 12px; }
     .metric-val { font-size: 16px; }
     .metric-label { font-size: 9px; }
     .metric-sub { font-size: 10px; }
 
-    /* Goals — stack single column */
     .goal-grid { grid-template-columns: 1fr; gap: 10px; }
     .goal-card { padding: 14px 14px; }
     .goal-card-current { font-size: 15px; }
 
-    /* Chart — shorter on phone */
     .chart-wrap { height: 220px; }
     .legend { gap: 6px 12px; margin-top: 12px; }
     .legend-item { font-size: 10px; }
 
-    /* Donuts — single column, smaller */
     .donut-grid { grid-template-columns: 1fr; gap: 12px; }
     .donut-card { padding: 14px; }
     .donut-canvas-wrap { width: 110px; height: 110px; }
     .donut-card-body { gap: 12px; }
 
-    /* Chart tooltip — narrower */
     .chart-tooltip { min-width: 160px; font-size: 11px; padding: 10px 12px; max-width: calc(100vw - 28px); }
-
-    /* Privacy btn */
     .privacy-btn { font-size: 11px; padding: 4px 8px; }
   }
 
@@ -240,7 +225,6 @@
 </head>
 <body>
 
-<!-- GATE -->
 <div id="gate">
   <div class="gate-box">
     <div>
@@ -259,7 +243,6 @@
   </div>
 </div>
 
-<!-- APP -->
 <div id="app">
   <nav class="topbar">
     <div class="topbar-left">
@@ -288,35 +271,29 @@
       <button class="tab" data-tab="household">Household</button>
     </div>
 
-    <!-- TIME FILTER -->
     <div class="filter-bar" id="filter-bar">
       <span class="filter-label">Viewing</span>
       <div class="filter-scroll" id="filter-scroll"></div>
     </div>
 
-    <!-- METRIC CARDS -->
     <div id="metric-grid" class="metric-grid"></div>
     <div class="error-box" id="error-box"></div>
 
-    <!-- GOAL PROGRESS -->
     <div class="goal-section" id="goal-section">
       <p class="goal-section-title">Goal Progress</p>
       <div class="goal-grid" id="goal-grid"></div>
     </div>
 
-    <!-- LINE CHART -->
     <div style="position:relative;">
       <div class="chart-wrap">
         <canvas id="main-chart"></canvas>
         <div class="chart-loading" id="chart-loading">Loading&hellip;</div>
-        <!-- Y-axis blur overlay (privacy mode) -->
         <div id="yaxis-blur" style="position:absolute;top:0;left:0;width:64px;height:100%;pointer-events:none;backdrop-filter:blur(0px);transition:backdrop-filter .2s;" aria-hidden="true"></div>
       </div>
       <div class="chart-tooltip" id="chart-tooltip"></div>
     </div>
     <div class="legend" id="legend"></div>
 
-    <!-- DONUT SECTION -->
     <div class="donut-section" id="donut-section" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
         <p class="donut-section-title" style="margin:0;padding:0;border:none;">Asset Allocation Breakdown</p>
@@ -336,18 +313,13 @@
 </div>
 
 <script>
-// ════════════════════════════════════════════════════
 // CONFIG
-// ════════════════════════════════════════════════════
 const VERSION  = 'v2.1';
 const PASSWORD = 'vsnp2026';
 
-// ════════════════════════════════════════════════════
 // PRIVACY MODE
-// ════════════════════════════════════════════════════
 let privacyMode = false;
 
-// Returns masked string when privacy is on, else the real value
 function mask(val) {
   return privacyMode ? '••••••' : val;
 }
@@ -366,7 +338,6 @@ function applyPrivacyMode() {
     document.body.classList.remove('privacy');
     if (yBlur) yBlur.style.backdropFilter = 'blur(0px)';
   }
-  // Re-render everything so masked/unmasked values update
   if (inkData && fangData) renderAll(currentTab);
 }
 
@@ -378,15 +349,15 @@ const FANG_CSV_URL = csv(576373003);
 
 const INK_CONFIG = {
   monthLabelRow: 0,
-  componentRows: [3,4,5,6,7,8],   // Cash=3, Dividend=4, Growth=5, Tax=6, Crypto=7, PVD=8
+  componentRows: [3,4,5,6,7,8],
   dataStartCol: 1,
   componentNames: ['Cash','Dividend portfolio','Growth portfolio','Tax-saving portfolio','Crypto','Provident fund'],
   colors: ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#f472b6','#fb923c'],
-  cashComponentIdx: 0,             // index of Cash in componentRows
+  cashComponentIdx: 0,
 };
 const FANG_CONFIG = {
   monthLabelRow: 0,
-  componentRows: [3,4,5,6,7],     // Cash=3, MF=4, Thai=5, US=6, PVD=7
+  componentRows: [3,4,5,6,7],
   dataStartCol: 1,
   componentNames: ['Cash portfolio','Mutual fund','Thai stocks','US stocks','Provident fund'],
   colors: ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#fb923c'],
@@ -400,40 +371,19 @@ const GOALS = {
   household: { cash: { st: 1000000,   lt: 16000000 }, invest: { st: 30000000, lt: 80000000 } },
 };
 
-// Donut portfolio configs
-// Extraction logic:
-//   row 0 = year labels, row 1 = month labels, row 2 = "Market Value" headers
-//   rightmost col in row 2 with "Market Value" = current month col
-//   assetRows (0-based): rows containing individual asset names+values
-//   currencyRow (0-based): row whose col A contains "total (usd)" if USD, else THB
-//   nameCol: col index for asset name (always col 0, col A)
-//   valCol determined dynamically from the rightmost "Market Value" col
 const INK_DONUTS = [
-  // Growth portfolio: assets rows 4-16 (0-based 3-15), currency row 19 (0-based 18)
   { title:'Growth portfolio',     url:csv(353664994),  assetRowStart:3,  assetRowEnd:15, currencyRow:18 },
-  // Dividend portfolio: assets rows 4-8 (0-based 3-7), currency row 10 (0-based 9)
   { title:'Dividend portfolio',   url:csv(1618449229), assetRowStart:3,  assetRowEnd:7,  currencyRow:9  },
-  // Provident fund: assets rows 4-9 (0-based 3-8), currency row 11 (0-based 10)
   { title:'Provident fund',       url:csv(381603952),  assetRowStart:3,  assetRowEnd:8,  currencyRow:10 },
-  // Tax-saving portfolio: assets rows 4-11 (0-based 3-10), currency row 13 (0-based 12)
   { title:'Tax-saving portfolio', url:csv(1424875369), assetRowStart:3,  assetRowEnd:10, currencyRow:12 },
-  // Crypto: assets rows 4-10 (0-based 3-9), currency row 12 (0-based 11)
   { title:'Crypto',               url:csv(1578394134), assetRowStart:3,  assetRowEnd:9,  currencyRow:11 },
-  // Cash: assets rows 4-10 (0-based 3-9), currency row 12 (0-based 11)
-  // Note: sheet row 3 (0-based 2) is the MV header row, so assets start at 0-based 3
   { title:'Cash',                 url:csv(1773567471), assetRowStart:3,  assetRowEnd:9,  currencyRow:11 },
 ];
 const FANG_DONUTS = [
-  // Cash: assets rows 4-11 (0-based 3-10), currency row 13 (0-based 12)
-  // Note: sheet row 3 (0-based 2) is the MV header row, so assets start at 0-based 3
   { title:'Cash portfolio',       url:csv(825635991),  assetRowStart:3,  assetRowEnd:10, currencyRow:12 },
-  // Mutual fund: assets rows 4-28 (0-based 3-27), currency row 30 (0-based 29)
   { title:'Mutual fund',          url:csv(1253576610), assetRowStart:3,  assetRowEnd:27, currencyRow:29 },
-  // Thai stock: assets rows 4-13 (0-based 3-12), currency row 15 (0-based 14)
   { title:'Thai stock portfolio', url:csv(748123998),  assetRowStart:3,  assetRowEnd:12, currencyRow:14 },
-  // US stock: assets rows 4-13 (0-based 3-12), currency row 15 (0-based 14)
   { title:'US stock portfolio',   url:csv(672939154),  assetRowStart:3,  assetRowEnd:12, currencyRow:14 },
-  // Provident fund: assets rows 4-7 (0-based 3-6), currency row 9 (0-based 8)
   { title:'Provident fund',       url:csv(753946380),  assetRowStart:3,  assetRowEnd:6,  currencyRow:8  },
 ];
 
@@ -444,9 +394,7 @@ const PALETTE = [
   '#2dd4bf','#f97316','#84cc16','#e11d48',
 ];
 
-// ════════════════════════════════════════════════════
 // AUTH
-// ════════════════════════════════════════════════════
 const SK = 'vsnp_auth';
 function checkAuth() { return sessionStorage.getItem(SK) === 'true'; }
 function unlock() {
@@ -477,9 +425,7 @@ document.getElementById('privacy-btn').addEventListener('click', () => {
 });
 if (checkAuth()) unlock();
 
-// ════════════════════════════════════════════════════
 // CSV PARSING
-// ════════════════════════════════════════════════════
 function parseCSV(text) {
   return text.split('\n').map(line => {
     const cols=[]; let cur='', inQ=false;
@@ -513,9 +459,8 @@ function fmtCurrency(val, currency) {
   return '\u0e3f' + Math.round(val).toLocaleString('th-TH');
 }
 
-// ════════════════════════════════════════════════════
 // MASTER TRACKER EXTRACT
-// ════════════════════════════════════════════════════
+// Retain the standard reference structure from design specifications.
 function extractData(rows, config) {
   const labelRow = rows[config.monthLabelRow] || [];
   const months = [];
@@ -542,21 +487,12 @@ function extractData(rows, config) {
   return { months:labels, components, totals, firstLabel:labels[0], lastLabel:labels[labels.length-1] };
 }
 
-// ════════════════════════════════════════════════════
-// DONUT EXTRACT — new method
-// ════════════════════════════════════════════════════
-
-// Detect currency for a portfolio sheet:
-// col A of currencyRow contains "total (usd)" if USD
+// DONUT EXTRACT
 function detectPortfolioCurrency(rows, config) {
   const cell = ((rows[config.currencyRow] || [])[0] || '').toLowerCase();
   return cell.includes('usd') ? 'USD' : 'THB';
 }
 
-// Find all "Market Value" columns, with configurable row indices
-// yearRowIdx: which row has year labels (null if none)
-// monthRowIdx: which row has month labels
-// mvHeaderRowIdx: which row has "Market Value" text
 function findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHeaderRowIdx) {
   const headerRow = rows[mvHeaderRowIdx] || [];
   const monthRow  = rows[monthRowIdx]    || [];
@@ -567,10 +503,8 @@ function findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHeaderRowIdx) {
     if (hdr === 'market value') {
       const month = (monthRow[c] || '').trim();
       if (!month) continue;
-      // Year: look in yearRow at same col, or scan left for nearest non-empty year
       let year = yearRowIdx !== null ? (yearRow[c] || '').trim() : '';
       if (!year && yearRowIdx !== null) {
-        // Merged cells: scan left for nearest year label
         for (let lc = c - 1; lc >= 1; lc--) {
           const y = (yearRow[lc] || '').trim();
           if (y && /\d{4}/.test(y)) { year = y; break; }
@@ -583,13 +517,12 @@ function findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHeaderRowIdx) {
   return result;
 }
 
-// Extract assets for a specific column
 function extractAssetsForCol(rows, config, col, currency) {
   const assets = [];
   for (let r = config.assetRowStart; r <= Math.min(config.assetRowEnd, rows.length-1); r++) {
     const row  = rows[r] || [];
-    const name = (row[0] || '').trim();   // col A = asset name
-    const raw  = (row[col] || '').trim(); // specified col = market value
+    const name = (row[0] || '').trim();
+    const raw  = (row[col] || '').trim();
     if (!name || !raw) continue;
     const val  = numVal(raw);
     if (val <= 0) continue;
@@ -599,8 +532,6 @@ function extractAssetsForCol(rows, config, col, currency) {
   return assets.map(a => ({ ...a, pct: total>0 ? a.value/total*100 : 0 }));
 }
 
-// Extract all months' data for a portfolio sheet
-// Returns { months: [{label, col}], byMonth: { label: [assets] }, currency }
 function extractDonutAllMonths(rows, config) {
   const currency    = detectPortfolioCurrency(rows, config);
   const yearRowIdx  = config.yearRowIdx  !== undefined ? config.yearRowIdx  : 0;
@@ -611,31 +542,23 @@ function extractDonutAllMonths(rows, config) {
   const months   = [];
   for (const { col, monthLabel } of mvCols) {
     const assets = extractAssetsForCol(rows, config, col, currency);
-    if (assets.length === 0) continue; // skip months with no data
+    if (assets.length === 0) continue;
     byMonth[monthLabel] = assets;
     if (!months.includes(monthLabel)) months.push(monthLabel);
   }
   return { months, byMonth, currency };
 }
 
-// ════════════════════════════════════════════════════
 // STATE
-// ════════════════════════════════════════════════════
 let inkData=null, fangData=null;
-// inkDonutData/fangDonutData: array of { title, months, byMonth, currency }
 let inkDonutData=[], fangDonutData=[];
 let donutInstances={};
-// Separate filter state for donut section (shared across all portfolios in a tab)
-const donutFilterState = { ink: null, fang: null }; // null = latest
-// filterIdx: index into the *current tab's* month array. -1 means latest (default)
-// We store per-tab so switching tabs remembers each tab's filter
+const donutFilterState = { ink: null, fang: null };
 const filterState = { ink: -1, fang: -1, household: -1 };
 
-// Returns the slice of a data object up to filterIdx (inclusive)
-// filterIdx -1 = full data (latest)
 function sliceData(d, fi) {
-  if (fi < 0 || fi >= d.months.length - 1) return d; // -1 or at end = full
-  const end = fi + 1; // slice end (exclusive) = fi+1 months
+  if (fi < 0 || fi >= d.months.length - 1) return d;
+  const end = fi + 1;
   return {
     months:     d.months.slice(0, end),
     components: d.components.map(c => ({ ...c, values: c.values.slice(0, end) })),
@@ -645,23 +568,16 @@ function sliceData(d, fi) {
   };
 }
 
-// For the household tab, Fang starts partway through Ink's timeline.
-// We need to align Fang data to the Ink months array, then slice.
 function getHouseholdSliced(fi) {
-  // fi is an index into inkData.months (household uses ink's timeline)
   const inkSliced  = sliceData(inkData,  fi);
-  // Find where fang starts within inkData.months
   const fangStart  = inkData.months.indexOf(fangData.months[0]);
-  // The fang fi equivalent: how many fang months fit within the ink slice
   const fangEndIdx = fi < 0 ? fangData.months.length - 1
                              : Math.max(-1, fi - fangStart);
   const fangSliced = sliceData(fangData, fangEndIdx);
   return { inkSliced, fangSliced };
 }
 
-// ════════════════════════════════════════════════════
-// LOAD
-// ════════════════════════════════════════════════════
+// LOAD DATA
 async function loadData() {
   setStatus('loading','Fetching from Google Sheets\u2026');
   document.getElementById('chart-loading').style.display = 'flex';
@@ -679,7 +595,7 @@ async function loadData() {
     ]);
     inkDonutData  = INK_DONUTS.map((d,i)  => ({ title:d.title, ...extractDonutAllMonths(inkDRows[i],  d) }));
     fangDonutData = FANG_DONUTS.map((d,i) => ({ title:d.title, ...extractDonutAllMonths(fangDRows[i], d) }));
-    // Reset donut filters to latest
+    
     donutFilterState.ink  = null;
     donutFilterState.fang = null;
 
@@ -701,9 +617,7 @@ function setStatus(state, msg) {
   document.getElementById('status-text').textContent = msg;
 }
 
-// ════════════════════════════════════════════════════
-// FORMAT
-// ════════════════════════════════════════════════════
+// FORMAT LOGIC
 function fmtM(v) {
   const a = Math.abs(v);
   if (a>=1e6) return '\u0e3f'+(v/1e6).toFixed(2)+'M';
@@ -720,11 +634,8 @@ function hexA(hex,a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-// ════════════════════════════════════════════════════
-// GOAL HELPERS — get latest cash & investible values
-// ════════════════════════════════════════════════════
+// GOALS HELPERS
 function getLatestValues(d, config) {
-  // Last month index
   const idx = d.totals.length - 1;
   const cashIdx = config.cashComponentIdx;
   const cash = d.components[cashIdx].values[idx];
@@ -756,9 +667,7 @@ function goalBarHTML(label, current, target, targetLabel) {
     </div>`;
 }
 
-// ════════════════════════════════════════════════════
 // RENDER GOALS
-// ════════════════════════════════════════════════════
 function renderGoals(tab) {
   const grid = document.getElementById('goal-grid');
   const active = getActiveData(tab);
@@ -777,9 +686,6 @@ function renderGoals(tab) {
     investVal = vi.invest + vf.invest;
     goals = GOALS.household;
   }
-
-  const cashPctST   = Math.min(cashVal   / goals.cash.st   * 100, 100);
-  const investPctST = Math.min(investVal / goals.invest.st * 100, 100);
 
   grid.innerHTML = `
     <div class="goal-card">
@@ -806,9 +712,7 @@ function renderGoals(tab) {
     </div>`;
 }
 
-// ════════════════════════════════════════════════════
 // METRICS
-// ════════════════════════════════════════════════════
 function renderMetrics(tab) {
   const active = getActiveData(tab);
   function pCards(d) {
@@ -854,16 +758,13 @@ function renderDataRange(tab) {
     const d=active.fang;
     el.textContent=`${d.firstLabel} \u2192 ${d.lastLabel} \u00b7 ${d.months.length} months`;
   } else {
-    const fi=filterState.household;
     const inkS=active.ink, fangS=active.fang;
     const inkEnd = inkS.lastLabel, fangEnd = fangS.totals.length ? fangS.lastLabel : 'N/A';
     el.textContent=`Ink: ${inkData.firstLabel} \u2192 ${inkEnd} \u00b7 Fang: ${fangData.firstLabel} \u2192 ${fangEnd}`;
   }
 }
 
-// ════════════════════════════════════════════════════
 // LINE CHART
-// ════════════════════════════════════════════════════
 let chartInst = null;
 let hiddenSeries = new Set();
 
@@ -881,7 +782,6 @@ function buildDatasets(tab) {
   } else {
     const inkS=active.ink, fangS=active.fang;
     const im=inkS.months;
-    // Find where fangS starts within inkS timeline
     const fs=im.indexOf(fangS.months[0]);
     const combined = inkS.totals.map((v,i)=>{ const fi=fs!==-1?i-fs:-1; return v+(fi>=0&&fi<fangS.totals.length?fangS.totals[fi]:0); });
     const fAl = im.map((_,i)=>{ const fi=fs!==-1?i-fs:-1; return fi>=0&&fi<fangS.totals.length?fangS.totals[fi]:null; });
@@ -910,26 +810,36 @@ function renderChart(tab) {
   });
 }
 
+// ENHANCEMENT: Tooltip asset elements now sort by value descending
 function extTooltip(ctx) {
   const tt=document.getElementById('chart-tooltip');
   if (ctx.tooltip.opacity===0){tt.style.display='none';return;}
   const t=ctx.tooltip;
+  
+  // Filter out system placeholders
   const vis=t.dataPoints.filter(p=>p.dataset.label!=='__total__'&&p.raw!==null);
+  
+  // Sort individual asset values descending (Highest -> Lowest)
+  vis.sort((a, b) => b.raw - a.raw);
+  
   const totPt=t.dataPoints.find(p=>p.dataset.label==='__total__');
   const hhPt=t.dataPoints.find(p=>p.dataset.label==='Household total');
+  
   let html=`<div class="tt-month">${t.title[0]||''}</div>`;
-  vis.forEach(p=>{html+=`<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${mask(fmtM(p.raw))}</span></div>`;});
+  vis.forEach(p=>{
+    html+=`<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${mask(fmtM(p.raw))}</span></div>`;
+  });
+  
   if (totPt) html+=`<div class="tt-row tt-total"><span>Total</span><span class="tt-val">${mask(fmtM(totPt.raw))}</span></div>`;
   else if (hhPt&&hhPt.raw!==null) html+=`<div class="tt-row tt-total"><span>Household</span><span class="tt-val">${mask(fmtM(hhPt.raw))}</span></div>`;
+  
   tt.innerHTML=html; tt.style.display='block';
   const wr=tt.parentElement.getBoundingClientRect();
   let l=t.caretX+18; if(l+220>wr.width)l=t.caretX-230;
   tt.style.left=Math.max(0,l)+'px'; tt.style.top=Math.max(0,t.caretY-20)+'px';
 }
 
-// ════════════════════════════════════════════════════
-// LEGEND
-// ════════════════════════════════════════════════════
+// LEGEND RENDER
 function renderLegend(tab) {
   const leg=document.getElementById('legend');
   if (tab==='household') {
@@ -945,18 +855,11 @@ function toggleS(name) {
   renderLegend(currentTab);renderChart(currentTab);
 }
 
-// ════════════════════════════════════════════════════
-// DONUT CHARTS
-// ════════════════════════════════════════════════════
-// DONUT FILTER
-// ════════════════════════════════════════════════════
+// DONUT CHARTS LOGIC
 function getDonutMonths(tab) {
-  // Union of all available months across all portfolios for this tab, sorted chronologically
   const list = tab === 'ink' ? inkDonutData : fangDonutData;
   const monthSet = new Set();
   list.forEach(d => d.months.forEach(m => monthSet.add(m)));
-  // Sort by the order they appear in any portfolio's months array (preserves chronological order)
-  // Use the portfolio with the most months as the reference order
   let refMonths = [];
   list.forEach(d => { if (d.months.length > refMonths.length) refMonths = d.months; });
   const sorted = [...monthSet].sort((a, b) => {
@@ -974,21 +877,14 @@ function renderDonutFilter(tab) {
   if (!scroll) return;
   const months = getDonutMonths(tab);
   if (!months.length) { scroll.innerHTML = ''; return; }
-  // Latest = last in the sorted array
   const latest = months[months.length - 1];
   const active = donutFilterState[tab] || latest;
-  // Pills: latest first
   scroll.innerHTML = [...months].reverse().map(m => {
     const isLatest = m === latest;
     const isActive = m === active;
     return `<button class="filter-pill ${isActive ? 'active' : ''}"
       onclick="selectDonutFilter('${tab}','${m}')">${m}${isLatest ? ' ✦' : ''}</button>`;
   }).join('');
-  // Scroll active into view
-  requestAnimationFrame(() => {
-    const active_el = scroll.querySelector('.filter-pill.active');
-    if (active_el) active_el.scrollIntoView({ inline:'center', block:'nearest', behavior:'smooth' });
-  });
 }
 
 function selectDonutFilter(tab, month) {
@@ -996,9 +892,6 @@ function selectDonutFilter(tab, month) {
   renderDonuts(tab);
 }
 
-// ════════════════════════════════════════════════════
-// RENDER DONUTS
-// ════════════════════════════════════════════════════
 function renderDonuts(tab) {
   const section=document.getElementById('donut-section');
   const grid=document.getElementById('donut-grid');
@@ -1008,21 +901,15 @@ function renderDonuts(tab) {
   section.style.display='block';
 
   const list = tab==='ink' ? inkDonutData : fangDonutData;
-
-  // Determine active month for filter
   const allMonths = getDonutMonths(tab);
   const latest    = allMonths[allMonths.length - 1];
   const activeMonth = donutFilterState[tab] || latest;
 
-  // Render filter bar
   renderDonutFilter(tab);
 
-  // For each portfolio, get assets for the active month
-  // (fall back to latest available month for that portfolio if activeMonth not in its data)
   const resolvedList = list.map(d => {
     let assets = d.byMonth[activeMonth];
     if (!assets || !assets.length) {
-      // Find the latest month available for this portfolio that is <= activeMonth
       const available = d.months.filter(m => {
         const ai = allMonths.indexOf(m), ac = allMonths.indexOf(activeMonth);
         return ai <= ac;
@@ -1030,7 +917,6 @@ function renderDonuts(tab) {
       const fallback = available[available.length - 1];
       assets = fallback ? (d.byMonth[fallback] || []) : [];
     }
-    // Sort by pct descending
     assets = [...assets].sort((a,b) => b.pct - a.pct);
     return { title: d.title, assets, currency: d.currency };
   });
@@ -1120,9 +1006,8 @@ function renderDonuts(tab) {
   });
 }
 
-// ════════════════════════════════════════════════════
 // TABS & RENDER
-// ════════════════════════════════════════════════════
+// ENHANCEMENT: Removed any layout/view scroll jumping triggers when tabs are switched
 let currentTab = 'ink';
 document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1130,50 +1015,37 @@ document.querySelectorAll('.tab').forEach(btn => {
     btn.classList.add('active');
     currentTab = btn.dataset.tab;
     hiddenSeries.clear();
-    // Reset filters to latest when switching tabs
     filterState[currentTab] = -1;
     donutFilterState[currentTab] = null;
     renderAll(currentTab);
   });
 });
 
-// ════════════════════════════════════════════════════
 // FILTER BAR
-// ════════════════════════════════════════════════════
+// ENHANCEMENT: Removed any layout/view scroll jumping triggers when filters are adjusted
 function renderFilter(tab) {
   const scroll = document.getElementById('filter-scroll');
-  // Months available for this tab
   let months;
   if (tab === 'household') {
-    // Household uses ink's full timeline (ink started first)
     months = inkData.months;
   } else {
     months = tab === 'ink' ? inkData.months : fangData.months;
   }
 
   const currentFi = filterState[tab];
-  // Active index: -1 means last month
   const activeIdx = currentFi < 0 ? months.length - 1 : currentFi;
 
-  // Build pills: all months, latest first
   scroll.innerHTML = months.slice().reverse().map((lbl, revIdx) => {
-    const fi = months.length - 1 - revIdx; // actual index in months array
+    const fi = months.length - 1 - revIdx;
     const isActive = fi === activeIdx;
     const isLatest = fi === months.length - 1;
     const display  = isLatest ? lbl + ' ✦' : lbl;
     return `<button class="filter-pill ${isActive ? 'active' : ''}"
       onclick="selectFilter('${tab}', ${fi})">${display}</button>`;
   }).join('');
-
-  // Scroll active pill into view
-  requestAnimationFrame(() => {
-    const active = scroll.querySelector('.filter-pill.active');
-    if (active) active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-  });
 }
 
 function selectFilter(tab, fi) {
-  // -1 means latest; treat last index same as -1
   const months = tab === 'household' ? inkData.months
                : tab === 'ink'       ? inkData.months
                :                       fangData.months;
@@ -1181,9 +1053,6 @@ function selectFilter(tab, fi) {
   renderAll(tab);
 }
 
-// ════════════════════════════════════════════════════
-// GET ACTIVE DATA FOR TAB (respects filter)
-// ════════════════════════════════════════════════════
 function getActiveData(tab) {
   const fi = filterState[tab];
   if (tab === 'ink') {
@@ -1191,7 +1060,6 @@ function getActiveData(tab) {
   } else if (tab === 'fang') {
     return { ink: null, fang: sliceData(fangData, fi) };
   } else {
-    // household: fi is index into ink's month array
     const { inkSliced, fangSliced } = getHouseholdSliced(fi);
     return { ink: inkSliced, fang: fangSliced };
   }
