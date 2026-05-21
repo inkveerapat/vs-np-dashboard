@@ -230,7 +230,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v2.1</p>
+      <p class="gate-version">v2.2</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -251,7 +251,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v2.1</span>
+      <span class="version-badge">v2.2</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
@@ -314,7 +314,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v2.1';
+const VERSION  = 'v2.2';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1050,6 +1050,37 @@ function selectFilter(tab, fi) {
                : tab === 'ink'       ? inkData.months
                :                       fangData.months;
   filterState[tab] = (fi >= months.length - 1) ? -1 : fi;
+
+  // ── Sync asset allocation filter to match net worth filter (one-way only) ──
+  // Resolve the selected month label from the net worth filter
+  const resolvedIdx   = filterState[tab] < 0 ? months.length - 1 : filterState[tab];
+  const selectedLabel = months[resolvedIdx];
+
+  // For ink/fang tabs: sync their donut filter to the same month label if available
+  if (tab === 'ink' || tab === 'fang') {
+    const donutMonths = getDonutMonths(tab);
+    if (donutMonths.includes(selectedLabel)) {
+      // Exact match — use it
+      const isLatest = selectedLabel === donutMonths[donutMonths.length - 1];
+      donutFilterState[tab] = isLatest ? null : selectedLabel;
+    } else {
+      // No exact match — find the latest donut month that is <= selected net worth month
+      // Use the chronological order from getDonutMonths (already sorted)
+      const idxInDonut = donutMonths.reduce((best, m, i) => {
+        const mi = months.indexOf(m);
+        const sel = resolvedIdx;
+        return (mi !== -1 && mi <= sel) ? i : best;
+      }, -1);
+      if (idxInDonut >= 0) {
+        const fallback = donutMonths[idxInDonut];
+        const isLatest = fallback === donutMonths[donutMonths.length - 1];
+        donutFilterState[tab] = isLatest ? null : fallback;
+      }
+      // If no fallback found, leave donut filter as-is
+    }
+  }
+  // Note: household tab has no donut section so no sync needed
+
   renderAll(tab);
 }
 
