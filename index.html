@@ -88,6 +88,11 @@
   .goal-bar-track { height: 5px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
   .goal-bar-fill { height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.4,0,.2,1); }
   .goal-bar-target { font-family: var(--font-mono); font-size: 10px; color: var(--text3); text-align: right; margin-top: 1px; }
+  .goal-bar-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1px; }
+  .goal-bar-mom { font-family: var(--font-mono); font-size: 10px; }
+  .goal-bar-mom.pos { color: var(--green); }
+  .goal-bar-mom.neg { color: var(--red); }
+  .goal-bar-mom.flat { color: var(--text3); }
 
   /* LINE CHART */
   .chart-wrap { position: relative; width: 100%; height: 340px; }
@@ -127,10 +132,13 @@
   .donut-center-hover-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 2px; word-break: break-all; display: none; }
   .donut-center-hover-name { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: none; }
   .donut-leg { flex: 1; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
-  .donut-leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); }
+  .donut-leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); cursor: default; transition: color .15s; border-radius: 4px; padding: 1px 3px; margin: 0 -3px; }
+  .donut-leg-item:hover { color: var(--text2); background: rgba(255,255,255,0.04); }
   .donut-leg-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .donut-leg-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
   .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; }
+  .donut-leg-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); flex-shrink: 0; opacity: 0; transition: opacity .15s; margin-left: 2px; }
+  .donut-leg-item:hover .donut-leg-val { opacity: 1; }
   .donut-empty { font-family: var(--font-mono); font-size: 11px; color: var(--text3); text-align: center; padding: 32px 0; }
 
   /* STATUS */
@@ -221,6 +229,27 @@
     .filter-bar { gap: 6px; margin-bottom: 16px; }
     .filter-pill { font-size: 10px; padding: 3px 10px; }
   }
+
+  /* SKELETON / SHIMMER */
+  @keyframes shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position:  600px 0; }
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, #222 50%, var(--surface) 75%);
+    background-size: 1200px 100%;
+    animation: shimmer 1.4s infinite linear;
+    border-radius: var(--radius);
+  }
+  .skeleton-screen { padding: 0; }
+  .skel-row { display: flex; gap: 12px; margin-bottom: 12px; }
+  .skel-card { flex: 1; height: 78px; border-radius: var(--radius-lg); }
+  .skel-bar  { height: 10px; border-radius: 99px; margin-bottom: 8px; }
+  .skel-bar.wide  { width: 80%; }
+  .skel-bar.mid   { width: 55%; }
+  .skel-bar.short { width: 35%; }
+  .skel-chart { width: 100%; height: 280px; border-radius: var(--radius-lg); margin-top: 16px; margin-bottom: 20px; }
+  #skeleton-screen { display: none; padding: 0; }
 </style>
 </head>
 <body>
@@ -230,7 +259,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v2.3</p>
+      <p class="gate-version">v2.4</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -251,7 +280,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v2.3</span>
+      <span class="version-badge">v2.4</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
@@ -260,6 +289,23 @@
   </nav>
 
   <main class="main">
+    <!-- SKELETON shown while data loads -->
+    <div id="skeleton-screen">
+      <div class="skel-row">
+        <div class="skeleton skel-card"></div>
+        <div class="skeleton skel-card"></div>
+        <div class="skeleton skel-card"></div>
+        <div class="skeleton skel-card"></div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <div class="skeleton skel-bar wide"></div>
+        <div class="skeleton skel-bar mid"></div>
+        <div class="skeleton skel-bar short"></div>
+      </div>
+      <div class="skeleton skel-chart"></div>
+    </div>
+
+    <div id="page-content" style="display:none;">
     <div class="page-header">
       <h1 class="page-title">Net Worth <strong>Overview</strong></h1>
       <p class="page-subtitle" id="data-range">Loading data&hellip;</p>
@@ -305,6 +351,8 @@
       <div class="donut-grid" id="donut-grid"></div>
     </div>
 
+    </div><!-- /page-content -->
+
     <div class="status-bar">
       <div class="status-dot" id="status-dot"></div>
       <span id="status-text">Fetching data from Google Sheets&hellip;</span>
@@ -314,7 +362,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v2.3';
+const VERSION  = 'v2.4';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -609,6 +657,10 @@ async function loadData() {
     eb.textContent = 'Error: ' + e.message;
     eb.classList.add('show');
     document.getElementById('chart-loading').style.display = 'none';
+    const skelEl3    = document.getElementById('skeleton-screen');
+    const contentEl3 = document.getElementById('page-content');
+    if (skelEl3)    skelEl3.style.display    = 'none';
+    if (contentEl3) contentEl3.style.display = 'block';
     return false;
   }
 }
@@ -650,10 +702,15 @@ function goalColor(pct) {
   return '#f06b6b';
 }
 
-function goalBarHTML(label, current, target, targetLabel) {
-  const pct = Math.min(current / target * 100, 100);
-  const color = goalColor(pct);
+function goalBarHTML(label, current, prev, target) {
+  const pct    = Math.min(current / target * 100, 100);
+  const color  = goalColor(pct);
   const pctStr = pct.toFixed(1) + '%';
+  const diff   = current - prev;
+  const momCls = diff > 0 ? 'pos' : diff < 0 ? 'neg' : 'flat';
+  const momStr = diff === 0
+    ? 'No change'
+    : (diff > 0 ? '+' : '') + fmtM(diff) + ' MoM';
   return `
     <div class="goal-bar-row">
       <div class="goal-bar-meta">
@@ -663,7 +720,10 @@ function goalBarHTML(label, current, target, targetLabel) {
       <div class="goal-bar-track">
         <div class="goal-bar-fill" style="width:${pct}%;background:${color}"></div>
       </div>
-      <div class="goal-bar-target">Target: ${mask(fmtM(target))}</div>
+      <div class="goal-bar-footer">
+        <span class="goal-bar-mom ${momCls}">${mask(momStr)}</span>
+        <span class="goal-bar-target">Target: ${mask(fmtM(target))}</span>
+      </div>
     </div>`;
 }
 
@@ -673,18 +733,49 @@ function renderGoals(tab) {
   const active = getActiveData(tab);
   let cashVal, investVal, goals;
 
+  let prevCash = 0, prevInvest = 0;
+
   if (tab === 'ink') {
-    const v = getLatestValues(active.ink, INK_CONFIG);
+    const v    = getLatestValues(active.ink, INK_CONFIG);
     cashVal = v.cash; investVal = v.invest; goals = GOALS.ink;
+    // Prev month for MoM: slice one more month back
+    const fi   = filterState[tab];
+    const idx  = fi < 0 ? inkData.totals.length - 1 : fi;
+    if (idx > 0) {
+      const prev = sliceData(inkData, idx - 1);
+      const pv   = getLatestValues(prev, INK_CONFIG);
+      prevCash = pv.cash; prevInvest = pv.invest;
+    } else { prevCash = cashVal; prevInvest = investVal; }
   } else if (tab === 'fang') {
-    const v = getLatestValues(active.fang, FANG_CONFIG);
+    const v    = getLatestValues(active.fang, FANG_CONFIG);
     cashVal = v.cash; investVal = v.invest; goals = GOALS.fang;
+    const fi   = filterState[tab];
+    const idx  = fi < 0 ? fangData.totals.length - 1 : fi;
+    if (idx > 0) {
+      const prev = sliceData(fangData, idx - 1);
+      const pv   = getLatestValues(prev, FANG_CONFIG);
+      prevCash = pv.cash; prevInvest = pv.invest;
+    } else { prevCash = cashVal; prevInvest = investVal; }
   } else {
     const vi = getLatestValues(active.ink,  INK_CONFIG);
     const vf = getLatestValues(fangData, FANG_CONFIG);
     cashVal   = vi.cash   + vf.cash;
     investVal = vi.invest + vf.invest;
     goals = GOALS.household;
+    // Prev month household
+    const inkFi  = filterState[tab];
+    const inkIdx = inkFi < 0 ? inkData.totals.length - 1 : inkFi;
+    if (inkIdx > 0) {
+      const pi   = sliceData(inkData,  inkIdx - 1);
+      const pvi  = getLatestValues(pi, INK_CONFIG);
+      // Fang prev: same approach
+      const fangStart = inkData.months.indexOf(fangData.months[0]);
+      const fangIdx   = Math.max(-1, inkIdx - 1 - fangStart);
+      const pf        = sliceData(fangData, fangIdx);
+      const pvf       = pf.totals.length ? getLatestValues(pf, FANG_CONFIG) : { cash:0, invest:0 };
+      prevCash   = pvi.cash   + pvf.cash;
+      prevInvest = pvi.invest + pvf.invest;
+    } else { prevCash = cashVal; prevInvest = investVal; }
   }
 
   grid.innerHTML = `
@@ -695,8 +786,8 @@ function renderGoals(tab) {
       </div>
       <div class="goal-card-current">${mask(fmtM(cashVal))}</div>
       <div class="goal-bars">
-        ${goalBarHTML('Short-term', cashVal, goals.cash.st, fmtM(goals.cash.st))}
-        ${goalBarHTML('Long-term',  cashVal, goals.cash.lt, fmtM(goals.cash.lt))}
+        ${goalBarHTML('Short-term', cashVal, prevCash, goals.cash.st)}
+        ${goalBarHTML('Long-term',  cashVal, prevCash, goals.cash.lt)}
       </div>
     </div>
     <div class="goal-card">
@@ -706,8 +797,8 @@ function renderGoals(tab) {
       </div>
       <div class="goal-card-current">${mask(fmtM(investVal))}</div>
       <div class="goal-bars">
-        ${goalBarHTML('Short-term', investVal, goals.invest.st, fmtM(goals.invest.st))}
-        ${goalBarHTML('Long-term',  investVal, goals.invest.lt, fmtM(goals.invest.lt))}
+        ${goalBarHTML('Short-term', investVal, prevInvest, goals.invest.st)}
+        ${goalBarHTML('Long-term',  investVal, prevInvest, goals.invest.lt)}
       </div>
     </div>`;
 }
@@ -928,10 +1019,14 @@ function renderDonuts(tab) {
     const totalStr = fmtCurrency(totalVal, d.currency);
 
     const legItems = d.assets.map((a,ai)=>`
-      <div class="donut-leg-item">
+      <div class="donut-leg-item"
+        data-idx="${ai}"
+        onmouseenter="donutLegHover(this,'${tab}',${idx},${ai},true)"
+        onmouseleave="donutLegHover(this,'${tab}',${idx},${ai},false)">
         <span class="donut-leg-dot" style="background:${PALETTE[ai%PALETTE.length]}"></span>
         <span class="donut-leg-name" title="${a.name}">${a.name}</span>
         <span class="donut-leg-pct">${a.pct.toFixed(1)}%</span>
+        <span class="donut-leg-val">${mask(fmtCurrency(a.value, d.currency))}</span>
       </div>`).join('');
 
     return `
@@ -1129,6 +1224,64 @@ function getActiveData(tab) {
   } else {
     const { inkSliced, fangSliced } = getHouseholdSliced(fi);
     return { ink: inkSliced, fang: fangSliced };
+  }
+}
+
+// DONUT LEGEND HOVER — highlights the matching slice and shows value
+function donutLegHover(el, tab, cardIdx, assetIdx, entering) {
+  const chartKey = `dc-${tab}-${cardIdx}`;
+  const chart = donutInstances[chartKey];
+  const centerId = `dctr-${tab}-${cardIdx}`;
+  const center = document.getElementById(centerId);
+
+  if (chart) {
+    if (entering) {
+      // Highlight just this slice in Chart.js
+      chart.setDatasetVisibility(0, true);
+      chart.data.datasets[0].backgroundColor = chart.data.datasets[0].backgroundColor.map(
+        (c, i) => i === assetIdx ? c : c + '33'
+      );
+      chart.update('none');
+    } else {
+      // Restore all slice colours
+      chart.data.datasets[0].backgroundColor = chart.data.datasets[0].backgroundColor.map(c =>
+        c.endsWith('33') ? c.slice(0, -2) : c
+      );
+      chart.update('none');
+    }
+  }
+
+  // Also update the donut center text to mirror the hover state
+  if (center) {
+    const totalEl = center.querySelector('.donut-center-total');
+    const labelEl = center.querySelector('.donut-center-label');
+    const hPctEl  = center.querySelector('.donut-center-hover-pct');
+    const hValEl  = center.querySelector('.donut-center-hover-val');
+    const hNameEl = center.querySelector('.donut-center-hover-name');
+    if (!totalEl) return;
+
+    const list = tab === 'ink' ? inkDonutData : fangDonutData;
+    const allM  = getDonutMonths(tab);
+    const latestM = allM[allM.length - 1];
+    const activeM = donutFilterState[tab] || latestM;
+    const d = list[cardIdx];
+    let assets = d ? (d.byMonth[activeM] || []) : [];
+    assets = [...assets].sort((a,b) => b.pct - a.pct);
+    const a = assets[assetIdx];
+
+    if (entering && a) {
+      totalEl.style.display = 'none'; labelEl.style.display = 'none';
+      hPctEl.style.display = 'block'; hValEl.style.display = 'block'; hNameEl.style.display = 'block';
+      hPctEl.textContent  = a.pct.toFixed(1) + '%';
+      hValEl.textContent  = mask(fmtCurrency(a.value, a.currency));
+      hNameEl.textContent = a.name;
+    } else {
+      const totalVal = assets.reduce((s,x)=>s+x.value,0);
+      const totalStr = d ? fmtCurrency(totalVal, d.currency) : '';
+      totalEl.style.display = 'block'; totalEl.textContent = mask(totalStr);
+      labelEl.style.display = 'block';
+      hPctEl.style.display = 'none'; hValEl.style.display = 'none'; hNameEl.style.display = 'none';
+    }
   }
 }
 
