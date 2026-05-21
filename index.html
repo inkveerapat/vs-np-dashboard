@@ -6,7 +6,57 @@
 <title>VS NP Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+// ═══════════════════════════════════════════════════════════════════
+// PULL TO REFRESH
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  const THRESHOLD    = 80;   // px to pull before triggering refresh
+  const MAX_PULL     = 110;  // px max visual stretch
+  let startY         = 0;
+  let pulling        = false;
+  let refreshing     = false;
+  const indicator    = document.getElementById('ptr-indicator');
+  const ptrText      = document.getElementById('ptr-text');
+
+  function atTop() { return window.scrollY <= 0; }
+
+  document.addEventListener('touchstart', e => {
+    if (refreshing) return;
+    if (atTop()) { startY = e.touches[0].clientY; pulling = true; }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling || refreshing) return;
+    const dy = Math.max(0, e.touches[0].clientY - startY);
+    if (dy > 5 && atTop()) {
+      const pull = Math.min(dy * 0.5, MAX_PULL);
+      indicator.className = 'pulling';
+      indicator.style.height = pull + 'px';
+      ptrText.textContent = pull >= THRESHOLD * 0.5 ? 'Release to refresh' : 'Pull down to refresh';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', async () => {
+    if (!pulling || refreshing) return;
+    pulling = false;
+    const h = parseInt(indicator.style.height || '0');
+    if (h >= THRESHOLD * 0.5) {
+      refreshing = true;
+      indicator.className = 'refreshing';
+      indicator.style.height = '48px';
+      ptrText.textContent = 'Refreshing…';
+      const ok = await loadData();
+      if (ok) renderAll(currentTab);
+      refreshing = false;
+    }
+    indicator.className = '';
+    indicator.style.height = '0';
+    ptrText.textContent = 'Pull down to refresh';
+  });
+})();
+
+</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -250,16 +300,68 @@
   .skel-bar.short { width: 35%; }
   .skel-chart { width: 100%; height: 280px; border-radius: var(--radius-lg); margin-top: 16px; margin-bottom: 20px; }
   #skeleton-screen { display: none; padding: 0; }
+
+  /* HISTORICAL BANNER */
+  .historical-banner {
+    display: none; align-items: center; gap: 8px;
+    background: rgba(240,180,41,0.1); border: 1px solid rgba(240,180,41,0.3);
+    border-radius: 99px; padding: 5px 14px; margin-bottom: 16px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--amber);
+    width: fit-content;
+  }
+  .historical-banner.show { display: flex; }
+  .historical-banner-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+
+  /* SPARKLINE on metric card */
+  .metric-card-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .metric-sparkline { flex-shrink: 0; margin-top: 2px; }
+
+  /* HOUSEHOLD COMPARISON TABLE */
+  .hh-compare { margin-bottom: 28px; }
+  .hh-compare-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; }
+  .hh-compare-table { width: 100%; border-collapse: collapse; }
+  .hh-compare-table th { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); padding: 6px 12px; text-align: right; font-weight: 400; border-bottom: 1px solid var(--border); }
+  .hh-compare-table th:first-child { text-align: left; }
+  .hh-compare-table td { font-family: var(--font-mono); font-size: 12px; color: var(--text); padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--border); }
+  .hh-compare-table td:first-child { text-align: left; font-size: 11px; color: var(--text2); }
+  .hh-compare-table tr:last-child td { border-bottom: none; }
+  .hh-compare-table .pos { color: var(--green); }
+  .hh-compare-table .neg { color: var(--red); }
+
+  /* PULL TO REFRESH */
+  #ptr-indicator {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    height: 0; overflow: hidden;
+    background: rgba(13,13,13,0.95); backdrop-filter: blur(8px);
+    transition: height .2s ease;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+    border-bottom: 1px solid var(--border);
+  }
+  #ptr-indicator.pulling { height: 48px; }
+  #ptr-indicator.refreshing { height: 48px; color: var(--accent); }
+  .ptr-spinner { width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: ptr-spin .7s linear infinite; margin-right: 8px; display: none; }
+  #ptr-indicator.refreshing .ptr-spinner { display: block; }
+  @keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+  /* MILESTONE LINES legend */
+  .milestone-legend { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+  .milestone-legend-item { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; color: var(--text3); }
+  .milestone-legend-line { width: 20px; height: 2px; border-radius: 1px; }
 </style>
 </head>
 <body>
 
+<div id="ptr-indicator">
+  <div class="ptr-spinner"></div>
+  <span id="ptr-text">Pull down to refresh</span>
+</div>
 <div id="gate">
   <div class="gate-box">
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v2.4</p>
+      <p class="gate-version">v2.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -280,7 +382,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v2.4</span>
+      <span class="version-badge">v2.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
@@ -322,9 +424,11 @@
       <div class="filter-scroll" id="filter-scroll"></div>
     </div>
 
+    <div id="historical-banner" class="historical-banner"><span class="historical-banner-dot"></span><span id="historical-banner-text">Viewing —</span></div>
     <div id="metric-grid" class="metric-grid"></div>
     <div class="error-box" id="error-box"></div>
 
+    <div id="hh-compare" class="hh-compare" style="display:none;"></div>
     <div class="goal-section" id="goal-section">
       <p class="goal-section-title">Goal Progress</p>
       <div class="goal-grid" id="goal-grid"></div>
@@ -339,6 +443,7 @@
       <div class="chart-tooltip" id="chart-tooltip"></div>
     </div>
     <div class="legend" id="legend"></div>
+    <div class="milestone-legend" id="milestone-legend" style="display:none;"></div>
 
     <div class="donut-section" id="donut-section" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
@@ -362,7 +467,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v2.4';
+const VERSION  = 'v2.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -838,9 +943,46 @@ function renderMetrics(tab) {
       {label:'Data since',          val:inkData.firstLabel,                 sub:'Ink started first', cls:''},
     ];
   }
-  document.getElementById('metric-grid').innerHTML = cards.map(c =>
-    `<div class="metric-card"><p class="metric-label">${c.label}</p><p class="metric-val">${c.val}</p><p class="metric-sub ${c.cls}">${c.sub}</p></div>`
-  ).join('');
+  // Build sparkline for "Current net worth" card (first card)
+  function sparklineSVG(d) {
+    const vals = d ? d.totals.slice(-8) : [];
+    if (vals.length < 2) return '';
+    const W=52, H=22, pad=2;
+    const min=Math.min(...vals), max=Math.max(...vals);
+    const range = max - min || 1;
+    const pts = vals.map((v,i)=>{
+      const x = pad + (i/(vals.length-1))*(W-2*pad);
+      const y = H - pad - ((v-min)/range)*(H-2*pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const trend = vals[vals.length-1] >= vals[0];
+    const color = trend ? 'var(--green)' : 'var(--red)';
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="none" xmlns="http://www.w3.org/2000/svg" class="metric-sparkline">
+      <polyline points="${pts}" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/>
+    </svg>`;
+  }
+
+  // Get the appropriate data for the sparkline (full data, not filtered)
+  const sparkData = tab==='ink' ? inkData : tab==='fang' ? fangData : null;
+  const hhSparkTotals = tab==='household' ? inkData.totals.map((v,i)=>{
+    const fs=inkData.months.indexOf(fangData.months[0]);
+    const fi=fs!==-1?i-fs:-1;
+    return v+(fi>=0&&fi<fangData.totals.length?fangData.totals[fi]:0);
+  }) : null;
+  const hhSparkData = hhSparkTotals ? { totals: hhSparkTotals } : null;
+  const spData = tab==='household' ? hhSparkData : sparkData;
+
+  document.getElementById('metric-grid').innerHTML = cards.map((c,ci) => {
+    const hasSpark = ci === 0; // only on "Current net worth" card
+    const spark = hasSpark ? sparklineSVG(spData) : '';
+    return `<div class="metric-card">
+      <p class="metric-label">${c.label}</p>
+      <div class="metric-card-inner">
+        <div><p class="metric-val">${c.val}</p><p class="metric-sub ${c.cls}">${c.sub}</p></div>
+        ${spark}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderDataRange(tab) {
@@ -863,6 +1005,23 @@ function renderDataRange(tab) {
 let chartInst = null;
 let hiddenSeries = new Set();
 
+// MILESTONE LINE datasets — drawn as flat horizontal line series
+function milestoneDatasets(tab, numPoints) {
+  const goals = tab === 'household' ? GOALS.household
+              : tab === 'ink'       ? GOALS.ink
+              :                       GOALS.fang;
+  const stVal = goals.invest.st;
+  const ltVal = goals.invest.lt;
+  const stArr = Array(numPoints).fill(stVal);
+  const ltArr = Array(numPoints).fill(ltVal);
+  return [
+    { label:'__ms_st__', data:stArr, borderColor:'rgba(240,180,41,0.45)', backgroundColor:'transparent',
+      borderWidth:1, borderDash:[6,4], fill:false, tension:0, pointRadius:0, pointHoverRadius:0, stack:undefined },
+    { label:'__ms_lt__', data:ltArr, borderColor:'rgba(92,224,168,0.35)', backgroundColor:'transparent',
+      borderWidth:1, borderDash:[6,4], fill:false, tension:0, pointRadius:0, pointHoverRadius:0, stack:undefined },
+  ];
+}
+
 function buildDatasets(tab) {
   const active = getActiveData(tab);
   if (tab==='ink'||tab==='fang') {
@@ -873,19 +1032,38 @@ function buildDatasets(tab) {
       pointBackgroundColor:c.color, stack:'stack'
     }));
     ds.push({ label:'__total__', data:d.totals, borderColor:'rgba(255,255,255,0.35)', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], fill:false, tension:0.4, pointRadius:0, pointHoverRadius:4, stack:undefined });
-    return { labels:d.months, datasets:ds };
+    const ms = milestoneDatasets(tab, d.months.length);
+    return { labels:d.months, datasets:[...ds, ...ms] };
   } else {
     const inkS=active.ink, fangS=active.fang;
     const im=inkS.months;
     const fs=im.indexOf(fangS.months[0]);
     const combined = inkS.totals.map((v,i)=>{ const fi=fs!==-1?i-fs:-1; return v+(fi>=0&&fi<fangS.totals.length?fangS.totals[fi]:0); });
     const fAl = im.map((_,i)=>{ const fi=fs!==-1?i-fs:-1; return fi>=0&&fi<fangS.totals.length?fangS.totals[fi]:null; });
+    const msHH = milestoneDatasets('household', im.length);
     return { labels:im, datasets:[
       {label:'Ink',  data:inkS.totals, borderColor:'#4da8f5', backgroundColor:hexA('#4da8f5',0.08), borderWidth:2, fill:false, tension:0.4, pointRadius:2, pointHoverRadius:5, pointBackgroundColor:'#4da8f5'},
       {label:'Fang', data:fAl, borderColor:'#5ce0a8', backgroundColor:hexA('#5ce0a8',0.08), borderWidth:2, fill:false, tension:0.4, pointRadius:2, pointHoverRadius:5, pointBackgroundColor:'#5ce0a8', spanGaps:false},
-      {label:'Household total', data:combined, borderColor:'#c8f542', backgroundColor:hexA('#c8f542',0.06), borderWidth:2, borderDash:[5,3], fill:false, tension:0.4, pointRadius:0, pointHoverRadius:5, pointBackgroundColor:'#c8f542'}
+      {label:'Household total', data:combined, borderColor:'#c8f542', backgroundColor:hexA('#c8f542',0.06), borderWidth:2, borderDash:[5,3], fill:false, tension:0.4, pointRadius:0, pointHoverRadius:5, pointBackgroundColor:'#c8f542'},
+      ...msHH
     ]};
   }
+}
+
+function renderMilestoneLegend(tab) {
+  const el = document.getElementById('milestone-legend');
+  if (!el) return;
+  const goals = tab === 'household' ? GOALS.household : tab === 'ink' ? GOALS.ink : GOALS.fang;
+  el.style.display = 'flex';
+  el.innerHTML = `
+    <span class="milestone-legend-item">
+      <span class="milestone-legend-line" style="background:rgba(240,180,41,0.6);border-top:1.5px dashed rgba(240,180,41,0.6);height:0;margin-top:1px;"></span>
+      Short-term goal (${mask(fmtM(goals.invest.st))})
+    </span>
+    <span class="milestone-legend-item">
+      <span class="milestone-legend-line" style="background:rgba(92,224,168,0.5);border-top:1.5px dashed rgba(92,224,168,0.5);height:0;margin-top:1px;"></span>
+      Long-term goal (${mask(fmtM(goals.invest.lt))})
+    </span>`;
 }
 
 function renderChart(tab) {
@@ -903,6 +1081,7 @@ function renderChart(tab) {
       }
     }
   });
+  renderMilestoneLegend(tab);
 }
 
 // ENHANCEMENT: Tooltip asset elements now sort by value descending
@@ -912,7 +1091,7 @@ function extTooltip(ctx) {
   const t=ctx.tooltip;
   
   // Filter out system placeholders
-  const vis=t.dataPoints.filter(p=>p.dataset.label!=='__total__'&&p.raw!==null);
+  const vis=t.dataPoints.filter(p=>!['__total__','__ms_st__','__ms_lt__'].includes(p.dataset.label)&&p.raw!==null);
   
   // Sort individual asset values descending (Highest -> Lowest)
   vis.sort((a, b) => b.raw - a.raw);
@@ -1289,6 +1468,57 @@ function donutLegHover(el, tab, cardIdx, assetIdx, entering) {
   }
 }
 
+function renderHouseholdCompare() {
+  const el = document.getElementById('hh-compare');
+  if (!el) return;
+  // Use full (unfiltered) latest data for side-by-side compare
+  const iLast  = inkData.totals[inkData.totals.length-1];
+  const iPrev  = inkData.totals[inkData.totals.length-2] ?? iLast;
+  const iFirst = inkData.totals[0];
+  const fLast  = fangData.totals[fangData.totals.length-1];
+  const fPrev  = fangData.totals[fangData.totals.length-2] ?? fLast;
+  const fFirst = fangData.totals[0];
+  const iMom   = fmtPct(iLast, iPrev);
+  const fMom   = fmtPct(fLast, fPrev);
+  const iGrowth = fmtPct(iLast, iFirst);
+  const fGrowth = fmtPct(fLast, fFirst);
+  const iMomCls = parseFloat(iMom)>=0?'pos':'neg';
+  const fMomCls = parseFloat(fMom)>=0?'pos':'neg';
+  el.innerHTML = `
+    <p class="hh-compare-title">Individual breakdown</p>
+    <table class="hh-compare-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Ink</th>
+          <th>Fang</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Net worth</td>
+          <td>${mask(fmtM(iLast))}</td>
+          <td>${mask(fmtM(fLast))}</td>
+        </tr>
+        <tr>
+          <td>MoM change</td>
+          <td class="${iMomCls}">${iMom}</td>
+          <td class="${fMomCls}">${fMom}</td>
+        </tr>
+        <tr>
+          <td>All-time growth</td>
+          <td>${iGrowth}</td>
+          <td>${fGrowth}</td>
+        </tr>
+        <tr>
+          <td>Tracking since</td>
+          <td>${inkData.firstLabel}</td>
+          <td>${fangData.firstLabel}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
 function renderAll(tab) {
   renderFilter(tab);
   renderMetrics(tab);
@@ -1297,6 +1527,10 @@ function renderAll(tab) {
   renderLegend(tab);
   renderChart(tab);
   renderDonuts(tab);
+  // Household comparison table
+  const hhEl = document.getElementById('hh-compare');
+  if (hhEl) hhEl.style.display = tab === 'household' ? 'block' : 'none';
+  if (tab === 'household') renderHouseholdCompare();
 }
 
 document.getElementById('refresh-btn').addEventListener('click', async () => {
@@ -1308,6 +1542,56 @@ async function init() {
   const ok = await loadData();
   if (ok) renderAll('ink');
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// PULL TO REFRESH
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  const THRESHOLD    = 80;   // px to pull before triggering refresh
+  const MAX_PULL     = 110;  // px max visual stretch
+  let startY         = 0;
+  let pulling        = false;
+  let refreshing     = false;
+  const indicator    = document.getElementById('ptr-indicator');
+  const ptrText      = document.getElementById('ptr-text');
+
+  function atTop() { return window.scrollY <= 0; }
+
+  document.addEventListener('touchstart', e => {
+    if (refreshing) return;
+    if (atTop()) { startY = e.touches[0].clientY; pulling = true; }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling || refreshing) return;
+    const dy = Math.max(0, e.touches[0].clientY - startY);
+    if (dy > 5 && atTop()) {
+      const pull = Math.min(dy * 0.5, MAX_PULL);
+      indicator.className = 'pulling';
+      indicator.style.height = pull + 'px';
+      ptrText.textContent = pull >= THRESHOLD * 0.5 ? 'Release to refresh' : 'Pull down to refresh';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', async () => {
+    if (!pulling || refreshing) return;
+    pulling = false;
+    const h = parseInt(indicator.style.height || '0');
+    if (h >= THRESHOLD * 0.5) {
+      refreshing = true;
+      indicator.className = 'refreshing';
+      indicator.style.height = '48px';
+      ptrText.textContent = 'Refreshing…';
+      const ok = await loadData();
+      if (ok) renderAll(currentTab);
+      refreshing = false;
+    }
+    indicator.className = '';
+    indicator.style.height = '0';
+    ptrText.textContent = 'Pull down to refresh';
+  });
+})();
+
 </script>
 </body>
 </html>
