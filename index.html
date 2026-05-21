@@ -230,7 +230,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v2.2</p>
+      <p class="gate-version">v2.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -251,7 +251,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v2.2</span>
+      <span class="version-badge">v2.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
@@ -314,7 +314,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v2.2';
+const VERSION  = 'v2.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1051,35 +1051,71 @@ function selectFilter(tab, fi) {
                :                       fangData.months;
   filterState[tab] = (fi >= months.length - 1) ? -1 : fi;
 
-  // ── Sync asset allocation filter to match net worth filter (one-way only) ──
-  // Resolve the selected month label from the net worth filter
-  const resolvedIdx   = filterState[tab] < 0 ? months.length - 1 : filterState[tab];
-  const selectedLabel = months[resolvedIdx];
-
-  // For ink/fang tabs: sync their donut filter to the same month label if available
+  // ── Sync asset allocation filter (one-way: net worth → donut only) ──────
   if (tab === 'ink' || tab === 'fang') {
+    const resolvedIdx = filterState[tab] < 0 ? months.length - 1 : filterState[tab];
     const donutMonths = getDonutMonths(tab);
-    if (donutMonths.includes(selectedLabel)) {
-      // Exact match — use it
-      const isLatest = selectedLabel === donutMonths[donutMonths.length - 1];
-      donutFilterState[tab] = isLatest ? null : selectedLabel;
+
+    if (donutMonths.length === 0) {
+      // No donut data yet — nothing to sync
+    } else if (resolvedIdx >= months.length - 1) {
+      // Net worth is at latest → donut goes to latest too
+      donutFilterState[tab] = null;
     } else {
-      // No exact match — find the latest donut month that is <= selected net worth month
-      // Use the chronological order from getDonutMonths (already sorted)
-      const idxInDonut = donutMonths.reduce((best, m, i) => {
-        const mi = months.indexOf(m);
-        const sel = resolvedIdx;
-        return (mi !== -1 && mi <= sel) ? i : best;
-      }, -1);
-      if (idxInDonut >= 0) {
-        const fallback = donutMonths[idxInDonut];
-        const isLatest = fallback === donutMonths[donutMonths.length - 1];
-        donutFilterState[tab] = isLatest ? null : fallback;
+      // Net worth is at a historical point.
+      // Strategy: find the latest donut month whose label appears at or before
+      // the selected net worth month. We normalise both sides to lowercase+trimmed
+      // for comparison since label formats may differ slightly between sheets.
+      const selectedLabel = months[resolvedIdx].trim().toLowerCase();
+
+      // Build a normalised version of all net worth month labels so we can
+      // find the position of each donut month within the net worth timeline.
+      const normNetWorth = months.map(m => m.trim().toLowerCase());
+
+      // For each donut month, find its position in the net worth months array.
+      // If the donut month label doesn't appear there (different format), we
+      // fall back to a positional approach: pick the donut month whose index
+      // (as a proportion of all donut months) is closest to the net worth position.
+      const nwPos = resolvedIdx; // 0 = oldest, months.length-1 = newest
+
+      let bestDonutMonth = null;
+      let bestDonutIdx   = -1;
+
+      for (let di = 0; di < donutMonths.length; di++) {
+        const dm    = donutMonths[di];
+        const dmNorm = dm.trim().toLowerCase();
+        // Try exact label match first
+        const exactPos = normNetWorth.indexOf(dmNorm);
+        if (exactPos !== -1) {
+          // This donut month has an exact match in the net worth timeline
+          if (exactPos <= nwPos) {
+            bestDonutMonth = dm;
+            bestDonutIdx   = di;
+          }
+        } else {
+          // No exact match: use proportional position
+          // Donut proportion: di / (donutMonths.length - 1)
+          // Net worth proportion: nwPos / (months.length - 1)
+          const donutProp = donutMonths.length > 1 ? di / (donutMonths.length - 1) : 1;
+          const nwProp    = months.length > 1     ? nwPos / (months.length - 1)    : 1;
+          if (donutProp <= nwProp + 0.001) {
+            // This donut month is at or before the selected net worth point
+            bestDonutMonth = dm;
+            bestDonutIdx   = di;
+          }
+        }
       }
-      // If no fallback found, leave donut filter as-is
+
+      if (bestDonutMonth === null) {
+        // Selected point is before any donut data — use oldest donut month
+        bestDonutMonth = donutMonths[0];
+        bestDonutIdx   = 0;
+      }
+
+      const isDonutLatest = bestDonutIdx === donutMonths.length - 1;
+      donutFilterState[tab] = isDonutLatest ? null : bestDonutMonth;
     }
   }
-  // Note: household tab has no donut section so no sync needed
 
   renderAll(tab);
 }
