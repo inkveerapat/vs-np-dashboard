@@ -628,6 +628,10 @@ function getHouseholdSliced(fi) {
 // LOAD DATA
 async function loadData() {
   setStatus('loading','Fetching from Google Sheets\u2026');
+  const skelEl = document.getElementById('skeleton-screen');
+  const contentEl = document.getElementById('page-content');
+  if (skelEl)    skelEl.style.display    = 'block';
+  if (contentEl) contentEl.style.display = 'none';
   document.getElementById('chart-loading').style.display = 'flex';
   document.getElementById('error-box').classList.remove('show');
   try {
@@ -650,6 +654,8 @@ async function loadData() {
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'Live \u00b7 Google Sheets \u00b7 ' + VERSION + ' \u00b7 Auto-updates on refresh');
     document.getElementById('chart-loading').style.display = 'none';
+    if (skelEl)    skelEl.style.display    = 'none';
+    if (contentEl) contentEl.style.display = 'block';
     return true;
   } catch(e) {
     setStatus('error','Failed: ' + e.message);
@@ -657,10 +663,8 @@ async function loadData() {
     eb.textContent = 'Error: ' + e.message;
     eb.classList.add('show');
     document.getElementById('chart-loading').style.display = 'none';
-    const skelEl3    = document.getElementById('skeleton-screen');
-    const contentEl3 = document.getElementById('page-content');
-    if (skelEl3)    skelEl3.style.display    = 'none';
-    if (contentEl3) contentEl3.style.display = 'block';
+    if (skelEl)    skelEl.style.display    = 'none';
+    if (contentEl) contentEl.style.display = 'block';
     return false;
   }
 }
