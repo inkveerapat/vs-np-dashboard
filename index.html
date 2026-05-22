@@ -6,7 +6,59 @@
 <title>VS NP Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+// ═══════════════════════════════════════════════════════════════════
+// PULL TO REFRESH
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  const THRESHOLD    = 80;   // px to pull before triggering refresh
+  const MAX_PULL     = 110;  // px max visual stretch
+  let startY         = 0;
+  let pulling        = false;
+  let refreshing     = false;
+  const indicator    = document.getElementById('ptr-indicator');
+  const ptrText      = document.getElementById('ptr-text');
+
+  function atTop() { return window.scrollY <= 0; }
+
+  document.addEventListener('touchstart', e => {
+    if (refreshing) return;
+    if (atTop()) { startY = e.touches[0].clientY; pulling = true; }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling || refreshing) return;
+    const dy = Math.max(0, e.touches[0].clientY - startY);
+    if (dy > 5 && atTop()) {
+      const pull = Math.min(dy * 0.5, MAX_PULL);
+      indicator.className = 'pulling';
+      indicator.style.height = pull + 'px';
+      ptrText.textContent = pull >= THRESHOLD * 0.5 ? 'Release to refresh' : 'Pull down to refresh';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', async () => {
+    if (!pulling || refreshing) return;
+    pulling = false;
+    const h = parseInt(indicator.style.height || '0');
+    if (h >= THRESHOLD * 0.5) {
+      refreshing = true;
+      indicator.className = 'refreshing';
+      indicator.style.height = '48px';
+      ptrText.textContent = 'Refreshing…';
+      const ok = await loadData();
+      if (ok) renderAll(currentTab);
+      refreshing = false;
+    }
+    indicator.className = '';
+    indicator.style.height = '0';
+    ptrText.textContent = 'Pull down to refresh';
+  });
+})();
+
+</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -250,16 +302,104 @@
   .skel-bar.short { width: 35%; }
   .skel-chart { width: 100%; height: 280px; border-radius: var(--radius-lg); margin-top: 16px; margin-bottom: 20px; }
   #skeleton-screen { display: none; padding: 0; }
+
+  /* HISTORICAL BANNER */
+  .historical-banner {
+    display: none; align-items: center; gap: 8px;
+    background: rgba(240,180,41,0.1); border: 1px solid rgba(240,180,41,0.3);
+    border-radius: 99px; padding: 5px 14px; margin-bottom: 16px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--amber);
+    width: fit-content;
+  }
+  .historical-banner.show { display: flex; }
+  .historical-banner-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+
+  /* SPARKLINE on metric card */
+  .metric-card-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .metric-sparkline { flex-shrink: 0; margin-top: 2px; }
+
+  /* HOUSEHOLD COMPARISON TABLE */
+  .hh-compare { margin-bottom: 28px; }
+  .hh-compare-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; }
+  .hh-compare-table { width: 100%; border-collapse: collapse; }
+  .hh-compare-table th { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); padding: 6px 12px; text-align: right; font-weight: 400; border-bottom: 1px solid var(--border); }
+  .hh-compare-table th:first-child { text-align: left; }
+  .hh-compare-table td { font-family: var(--font-mono); font-size: 12px; color: var(--text); padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--border); }
+  .hh-compare-table td:first-child { text-align: left; font-size: 11px; color: var(--text2); }
+  .hh-compare-table tr:last-child td { border-bottom: none; }
+  .hh-compare-table .pos { color: var(--green); }
+  .hh-compare-table .neg { color: var(--red); }
+
+  /* EXPORT */
+  .export-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; position: relative; }
+  .export-btn:hover { color: var(--text); background: var(--surface); }
+  .export-menu {
+    position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: var(--radius-lg); padding: 6px; min-width: 148px;
+    z-index: 50; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .export-menu.open { display: block; }
+  .export-menu-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; color: var(--text2); transition: all .12s;
+    white-space: nowrap; border: none; background: none; width: 100%;
+    font-family: var(--font-sans); text-align: left;
+  }
+  .export-menu-item:hover { background: var(--surface); color: var(--text); }
+  .export-menu-item .emi-icon { font-size: 14px; flex-shrink: 0; }
+  .export-menu-item .emi-label { flex: 1; }
+  .export-menu-item .emi-sub { font-size: 10px; color: var(--text3); font-family: var(--font-mono); }
+  .export-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(13,13,13,0.85); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+  }
+  .export-overlay.show { display: flex; }
+  .export-overlay-text { font-family: var(--font-mono); font-size: 13px; color: var(--text2); }
+  .export-spinner { width: 28px; height: 28px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: ptr-spin .7s linear infinite; }
+
+  /* PULL TO REFRESH */
+  #ptr-indicator {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    height: 0; overflow: hidden;
+    background: rgba(13,13,13,0.95); backdrop-filter: blur(8px);
+    transition: height .2s ease;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+    border-bottom: 1px solid var(--border);
+  }
+  #ptr-indicator.pulling { height: 48px; }
+  #ptr-indicator.refreshing { height: 48px; color: var(--accent); }
+  .ptr-spinner { width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: ptr-spin .7s linear infinite; margin-right: 8px; display: none; }
+  #ptr-indicator.refreshing .ptr-spinner { display: block; }
+  @keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+  /* MILESTONE LINES legend */
+  .milestone-legend { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+  .milestone-legend-item { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; color: var(--text3); }
+  .milestone-legend-line { width: 20px; height: 2px; border-radius: 1px; }
 </style>
 </head>
 <body>
+
+<div id="ptr-indicator">
+  <div class="ptr-spinner"></div>
+  <span id="ptr-text">Pull down to refresh</span>
+</div>
+<div id="export-overlay" class="export-overlay">
+  <div class="export-spinner"></div>
+  <span class="export-overlay-text" id="export-overlay-text">Preparing export…</span>
+</div>
 
 <div id="gate">
   <div class="gate-box">
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v2.4</p>
+      <p class="gate-version">v2.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -280,10 +420,22 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v2.4</span>
+      <span class="version-badge">v2.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
+      <button class="export-btn" id="export-btn" title="Export summary">&#8681; Export
+        <div class="export-menu" id="export-menu">
+          <button class="export-menu-item" id="export-jpg-btn">
+            <span class="emi-icon">🖼</span>
+            <span class="emi-label">Save as JPG<br><span class="emi-sub">Clean summary image</span></span>
+          </button>
+          <button class="export-menu-item" id="export-pdf-btn">
+            <span class="emi-icon">📄</span>
+            <span class="emi-label">Save as PDF<br><span class="emi-sub">Detailed report</span></span>
+          </button>
+        </div>
+      </button>
       <button class="logout-btn" id="logout-btn">lock</button>
     </div>
   </nav>
@@ -322,9 +474,11 @@
       <div class="filter-scroll" id="filter-scroll"></div>
     </div>
 
+    <div id="historical-banner" class="historical-banner"><span class="historical-banner-dot"></span><span id="historical-banner-text">Viewing —</span></div>
     <div id="metric-grid" class="metric-grid"></div>
     <div class="error-box" id="error-box"></div>
 
+    <div id="hh-compare" class="hh-compare" style="display:none;"></div>
     <div class="goal-section" id="goal-section">
       <p class="goal-section-title">Goal Progress</p>
       <div class="goal-grid" id="goal-grid"></div>
@@ -339,6 +493,7 @@
       <div class="chart-tooltip" id="chart-tooltip"></div>
     </div>
     <div class="legend" id="legend"></div>
+    <div class="milestone-legend" id="milestone-legend" style="display:none;"></div>
 
     <div class="donut-section" id="donut-section" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
@@ -362,7 +517,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v2.4';
+const VERSION  = 'v2.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -838,9 +993,46 @@ function renderMetrics(tab) {
       {label:'Data since',          val:inkData.firstLabel,                 sub:'Ink started first', cls:''},
     ];
   }
-  document.getElementById('metric-grid').innerHTML = cards.map(c =>
-    `<div class="metric-card"><p class="metric-label">${c.label}</p><p class="metric-val">${c.val}</p><p class="metric-sub ${c.cls}">${c.sub}</p></div>`
-  ).join('');
+  // Build sparkline for "Current net worth" card (first card)
+  function sparklineSVG(d) {
+    const vals = d ? d.totals.slice(-8) : [];
+    if (vals.length < 2) return '';
+    const W=52, H=22, pad=2;
+    const min=Math.min(...vals), max=Math.max(...vals);
+    const range = max - min || 1;
+    const pts = vals.map((v,i)=>{
+      const x = pad + (i/(vals.length-1))*(W-2*pad);
+      const y = H - pad - ((v-min)/range)*(H-2*pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const trend = vals[vals.length-1] >= vals[0];
+    const color = trend ? 'var(--green)' : 'var(--red)';
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="none" xmlns="http://www.w3.org/2000/svg" class="metric-sparkline">
+      <polyline points="${pts}" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/>
+    </svg>`;
+  }
+
+  // Get the appropriate data for the sparkline (full data, not filtered)
+  const sparkData = tab==='ink' ? inkData : tab==='fang' ? fangData : null;
+  const hhSparkTotals = tab==='household' ? inkData.totals.map((v,i)=>{
+    const fs=inkData.months.indexOf(fangData.months[0]);
+    const fi=fs!==-1?i-fs:-1;
+    return v+(fi>=0&&fi<fangData.totals.length?fangData.totals[fi]:0);
+  }) : null;
+  const hhSparkData = hhSparkTotals ? { totals: hhSparkTotals } : null;
+  const spData = tab==='household' ? hhSparkData : sparkData;
+
+  document.getElementById('metric-grid').innerHTML = cards.map((c,ci) => {
+    const hasSpark = ci === 0; // only on "Current net worth" card
+    const spark = hasSpark ? sparklineSVG(spData) : '';
+    return `<div class="metric-card">
+      <p class="metric-label">${c.label}</p>
+      <div class="metric-card-inner">
+        <div><p class="metric-val">${c.val}</p><p class="metric-sub ${c.cls}">${c.sub}</p></div>
+        ${spark}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderDataRange(tab) {
@@ -863,6 +1055,23 @@ function renderDataRange(tab) {
 let chartInst = null;
 let hiddenSeries = new Set();
 
+// MILESTONE LINE datasets — drawn as flat horizontal line series
+function milestoneDatasets(tab, numPoints) {
+  const goals = tab === 'household' ? GOALS.household
+              : tab === 'ink'       ? GOALS.ink
+              :                       GOALS.fang;
+  const stVal = goals.invest.st;
+  const ltVal = goals.invest.lt;
+  const stArr = Array(numPoints).fill(stVal);
+  const ltArr = Array(numPoints).fill(ltVal);
+  return [
+    { label:'__ms_st__', data:stArr, borderColor:'rgba(240,180,41,0.45)', backgroundColor:'transparent',
+      borderWidth:1, borderDash:[6,4], fill:false, tension:0, pointRadius:0, pointHoverRadius:0, stack:undefined },
+    { label:'__ms_lt__', data:ltArr, borderColor:'rgba(92,224,168,0.35)', backgroundColor:'transparent',
+      borderWidth:1, borderDash:[6,4], fill:false, tension:0, pointRadius:0, pointHoverRadius:0, stack:undefined },
+  ];
+}
+
 function buildDatasets(tab) {
   const active = getActiveData(tab);
   if (tab==='ink'||tab==='fang') {
@@ -873,19 +1082,38 @@ function buildDatasets(tab) {
       pointBackgroundColor:c.color, stack:'stack'
     }));
     ds.push({ label:'__total__', data:d.totals, borderColor:'rgba(255,255,255,0.35)', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], fill:false, tension:0.4, pointRadius:0, pointHoverRadius:4, stack:undefined });
-    return { labels:d.months, datasets:ds };
+    const ms = milestoneDatasets(tab, d.months.length);
+    return { labels:d.months, datasets:[...ds, ...ms] };
   } else {
     const inkS=active.ink, fangS=active.fang;
     const im=inkS.months;
     const fs=im.indexOf(fangS.months[0]);
     const combined = inkS.totals.map((v,i)=>{ const fi=fs!==-1?i-fs:-1; return v+(fi>=0&&fi<fangS.totals.length?fangS.totals[fi]:0); });
     const fAl = im.map((_,i)=>{ const fi=fs!==-1?i-fs:-1; return fi>=0&&fi<fangS.totals.length?fangS.totals[fi]:null; });
+    const msHH = milestoneDatasets('household', im.length);
     return { labels:im, datasets:[
       {label:'Ink',  data:inkS.totals, borderColor:'#4da8f5', backgroundColor:hexA('#4da8f5',0.08), borderWidth:2, fill:false, tension:0.4, pointRadius:2, pointHoverRadius:5, pointBackgroundColor:'#4da8f5'},
       {label:'Fang', data:fAl, borderColor:'#5ce0a8', backgroundColor:hexA('#5ce0a8',0.08), borderWidth:2, fill:false, tension:0.4, pointRadius:2, pointHoverRadius:5, pointBackgroundColor:'#5ce0a8', spanGaps:false},
-      {label:'Household total', data:combined, borderColor:'#c8f542', backgroundColor:hexA('#c8f542',0.06), borderWidth:2, borderDash:[5,3], fill:false, tension:0.4, pointRadius:0, pointHoverRadius:5, pointBackgroundColor:'#c8f542'}
+      {label:'Household total', data:combined, borderColor:'#c8f542', backgroundColor:hexA('#c8f542',0.06), borderWidth:2, borderDash:[5,3], fill:false, tension:0.4, pointRadius:0, pointHoverRadius:5, pointBackgroundColor:'#c8f542'},
+      ...msHH
     ]};
   }
+}
+
+function renderMilestoneLegend(tab) {
+  const el = document.getElementById('milestone-legend');
+  if (!el) return;
+  const goals = tab === 'household' ? GOALS.household : tab === 'ink' ? GOALS.ink : GOALS.fang;
+  el.style.display = 'flex';
+  el.innerHTML = `
+    <span class="milestone-legend-item">
+      <span class="milestone-legend-line" style="background:rgba(240,180,41,0.6);border-top:1.5px dashed rgba(240,180,41,0.6);height:0;margin-top:1px;"></span>
+      Short-term goal (${mask(fmtM(goals.invest.st))})
+    </span>
+    <span class="milestone-legend-item">
+      <span class="milestone-legend-line" style="background:rgba(92,224,168,0.5);border-top:1.5px dashed rgba(92,224,168,0.5);height:0;margin-top:1px;"></span>
+      Long-term goal (${mask(fmtM(goals.invest.lt))})
+    </span>`;
 }
 
 function renderChart(tab) {
@@ -903,6 +1131,7 @@ function renderChart(tab) {
       }
     }
   });
+  renderMilestoneLegend(tab);
 }
 
 // ENHANCEMENT: Tooltip asset elements now sort by value descending
@@ -912,7 +1141,7 @@ function extTooltip(ctx) {
   const t=ctx.tooltip;
   
   // Filter out system placeholders
-  const vis=t.dataPoints.filter(p=>p.dataset.label!=='__total__'&&p.raw!==null);
+  const vis=t.dataPoints.filter(p=>!['__total__','__ms_st__','__ms_lt__'].includes(p.dataset.label)&&p.raw!==null);
   
   // Sort individual asset values descending (Highest -> Lowest)
   vis.sort((a, b) => b.raw - a.raw);
@@ -1289,6 +1518,57 @@ function donutLegHover(el, tab, cardIdx, assetIdx, entering) {
   }
 }
 
+function renderHouseholdCompare() {
+  const el = document.getElementById('hh-compare');
+  if (!el) return;
+  // Use full (unfiltered) latest data for side-by-side compare
+  const iLast  = inkData.totals[inkData.totals.length-1];
+  const iPrev  = inkData.totals[inkData.totals.length-2] ?? iLast;
+  const iFirst = inkData.totals[0];
+  const fLast  = fangData.totals[fangData.totals.length-1];
+  const fPrev  = fangData.totals[fangData.totals.length-2] ?? fLast;
+  const fFirst = fangData.totals[0];
+  const iMom   = fmtPct(iLast, iPrev);
+  const fMom   = fmtPct(fLast, fPrev);
+  const iGrowth = fmtPct(iLast, iFirst);
+  const fGrowth = fmtPct(fLast, fFirst);
+  const iMomCls = parseFloat(iMom)>=0?'pos':'neg';
+  const fMomCls = parseFloat(fMom)>=0?'pos':'neg';
+  el.innerHTML = `
+    <p class="hh-compare-title">Individual breakdown</p>
+    <table class="hh-compare-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Ink</th>
+          <th>Fang</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Net worth</td>
+          <td>${mask(fmtM(iLast))}</td>
+          <td>${mask(fmtM(fLast))}</td>
+        </tr>
+        <tr>
+          <td>MoM change</td>
+          <td class="${iMomCls}">${iMom}</td>
+          <td class="${fMomCls}">${fMom}</td>
+        </tr>
+        <tr>
+          <td>All-time growth</td>
+          <td>${iGrowth}</td>
+          <td>${fGrowth}</td>
+        </tr>
+        <tr>
+          <td>Tracking since</td>
+          <td>${inkData.firstLabel}</td>
+          <td>${fangData.firstLabel}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
 function renderAll(tab) {
   renderFilter(tab);
   renderMetrics(tab);
@@ -1297,9 +1577,657 @@ function renderAll(tab) {
   renderLegend(tab);
   renderChart(tab);
   renderDonuts(tab);
+  // Household comparison table
+  const hhEl = document.getElementById('hh-compare');
+  if (hhEl) hhEl.style.display = tab === 'household' ? 'block' : 'none';
+  if (tab === 'household') renderHouseholdCompare();
 }
 
-document.getElementById('refresh-btn').addEventListener('click', async () => {
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORT FUNCTION
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  // ── Dropdown toggle ──────────────────────────────────────────────
+  const exportBtn  = document.getElementById('export-btn');
+  const exportMenu = document.getElementById('export-menu');
+  exportBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    exportMenu.classList.toggle('open');
+  });
+  document.addEventListener('click', () => exportMenu.classList.remove('open'));
+  exportMenu.addEventListener('click', e => e.stopPropagation());
+
+  // ── Overlay helpers ──────────────────────────────────────────────
+  const overlay     = document.getElementById('export-overlay');
+  const overlayText = document.getElementById('export-overlay-text');
+  function showOverlay(msg) { overlayText.textContent = msg; overlay.classList.add('show'); }
+  function hideOverlay()    { overlay.classList.remove('show'); }
+
+  // ── Data helpers ─────────────────────────────────────────────────
+  function getTabLabel(tab) { return tab === 'ink' ? 'Ink' : tab === 'fang' ? 'Fang' : 'Household'; }
+  function todayStr() {
+    const d = new Date();
+    return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  }
+  function getMetricCards(tab) {
+    const active = getActiveData(tab);
+    if (tab === 'ink') {
+      const d = active.ink;
+      const last=d.totals[d.totals.length-1], prev=d.totals[d.totals.length-2]??last, first=d.totals[0];
+      const mom=fmtPct(last,prev), peak=Math.max(...d.totals);
+      return [
+        { label:'Net Worth',       val:fmtM(last),                   sub:mom+' MoM' },
+        { label:'All-time Growth', val:fmtPct(last,first),           sub:'Since '+d.firstLabel },
+        { label:'Peak',            val:fmtM(peak),                   sub:d.months[d.totals.indexOf(peak)] },
+        { label:'Months Tracked',  val:String(d.months.length),      sub:d.firstLabel+' → '+d.lastLabel },
+      ];
+    } else if (tab === 'fang') {
+      const d = active.fang;
+      const last=d.totals[d.totals.length-1], prev=d.totals[d.totals.length-2]??last, first=d.totals[0];
+      const mom=fmtPct(last,prev), peak=Math.max(...d.totals);
+      return [
+        { label:'Net Worth',       val:fmtM(last),                   sub:mom+' MoM' },
+        { label:'All-time Growth', val:fmtPct(last,first),           sub:'Since '+d.firstLabel },
+        { label:'Peak',            val:fmtM(peak),                   sub:d.months[d.totals.indexOf(peak)] },
+        { label:'Months Tracked',  val:String(d.months.length),      sub:d.firstLabel+' → '+d.lastLabel },
+      ];
+    } else {
+      const inkS=active.ink, fangS=active.fang;
+      const iL=inkS.totals[inkS.totals.length-1];
+      const fL=fangS.totals.length?fangS.totals[fangS.totals.length-1]:0;
+      const tot=iL+fL;
+      const iP=inkS.totals[inkS.totals.length-2]??iL;
+      const fP=fangS.totals.length>1?fangS.totals[fangS.totals.length-2]:fL;
+      const mom=fmtPct(tot,iP+fP);
+      return [
+        { label:'Household Net Worth', val:fmtM(tot),                    sub:mom+' MoM' },
+        { label:"Ink's Share",         val:tot>0?(iL/tot*100).toFixed(0)+'%':'—', sub:fmtM(iL) },
+        { label:"Fang's Share",        val:tot>0?(fL/tot*100).toFixed(0)+'%':'—', sub:fmtM(fL) },
+        { label:'Data Since',          val:inkData.firstLabel,            sub:'Ink started first' },
+      ];
+    }
+  }
+  function getGoalData(tab) {
+    const active = getActiveData(tab);
+    let cashVal, investVal, goals;
+    if (tab === 'ink') {
+      const v = getLatestValues(active.ink, INK_CONFIG);
+      cashVal = v.cash; investVal = v.invest; goals = GOALS.ink;
+    } else if (tab === 'fang') {
+      const v = getLatestValues(active.fang, FANG_CONFIG);
+      cashVal = v.cash; investVal = v.invest; goals = GOALS.fang;
+    } else {
+      const vi = getLatestValues(active.ink, INK_CONFIG);
+      const vf = getLatestValues(fangData, FANG_CONFIG);
+      cashVal = vi.cash + vf.cash; investVal = vi.invest + vf.invest; goals = GOALS.household;
+    }
+    return { cashVal, investVal, goals };
+  }
+  function getDonutSummary(tab) {
+    if (tab === 'household') return [];
+    const list = tab === 'ink' ? inkDonutData : fangDonutData;
+    const allM  = getDonutMonths(tab);
+    const latest = allM[allM.length - 1];
+    const active = donutFilterState[tab] || latest;
+    return list.map(d => {
+      let assets = d.byMonth[active];
+      if (!assets || !assets.length) {
+        const avail = d.months.filter(m => {
+          const ai=allM.indexOf(m), ac=allM.indexOf(active); return ai<=ac;
+        });
+        const fb = avail[avail.length-1];
+        assets = fb ? (d.byMonth[fb] || []) : [];
+      }
+      assets = [...assets].sort((a,b)=>b.pct-a.pct);
+      const total = assets.reduce((s,a)=>s+a.value,0);
+      return { title:d.title, assets, currency:d.currency, total };
+    });
+  }
+  function getHouseholdCompare() {
+    const iLast  = inkData.totals[inkData.totals.length-1];
+    const iPrev  = inkData.totals[inkData.totals.length-2] ?? iLast;
+    const iFirst = inkData.totals[0];
+    const fLast  = fangData.totals[fangData.totals.length-1];
+    const fPrev  = fangData.totals[fangData.totals.length-2] ?? fLast;
+    const fFirst = fangData.totals[0];
+    return {
+      ink:  { netWorth:fmtM(iLast), mom:fmtPct(iLast,iPrev), growth:fmtPct(iLast,iFirst), since:inkData.firstLabel },
+      fang: { netWorth:fmtM(fLast), mom:fmtPct(fLast,fPrev), growth:fmtPct(fLast,fFirst), since:fangData.firstLabel },
+    };
+  }
+
+  // ── Color helpers ────────────────────────────────────────────────
+  function goalClr(pct) {
+    if (pct >= 100) return '#5ce0a8';
+    if (pct >= 60)  return '#c8f542';
+    if (pct >= 30)  return '#f0b429';
+    return '#f06b6b';
+  }
+  const CHART_COLORS = ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#f472b6','#fb923c','#34d399','#60a5fa','#f87171','#fbbf24'];
+
+  // ══════════════════════════════════════════════════════════════════
+  // JPG EXPORT — mobile-friendly card layout rendered to canvas
+  // ══════════════════════════════════════════════════════════════════
+  document.getElementById('export-jpg-btn').addEventListener('click', async () => {
+    exportMenu.classList.remove('open');
+    if (!inkData || !fangData) return;
+    const tab = currentTab;
+
+    showOverlay('Building summary…');
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    try {
+      // Canvas dimensions — optimised for mobile (375px wide @2x = 750px)
+      const W = 750, PAD = 28, COL = W - PAD * 2;
+      const canvas = document.createElement('canvas');
+      const ctx    = canvas.getContext('2d');
+      // We'll draw to an offscreen canvas and expand height as needed
+      canvas.width = W;
+
+      // Gather data
+      const tabLabel  = getTabLabel(tab);
+      const metrics   = getMetricCards(tab);
+      const goalData  = getGoalData(tab);
+      const donuts    = getDonutSummary(tab);
+      const hhCompare = tab === 'household' ? getHouseholdCompare() : null;
+
+      // ── Drawing helpers ──────────────────────────────────────────
+      const BG   = '#0d0d0d', SURFACE = '#161616', SURFACE2 = '#1e1e1e';
+      const TEXT  = '#f0efe8', TEXT2 = '#888780', TEXT3 = '#555450';
+      const ACCENT = '#c8f542', GREEN = '#5ce0a8', RED = '#f06b6b', AMBER = '#f0b429';
+      const BORDER = 'rgba(255,255,255,0.09)';
+      const R = 12; // card radius
+
+      function roundRect(cx, x, y, w, h, r, fill, stroke) {
+        cx.beginPath();
+        cx.moveTo(x+r,y); cx.lineTo(x+w-r,y);
+        cx.arcTo(x+w,y,x+w,y+r,r); cx.lineTo(x+w,y+h-r);
+        cx.arcTo(x+w,y+h,x+w-r,y+h,r); cx.lineTo(x+r,y+h);
+        cx.arcTo(x,y+h,x,y+h-r,r); cx.lineTo(x,y+r);
+        cx.arcTo(x,y,x+r,y,r); cx.closePath();
+        if (fill)   { cx.fillStyle=fill;   cx.fill(); }
+        if (stroke) { cx.strokeStyle=stroke; cx.lineWidth=1; cx.stroke(); }
+      }
+      function label(cx, text, x, y, color, size, font) {
+        cx.fillStyle = color; cx.font = `${font||'400'} ${size}px DM Mono, monospace`;
+        cx.fillText(text, x, y);
+      }
+      function labelSans(cx, text, x, y, color, size, weight) {
+        cx.fillStyle = color; cx.font = `${weight||'400'} ${size}px DM Sans, sans-serif`;
+        cx.fillText(text, x, y);
+      }
+
+      // First pass: calculate total height
+      let estH = 0;
+      estH += 80;                           // header
+      estH += 16;                           // gap
+      estH += Math.ceil(metrics.length/2) * (90+12); // metric cards
+      estH += 24;                           // section gap
+      if (hhCompare) estH += 140;           // hh compare
+      estH += 160;                          // goals section
+      if (donuts.length) estH += 32 + donuts.length * 90; // donuts
+      estH += 48;                           // footer
+      estH += PAD * 2;
+
+      canvas.height = estH + 200; // generous buffer
+      // fill background
+      ctx.fillStyle = BG;
+      ctx.fillRect(0, 0, W, canvas.height);
+
+      let y = PAD;
+
+      // ── Header ───────────────────────────────────────────────────
+      roundRect(ctx, PAD, y, COL, 68, R, SURFACE, BORDER);
+      label(ctx, 'VS NP DASHBOARD', PAD+16, y+22, TEXT3, 10);
+      labelSans(ctx, tabLabel + ' · Net Worth Summary', PAD+16, y+46, TEXT, 20, '500');
+      label(ctx, todayStr(), PAD+COL-8, y+22, TEXT3, 10);
+      ctx.textAlign = 'right';
+      label(ctx, inkData.lastLabel, PAD+COL-8, y+46, TEXT2, 12);
+      ctx.textAlign = 'left';
+      y += 68 + 14;
+
+      // ── Metric cards (2-per-row) ──────────────────────────────────
+      const MCOLS = 2, MCW = (COL - 10) / 2, MCH = 82;
+      for (let i = 0; i < metrics.length; i++) {
+        const col = i % MCOLS, row = Math.floor(i / MCOLS);
+        const mx = PAD + col*(MCW+10), my = y + row*(MCH+10);
+        roundRect(ctx, mx, my, MCW, MCH, R, SURFACE, BORDER);
+        label(ctx, metrics[i].label.toUpperCase(), mx+14, my+22, TEXT3, 9);
+        labelSans(ctx, metrics[i].val, mx+14, my+50, TEXT, 22, '500');
+        label(ctx, metrics[i].sub, mx+14, my+68, TEXT2, 11);
+      }
+      y += Math.ceil(metrics.length/MCOLS) * (MCH+10) + 6;
+
+      // ── Household comparison ──────────────────────────────────────
+      if (hhCompare) {
+        y += 14;
+        label(ctx, 'INDIVIDUAL BREAKDOWN', PAD, y+14, TEXT3, 9);
+        y += 28;
+        const cols2 = ['', 'Ink', 'Fang'];
+        const rows2 = [
+          ['Net worth',      hhCompare.ink.netWorth, hhCompare.fang.netWorth],
+          ['MoM change',     hhCompare.ink.mom,       hhCompare.fang.mom],
+          ['All-time growth',hhCompare.ink.growth,    hhCompare.fang.growth],
+          ['Tracking since', hhCompare.ink.since,     hhCompare.fang.since],
+        ];
+        roundRect(ctx, PAD, y, COL, rows2.length*30+38, R, SURFACE, BORDER);
+        // header row
+        label(ctx, 'INK',  PAD+COL*0.5+8, y+22, TEXT3, 10);
+        label(ctx, 'FANG', PAD+COL*0.75+8, y+22, TEXT3, 10);
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(PAD+10,y+30); ctx.lineTo(PAD+COL-10,y+30); ctx.stroke();
+        rows2.forEach((row, ri) => {
+          const ry = y + 32 + ri * 30 + 18;
+          label(ctx, row[0], PAD+14, ry, TEXT2, 11);
+          // colour MoM
+          const c1 = row[0]==='MoM change' ? (row[1].startsWith('+')?GREEN:RED) : TEXT;
+          const c2 = row[0]==='MoM change' ? (row[2].startsWith('+')?GREEN:RED) : TEXT;
+          label(ctx, row[1], PAD+COL*0.5+8, ry, c1, 12);
+          label(ctx, row[2], PAD+COL*0.75+8, ry, c2, 12);
+          if (ri < rows2.length-1) {
+            ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+            ctx.beginPath(); ctx.moveTo(PAD+10,ry+8); ctx.lineTo(PAD+COL-10,ry+8); ctx.stroke();
+          }
+        });
+        y += rows2.length*30+38+16;
+      }
+
+      // ── Goals ────────────────────────────────────────────────────
+      y += 8;
+      label(ctx, 'GOAL PROGRESS', PAD, y+14, TEXT3, 9);
+      y += 28;
+      const { cashVal, investVal, goals } = goalData;
+      const goalItems = [
+        { name:'Cash · Short-term',    cur:cashVal,   tgt:goals.cash.st },
+        { name:'Cash · Long-term',     cur:cashVal,   tgt:goals.cash.lt },
+        { name:'Invest · Short-term',  cur:investVal, tgt:goals.invest.st },
+        { name:'Invest · Long-term',   cur:investVal, tgt:goals.invest.lt },
+      ];
+      const GH = goalItems.length * 36 + 24;
+      roundRect(ctx, PAD, y, COL, GH, R, SURFACE, BORDER);
+      goalItems.forEach((g, gi) => {
+        const pct   = Math.min(g.cur/g.tgt*100, 100);
+        const clr   = goalClr(pct);
+        const gy    = y + 16 + gi * 36;
+        const BW    = COL - 28 - 80 - 60; // bar width
+        const BAR_X = PAD + 14;
+        // label + pct
+        label(ctx, g.name, BAR_X, gy+13, TEXT2, 11);
+        ctx.textAlign = 'right';
+        label(ctx, pct.toFixed(0)+'%', PAD+COL-14, gy+13, clr, 11);
+        ctx.textAlign = 'left';
+        // track
+        const TRACK_Y = gy + 18, TRACK_H = 5, TRACK_X = BAR_X, TRACK_W = COL - 28;
+        roundRect(ctx, TRACK_X, TRACK_Y, TRACK_W, TRACK_H, 3, SURFACE2, null);
+        if (pct > 0) roundRect(ctx, TRACK_X, TRACK_Y, TRACK_W*(pct/100), TRACK_H, 3, clr, null);
+        // target
+        label(ctx, 'Target: '+fmtM(g.tgt), TRACK_X, gy+36, TEXT3, 9);
+      });
+      y += GH + 12;
+
+      // ── Allocation donuts summary (bar style) ────────────────────
+      if (donuts.length) {
+        y += 14;
+        label(ctx, 'ASSET ALLOCATION', PAD, y+14, TEXT3, 9);
+        y += 28;
+        donuts.forEach((port, pi) => {
+          if (!port.assets.length) return;
+          const cardH = Math.min(port.assets.length, 5) * 22 + 44;
+          roundRect(ctx, PAD, y, COL, cardH, R, SURFACE, BORDER);
+          labelSans(ctx, port.title, PAD+14, y+22, TEXT2, 11, '500');
+          label(ctx, fmtM(port.total)+' '+port.currency, PAD+COL-14, y+22, TEXT, 11);
+          ctx.textAlign = 'right';
+          ctx.textAlign = 'left';
+          const show = port.assets.slice(0, 5);
+          show.forEach((a, ai) => {
+            const ay = y + 34 + ai * 22;
+            const dotClr = CHART_COLORS[ai % CHART_COLORS.length];
+            // dot
+            ctx.fillStyle = dotClr;
+            ctx.beginPath(); ctx.arc(PAD+18, ay+6, 4, 0, Math.PI*2); ctx.fill();
+            // name
+            label(ctx, a.name.length>28?a.name.slice(0,26)+'…':a.name, PAD+28, ay+11, TEXT3, 10);
+            // bar
+            const BX = PAD+28+180, BW2 = COL-28-180-60, BH2 = 4;
+            roundRect(ctx, BX, ay+4, BW2, BH2, 2, SURFACE2, null);
+            roundRect(ctx, BX, ay+4, BW2*(a.pct/100), BH2, 2, dotClr, null);
+            // pct
+            ctx.textAlign = 'right';
+            label(ctx, a.pct.toFixed(1)+'%', PAD+COL-14, ay+11, TEXT2, 10);
+            ctx.textAlign = 'left';
+          });
+          if (port.assets.length > 5) {
+            label(ctx, `+${port.assets.length-5} more`, PAD+14, y+cardH-8, TEXT3, 9);
+          }
+          y += cardH + 10;
+        });
+      }
+
+      y += 16;
+
+      // ── Footer ───────────────────────────────────────────────────
+      ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(PAD,y); ctx.lineTo(PAD+COL,y); ctx.stroke();
+      y += 14;
+      label(ctx, 'VS NP Dashboard · v2.5 · Exported '+todayStr(), PAD, y+12, TEXT3, 9);
+      y += 28;
+
+      // Trim canvas to actual content
+      const finalH = y + PAD;
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width  = W;
+      finalCanvas.height = finalH;
+      const fc = finalCanvas.getContext('2d');
+      fc.fillStyle = BG;
+      fc.fillRect(0,0,W,finalH);
+      fc.drawImage(canvas, 0, 0);
+
+      // Download
+      const link = document.createElement('a');
+      link.download = `vsnp_${tab}_${new Date().toISOString().slice(0,10)}.jpg`;
+      link.href = finalCanvas.toDataURL('image/jpeg', 0.93);
+      link.click();
+      hideOverlay();
+    } catch(e) {
+      hideOverlay();
+      alert('Export failed: '+e.message);
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
+  // PDF EXPORT — detailed multi-section report via jsPDF
+  // ══════════════════════════════════════════════════════════════════
+  document.getElementById('export-pdf-btn').addEventListener('click', async () => {
+    exportMenu.classList.remove('open');
+    if (!inkData || !fangData) return;
+    const tab = currentTab;
+
+    showOverlay('Building PDF report…');
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+      const PW = 210, PH = 297;
+      const ML = 14, MR = 14, MT = 14;
+      const CW = PW - ML - MR;
+      let cy = MT;
+
+      const tabLabel  = getTabLabel(tab);
+      const metrics   = getMetricCards(tab);
+      const goalData  = getGoalData(tab);
+      const donuts    = getDonutSummary(tab);
+      const hhCompare = tab === 'household' ? getHouseholdCompare() : null;
+
+      // colours
+      const C = {
+        bg:     [13,13,13],    surface: [22,22,22],   surface2: [30,30,30],
+        text:   [240,239,232], text2:   [136,135,128], text3:   [85,84,80],
+        accent: [200,245,66],  green:   [92,224,168],  red:     [240,107,107], amber:[240,180,41],
+        border: [255,255,255,0.07],
+      };
+      function hex3(arr) { return `#${arr.map(v=>v.toString(16).padStart(2,'0')).join('')}`; }
+      function setFill(a)   { doc.setFillColor(...a.slice(0,3)); }
+      function setTxt(a)    { doc.setTextColor(...a); }
+      function setDraw(a)   { doc.setDrawColor(...a); }
+
+      function newPage() {
+        doc.addPage();
+        setFill(C.bg); doc.rect(0,0,PW,PH,'F');
+        cy = MT;
+      }
+      function checkSpace(need) { if (cy + need > PH - 14) newPage(); }
+
+      // ── Cover / Header block ─────────────────────────────────────
+      setFill(C.bg); doc.rect(0,0,PW,PH,'F');
+      // top accent bar
+      setFill(C.accent); doc.rect(ML, cy, CW, 1.2, 'F');
+      cy += 4;
+      setTxt(C.text3);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7);
+      doc.text('VS NP DASHBOARD · '+tabLabel.toUpperCase()+' NET WORTH SUMMARY', ML, cy+4);
+      doc.text(todayStr(), ML+CW, cy+4, {align:'right'});
+      cy += 10;
+      setTxt(C.text);
+      doc.setFont('helvetica','bold'); doc.setFontSize(20);
+      doc.text(tabLabel, ML, cy+7);
+      doc.setFont('helvetica','normal'); doc.setFontSize(20);
+      doc.text(' · Net Worth Report', ML + doc.getTextWidth(tabLabel), cy+7);
+      cy += 14;
+      setTxt(C.text3); doc.setFontSize(8);
+      const active = getActiveData(tab);
+      const rangeStr = tab==='ink' ? `${active.ink.firstLabel} → ${active.ink.lastLabel} · ${active.ink.months.length} months`
+        : tab==='fang' ? `${active.fang.firstLabel} → ${active.fang.lastLabel} · ${active.fang.months.length} months`
+        : `Ink: ${inkData.firstLabel} → ${inkData.lastLabel}  ·  Fang: ${fangData.firstLabel} → ${fangData.lastLabel}`;
+      doc.text(rangeStr, ML, cy);
+      cy += 8;
+      // divider
+      setDraw(C.text3); doc.setLineWidth(0.3);
+      doc.line(ML, cy, ML+CW, cy);
+      cy += 8;
+
+      // ── Section helper ───────────────────────────────────────────
+      function sectionTitle(t) {
+        checkSpace(14);
+        setTxt(C.text3); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+        doc.text(t.toUpperCase(), ML, cy);
+        setDraw([60,60,60]); doc.setLineWidth(0.2);
+        doc.line(ML + doc.getTextWidth(t.toUpperCase()) + 2, cy - 0.5, ML+CW, cy - 0.5);
+        cy += 7;
+      }
+
+      // ── Metrics ──────────────────────────────────────────────────
+      sectionTitle('Key Metrics');
+      const MCW2 = (CW - 6) / 2, MCH2 = 18;
+      metrics.forEach((m, i) => {
+        const col = i % 2, row = Math.floor(i / 2);
+        const mx = ML + col * (MCW2 + 6), my = cy + row * (MCH2 + 4);
+        checkSpace(MCH2 + 4);
+        setFill(C.surface); doc.roundedRect(mx, my, MCW2, MCH2, 2, 2, 'F');
+        setDraw([40,40,40]); doc.setLineWidth(0.2); doc.roundedRect(mx, my, MCW2, MCH2, 2, 2, 'S');
+        setTxt(C.text3); doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
+        doc.text(m.label.toUpperCase(), mx+3, my+5);
+        setTxt(C.text); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+        doc.text(m.val, mx+3, my+12);
+        setTxt(C.text2); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+        doc.text(m.sub, mx+3, my+17);
+      });
+      cy += Math.ceil(metrics.length/2) * (MCH2+4) + 6;
+
+      // ── Household comparison ──────────────────────────────────────
+      if (hhCompare) {
+        cy += 4; sectionTitle('Individual Breakdown');
+        const rows = [
+          ['Net worth',       hhCompare.ink.netWorth, hhCompare.fang.netWorth],
+          ['MoM change',      hhCompare.ink.mom,       hhCompare.fang.mom],
+          ['All-time growth', hhCompare.ink.growth,    hhCompare.fang.growth],
+          ['Tracking since',  hhCompare.ink.since,     hhCompare.fang.since],
+        ];
+        const TH = rows.length * 8 + 12;
+        checkSpace(TH + 4);
+        setFill(C.surface); doc.roundedRect(ML, cy, CW, TH, 2, 2, 'F');
+        // header
+        setTxt(C.text3); doc.setFontSize(6.5);
+        doc.text('INK',  ML + CW*0.5, cy+5, {align:'left'});
+        doc.text('FANG', ML + CW*0.75, cy+5, {align:'left'});
+        setDraw([40,40,40]); doc.setLineWidth(0.2);
+        doc.line(ML+3, cy+7, ML+CW-3, cy+7);
+        rows.forEach((row,ri) => {
+          const ry = cy + 11 + ri*8;
+          setTxt(C.text2); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+          doc.text(row[0], ML+4, ry);
+          const c1 = row[0]==='MoM change'?(row[1].startsWith('+')?C.green:C.red):C.text;
+          const c2 = row[0]==='MoM change'?(row[2].startsWith('+')?C.green:C.red):C.text;
+          setTxt(c1); doc.text(row[1], ML+CW*0.5, ry);
+          setTxt(c2); doc.text(row[2], ML+CW*0.75, ry);
+          if (ri < rows.length-1) {
+            setDraw([35,35,35]); doc.setLineWidth(0.1);
+            doc.line(ML+3,ry+2,ML+CW-3,ry+2);
+          }
+        });
+        cy += TH + 8;
+      }
+
+      // ── Goals ────────────────────────────────────────────────────
+      cy += 4; sectionTitle('Goal Progress');
+      const { cashVal, investVal, goals } = goalData;
+      const goalItems = [
+        { name:'Cash',                  sub:'Short-term goal',   cur:cashVal,   tgt:goals.cash.st },
+        { name:'Cash',                  sub:'Long-term goal',    cur:cashVal,   tgt:goals.cash.lt },
+        { name:'Investible Assets',     sub:'Short-term goal',   cur:investVal, tgt:goals.invest.st },
+        { name:'Investible Assets',     sub:'Long-term goal',    cur:investVal, tgt:goals.invest.lt },
+      ];
+      const GH2 = goalItems.length * 12 + 14;
+      checkSpace(GH2 + 4);
+      setFill(C.surface); doc.roundedRect(ML, cy, CW, GH2, 2, 2, 'F');
+      goalItems.forEach((g, gi) => {
+        const pct  = Math.min(g.cur/g.tgt*100, 100);
+        const clrArr = pct>=100?C.green:pct>=60?C.accent:pct>=30?C.amber:C.red;
+        const gy   = cy + 8 + gi * 12;
+        // label
+        setTxt(C.text2); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+        doc.text(g.name, ML+4, gy+2);
+        setTxt(C.text3); doc.setFontSize(6.5);
+        doc.text(g.sub, ML+4, gy+7);
+        // bar track
+        const BX = ML+60, BW3 = CW-60-20, BY = gy, BH3 = 3;
+        setFill(C.surface2); doc.roundedRect(BX, BY, BW3, BH3, 1, 1, 'F');
+        setFill(clrArr); doc.roundedRect(BX, BY, BW3*(pct/100), BH3, 1, 1, 'F');
+        // pct label
+        setTxt(clrArr); doc.setFontSize(7.5);
+        doc.text(pct.toFixed(1)+'%', ML+CW-MR-2, gy+3, {align:'right'});
+        // target
+        setTxt(C.text3); doc.setFontSize(6);
+        doc.text('Target: '+fmtM(g.tgt), ML+CW-MR-2, gy+8, {align:'right'});
+      });
+      cy += GH2 + 8;
+
+      // ── Asset Allocation ──────────────────────────────────────────
+      if (donuts.length) {
+        cy += 4; sectionTitle('Asset Allocation Breakdown');
+        donuts.forEach(port => {
+          if (!port.assets.length) return;
+          const rowH = 8;
+          const cardH = port.assets.length * rowH + 18;
+          checkSpace(cardH + 6);
+          setFill(C.surface); doc.roundedRect(ML, cy, CW, cardH, 2, 2, 'F');
+          // title + total
+          setTxt(C.text2); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+          doc.text(port.title, ML+4, cy+7);
+          setTxt(C.text); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+          doc.text(fmtM(port.total)+' '+port.currency, ML+CW-4, cy+7, {align:'right'});
+          setDraw([40,40,40]); doc.setLineWidth(0.2);
+          doc.line(ML+4,cy+9,ML+CW-4,cy+9);
+          // rows
+          port.assets.forEach((a, ai) => {
+            const ay = cy + 13 + ai * rowH;
+            const dotClr = CHART_COLORS[ai % CHART_COLORS.length];
+            // dot
+            doc.setFillColor(dotClr);
+            doc.circle(ML+7, ay+1, 1.2, 'F');
+            // name
+            setTxt(C.text2); doc.setFontSize(7);
+            const nm = a.name.length>35?a.name.slice(0,33)+'…':a.name;
+            doc.text(nm, ML+11, ay+3);
+            // bar
+            const BX2 = ML+80, BW4 = CW-80-20, BH4 = 2.5, BY2 = ay-0.5;
+            setFill(C.surface2); doc.roundedRect(BX2, BY2, BW4, BH4, 1, 1, 'F');
+            doc.setFillColor(dotClr);
+            doc.roundedRect(BX2, BY2, BW4*(a.pct/100), BH4, 1, 1, 'F');
+            // value + pct
+            setTxt(C.text3); doc.setFontSize(6.5);
+            doc.text(fmtCurrency(a.value, a.currency), ML+CW-4, ay+3, {align:'right'});
+            setTxt(C.text2); doc.setFontSize(7);
+            doc.text(a.pct.toFixed(1)+'%', ML+CW-22, ay+3);
+          });
+          cy += cardH + 6;
+        });
+      }
+
+      // ── Historical trend table (last 6 months) ────────────────────
+      cy += 4; sectionTitle('Recent Monthly Trend');
+      const trendData = tab === 'ink' ? inkData : tab === 'fang' ? fangData : null;
+      if (trendData) {
+        const last6M = trendData.months.slice(-6);
+        const last6T = trendData.totals.slice(-6);
+        const rowH3 = 8;
+        const tH = last6M.length * rowH3 + 14;
+        checkSpace(tH + 4);
+        setFill(C.surface); doc.roundedRect(ML, cy, CW, tH, 2, 2, 'F');
+        setTxt(C.text3); doc.setFontSize(6.5);
+        doc.text('MONTH', ML+4, cy+7);
+        doc.text('NET WORTH', ML+CW*0.5, cy+7);
+        doc.text('MOM', ML+CW-4, cy+7, {align:'right'});
+        setDraw([40,40,40]); doc.setLineWidth(0.2);
+        doc.line(ML+4,cy+9,ML+CW-4,cy+9);
+        last6M.forEach((m, mi) => {
+          const ty = cy + 13 + mi * rowH3;
+          setTxt(C.text2); doc.setFontSize(7.5);
+          doc.text(m, ML+4, ty+2);
+          setTxt(C.text); doc.text(fmtM(last6T[mi]), ML+CW*0.5, ty+2);
+          if (mi > 0) {
+            const mom = fmtPct(last6T[mi], last6T[mi-1]);
+            const mc = last6T[mi] >= last6T[mi-1] ? C.green : C.red;
+            setTxt(mc); doc.text(mom, ML+CW-4, ty+2, {align:'right'});
+          } else {
+            setTxt(C.text3); doc.text('—', ML+CW-4, ty+2, {align:'right'});
+          }
+          if (mi < last6M.length-1) {
+            setDraw([35,35,35]); doc.setLineWidth(0.1);
+            doc.line(ML+4,ty+4,ML+CW-4,ty+4);
+          }
+        });
+        cy += tH + 6;
+      } else {
+        // Household: show both
+        ['ink','fang'].forEach(t => {
+          const td = t === 'ink' ? inkData : fangData;
+          const last6M = td.months.slice(-6), last6T = td.totals.slice(-6);
+          const rowH3 = 8, tH2 = last6M.length * rowH3 + 18;
+          checkSpace(tH2 + 4);
+          setFill(C.surface); doc.roundedRect(ML, cy, CW, tH2, 2, 2, 'F');
+          setTxt(C.text2); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+          doc.text(t==='ink'?'Ink':'Fang', ML+4, cy+7);
+          setDraw([40,40,40]); doc.setLineWidth(0.2); doc.line(ML+4,cy+9,ML+CW-4,cy+9);
+          setTxt(C.text3); doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
+          doc.text('MONTH',ML+4,cy+14); doc.text('NET WORTH',ML+CW*0.5,cy+14); doc.text('MOM',ML+CW-4,cy+14,{align:'right'});
+          doc.setLineWidth(0.1); doc.line(ML+4,cy+16,ML+CW-4,cy+16);
+          last6M.forEach((m,mi) => {
+            const ty = cy + 20 + mi*rowH3;
+            setTxt(C.text2); doc.setFontSize(7.5);
+            doc.text(m,ML+4,ty);
+            setTxt(C.text); doc.text(fmtM(last6T[mi]),ML+CW*0.5,ty);
+            if (mi>0) { const mm=fmtPct(last6T[mi],last6T[mi-1]); setTxt(last6T[mi]>=last6T[mi-1]?C.green:C.red); doc.text(mm,ML+CW-4,ty,{align:'right'}); }
+            else { setTxt(C.text3); doc.text('—',ML+CW-4,ty,{align:'right'}); }
+            if (mi<last6M.length-1) { setDraw([35,35,35]); doc.setLineWidth(0.1); doc.line(ML+4,ty+2,ML+CW-4,ty+2); }
+          });
+          cy += tH2 + 6;
+        });
+      }
+
+      // ── Footer on each page ───────────────────────────────────────
+      const pageCount = doc.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        setDraw(C.text3); doc.setLineWidth(0.2);
+        doc.line(ML, PH-10, ML+CW, PH-10);
+        setTxt(C.text3); doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
+        doc.text('VS NP Dashboard · v2.5 · Exported '+todayStr(), ML, PH-6);
+        doc.text('Page '+p+' / '+pageCount, ML+CW, PH-6, {align:'right'});
+      }
+
+      doc.save(`vsnp_${tab}_${new Date().toISOString().slice(0,10)}.pdf`);
+      hideOverlay();
+    } catch(e) {
+      hideOverlay();
+      alert('PDF export failed: '+e.message);
+    }
+  });
+})();
+
+
   const ok = await loadData();
   if (ok) renderAll(currentTab);
 });
@@ -1308,6 +2236,56 @@ async function init() {
   const ok = await loadData();
   if (ok) renderAll('ink');
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// PULL TO REFRESH
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  const THRESHOLD    = 80;   // px to pull before triggering refresh
+  const MAX_PULL     = 110;  // px max visual stretch
+  let startY         = 0;
+  let pulling        = false;
+  let refreshing     = false;
+  const indicator    = document.getElementById('ptr-indicator');
+  const ptrText      = document.getElementById('ptr-text');
+
+  function atTop() { return window.scrollY <= 0; }
+
+  document.addEventListener('touchstart', e => {
+    if (refreshing) return;
+    if (atTop()) { startY = e.touches[0].clientY; pulling = true; }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling || refreshing) return;
+    const dy = Math.max(0, e.touches[0].clientY - startY);
+    if (dy > 5 && atTop()) {
+      const pull = Math.min(dy * 0.5, MAX_PULL);
+      indicator.className = 'pulling';
+      indicator.style.height = pull + 'px';
+      ptrText.textContent = pull >= THRESHOLD * 0.5 ? 'Release to refresh' : 'Pull down to refresh';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', async () => {
+    if (!pulling || refreshing) return;
+    pulling = false;
+    const h = parseInt(indicator.style.height || '0');
+    if (h >= THRESHOLD * 0.5) {
+      refreshing = true;
+      indicator.className = 'refreshing';
+      indicator.style.height = '48px';
+      ptrText.textContent = 'Refreshing…';
+      const ok = await loadData();
+      if (ok) renderAll(currentTab);
+      refreshing = false;
+    }
+    indicator.className = '';
+    indicator.style.height = '0';
+    ptrText.textContent = 'Pull down to refresh';
+  });
+})();
+
 </script>
 </body>
 </html>
