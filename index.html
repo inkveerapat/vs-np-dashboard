@@ -282,7 +282,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v3.0</p>
+      <p class="gate-version">v3.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -303,7 +303,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v3.0</span>
+      <span class="version-badge">v3.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="export-btn" id="export-btn">&#8681; Export</button>
@@ -386,7 +386,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v3.0';
+const VERSION  = 'v3.1';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -901,16 +901,37 @@ function renderGoals(tab) {
 }
 
 // METRICS
+// YTD helper — finds Jan value and computes change to current
+function calcYTD(months, totals) {
+  const last = totals[totals.length - 1];
+  // Find the latest January in the data at or before current point
+  let janIdx = -1;
+  for (let i = totals.length - 1; i >= 0; i--) {
+    if (/^jan/i.test(months[i])) { janIdx = i; break; }
+  }
+  if (janIdx < 0) return null; // no January in range
+  const janVal = totals[janIdx];
+  const diff   = last - janVal;
+  const pct    = janVal !== 0 ? (diff / Math.abs(janVal) * 100) : 0;
+  const year   = months[janIdx].replace(/[^0-9]/g,'').slice(-2);
+  return { diff, pct, label: "YTD '" + (year || '?'), janVal };
+}
+
 function renderMetrics(tab) {
   const active = getActiveData(tab);
   function pCards(d) {
     const last=d.totals[d.totals.length-1], prev=d.totals[d.totals.length-2]??last, first=d.totals[0];
     const mom=fmtPct(last,prev), peak=Math.max(...d.totals);
+    const ytd = calcYTD(d.months, d.totals);
+    const ytdVal = ytd
+      ? (ytd.diff >= 0 ? '+' : '') + fmtM(ytd.diff) + ' (' + (ytd.pct >= 0 ? '+' : '') + ytd.pct.toFixed(1) + '%)'
+      : '—';
+    const ytdCls = ytd ? (ytd.diff >= 0 ? 'pos' : 'neg') : '';
     return [
       {label:'Current net worth', val:mask(fmtM(last)),          sub:mom+' MoM',                         cls:parseFloat(mom)>=0?'pos':'neg'},
       {label:'All-time growth',   val:fmtPct(last,first),        sub:'Since '+d.firstLabel,               cls:''},
       {label:'Peak',              val:mask(fmtM(peak)),          sub:d.months[d.totals.indexOf(peak)],    cls:''},
-      {label:'Months tracked',    val:d.months.length,           sub:d.firstLabel+' \u2192 '+d.lastLabel, cls:''},
+      {label: ytd ? ytd.label : 'YTD', val: ytd ? mask(ytdVal) : '—', sub: ytd ? 'vs '+mask(fmtM(ytd.janVal))+' Jan' : 'No Jan in range', cls: ytdCls},
     ];
   }
   let cards;
@@ -924,11 +945,33 @@ function renderMetrics(tab) {
     const iP=inkS.totals[inkS.totals.length-2]??iL;
     const fP=fangS.totals.length>1 ? fangS.totals[fangS.totals.length-2] : fL;
     const mom=fmtPct(tot,iP+fP);
+    // Household YTD: combine ink + fang totals aligned by month
+    const inkJan = calcYTD(inkS.months, inkS.totals);
+    const fangStart = inkS.months.indexOf(fangS.months[0]);
+    // Find the Jan index in household (ink months)
+    let hhJanIdx = -1;
+    for (let i = inkS.totals.length - 1; i >= 0; i--) {
+      if (/^jan/i.test(inkS.months[i])) { hhJanIdx = i; break; }
+    }
+    let hhYtd = null;
+    if (hhJanIdx >= 0) {
+      const inkJanVal  = inkS.totals[hhJanIdx];
+      const fangJanIdx = fangStart >= 0 ? hhJanIdx - fangStart : -1;
+      const fangJanVal = (fangJanIdx >= 0 && fangJanIdx < fangS.totals.length) ? fangS.totals[fangJanIdx] : 0;
+      const janTot = inkJanVal + fangJanVal;
+      const diff   = tot - janTot;
+      const pct    = janTot !== 0 ? diff / Math.abs(janTot) * 100 : 0;
+      const year   = inkS.months[hhJanIdx].replace(/[^0-9]/g,'').slice(-2);
+      hhYtd = { diff, pct, label: "YTD '" + (year || '?'), janVal: janTot };
+    }
+    const hhYtdVal = hhYtd
+      ? (hhYtd.diff >= 0 ? '+' : '') + fmtM(hhYtd.diff) + ' (' + (hhYtd.pct >= 0 ? '+' : '') + hhYtd.pct.toFixed(1) + '%)'
+      : '—';
     cards=[
-      {label:'Household net worth', val:mask(fmtM(tot)),                    sub:mom+' MoM',          cls:parseFloat(mom)>=0?'pos':'neg'},
-      {label:"Ink's share",         val:tot>0?(iL/tot*100).toFixed(0)+'%':'—', sub:mask(fmtM(iL)),  cls:''},
-      {label:"Fang's share",        val:tot>0?(fL/tot*100).toFixed(0)+'%':'—', sub:mask(fmtM(fL)),  cls:''},
-      {label:'Data since',          val:inkData.firstLabel,                 sub:'Ink started first', cls:''},
+      {label:'Household net worth', val:mask(fmtM(tot)),                       sub:mom+' MoM',             cls:parseFloat(mom)>=0?'pos':'neg'},
+      {label:"Ink's share",         val:tot>0?(iL/tot*100).toFixed(0)+'%':'—', sub:mask(fmtM(iL)),         cls:''},
+      {label:"Fang's share",        val:tot>0?(fL/tot*100).toFixed(0)+'%':'—', sub:mask(fmtM(fL)),         cls:''},
+      {label: hhYtd ? hhYtd.label : 'YTD', val: hhYtd ? mask(hhYtdVal) : '—', sub: hhYtd ? 'vs '+mask(fmtM(hhYtd.janVal))+' Jan' : 'No Jan in range', cls: hhYtd ? (hhYtd.diff >= 0 ? 'pos' : 'neg') : ''},
     ];
   }
   document.getElementById('metric-grid').innerHTML = cards.map(c =>
@@ -1738,7 +1781,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.0</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.1</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -1792,7 +1835,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.0${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.1${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
