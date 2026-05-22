@@ -282,7 +282,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v2.9</p>
+      <p class="gate-version">v3.0</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -303,7 +303,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v2.9</span>
+      <span class="version-badge">v3.0</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="export-btn" id="export-btn">&#8681; Export</button>
@@ -386,7 +386,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v2.9';
+const VERSION  = 'v3.0';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1608,18 +1608,52 @@ function buildSummaryCard(tab, maskVals) {
     ];
   }
 
-  // ── 4. Goal values ──
+  // ── 4. Goal values + prev month for MoM ──
   let cashVal = 0, investVal = 0, goals;
+  let prevCash = 0, prevInvest = 0;
+  let inkCash = 0, fangCash = 0, inkInvest = 0, fangInvest = 0; // household only
+
   if (tab === 'ink') {
     const v = getLatestValues(active.ink, INK_CONFIG);
     cashVal = v.cash; investVal = v.invest; goals = GOALS.ink;
+    const fi = filterState[tab];
+    const idx = fi < 0 ? inkData.totals.length - 1 : fi;
+    if (idx > 0) {
+      const pv = getLatestValues(sliceData(inkData, idx - 1), INK_CONFIG);
+      prevCash = pv.cash; prevInvest = pv.invest;
+    } else { prevCash = cashVal; prevInvest = investVal; }
   } else if (tab === 'fang') {
     const v = getLatestValues(active.fang, FANG_CONFIG);
     cashVal = v.cash; investVal = v.invest; goals = GOALS.fang;
+    const fi = filterState[tab];
+    const idx = fi < 0 ? fangData.totals.length - 1 : fi;
+    if (idx > 0) {
+      const pv = getLatestValues(sliceData(fangData, idx - 1), FANG_CONFIG);
+      prevCash = pv.cash; prevInvest = pv.invest;
+    } else { prevCash = cashVal; prevInvest = investVal; }
   } else {
     const vi = getLatestValues(active.ink, INK_CONFIG);
     const vf = getLatestValues(fangData, FANG_CONFIG);
-    cashVal = vi.cash + vf.cash; investVal = vi.invest + vf.invest; goals = GOALS.household;
+    inkCash = vi.cash; fangCash = vf.cash;
+    inkInvest = vi.invest; fangInvest = vf.invest;
+    cashVal = inkCash + fangCash; investVal = inkInvest + fangInvest;
+    goals = GOALS.household;
+    const inkFi = filterState[tab];
+    const inkIdx = inkFi < 0 ? inkData.totals.length - 1 : inkFi;
+    if (inkIdx > 0) {
+      const pvi = getLatestValues(sliceData(inkData, inkIdx - 1), INK_CONFIG);
+      const fangStart = inkData.months.indexOf(fangData.months[0]);
+      const fangIdx = Math.max(-1, inkIdx - 1 - fangStart);
+      const pfSlice = sliceData(fangData, fangIdx);
+      const pvf = pfSlice.totals.length ? getLatestValues(pfSlice, FANG_CONFIG) : { cash: 0, invest: 0 };
+      prevCash = pvi.cash + pvf.cash; prevInvest = pvi.invest + pvf.invest;
+    } else { prevCash = cashVal; prevInvest = investVal; }
+  }
+
+  function momStr(cur, prev) {
+    const diff = cur - prev;
+    if (diff === 0) return { text: 'No change', col: '#555450' };
+    return { text: (diff > 0 ? '+' : '') + fmtM(diff) + ' MoM', col: diff > 0 ? '#5ce0a8' : '#f06b6b' };
   }
 
   function goalBar(label, cur, target) {
@@ -1638,6 +1672,58 @@ function buildSummaryCard(tab, maskVals) {
       </div>`;
   }
 
+  function goalBarStacked(label, inkV, fangV, target) {
+    const total = inkV + fangV;
+    const pct = Math.min(total / target * 100, 100);
+    const col = goalColor(pct);
+    const inkPct  = Math.min(inkV  / target * 100, 100);
+    const fangPct = Math.min(fangV / target * 100, Math.max(0, pct - inkPct));
+    const inkShare  = total > 0 ? (inkV  / total * 100).toFixed(0) : 0;
+    const fangShare = total > 0 ? (fangV / total * 100).toFixed(0) : 0;
+    return `
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:11px;color:#888780;font-family:'DM Mono',monospace;">${label}</span>
+          <span style="font-size:11px;font-family:'DM Mono',monospace;color:${col};">${pct.toFixed(1)}%</span>
+        </div>
+        <div style="height:5px;background:#222;border-radius:99px;overflow:hidden;position:relative;">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${inkPct}%;background:#4da8f5;border-radius:99px 0 0 99px;"></div>
+          <div style="position:absolute;left:${inkPct}%;top:0;height:100%;width:${fangPct}%;background:#5ce0a8;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px;">
+          <div style="display:flex;gap:8px;">
+            <span style="font-size:9px;font-family:'DM Mono',monospace;color:#4da8f5;display:flex;align-items:center;gap:3px;"><span style="width:5px;height:5px;border-radius:50%;background:#4da8f5;display:inline-block;"></span>Ink ${inkShare}%</span>
+            <span style="font-size:9px;font-family:'DM Mono',monospace;color:#5ce0a8;display:flex;align-items:center;gap:3px;"><span style="width:5px;height:5px;border-radius:50%;background:#5ce0a8;display:inline-block;"></span>Fang ${fangShare}%</span>
+          </div>
+          <span style="font-size:10px;color:#555450;font-family:'DM Mono',monospace;">Target: ${maskVals ? '••••' : fmtM(target)}</span>
+        </div>
+      </div>`;
+  }
+
+  // MoM strings
+  const cashMoM   = momStr(cashVal,   prevCash);
+  const investMoM = momStr(investVal, prevInvest);
+
+  // Household contribution rows
+  const hhCashContrib = tab === 'household' ? `
+    <div style="display:flex;gap:16px;margin-bottom:10px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;">
+      <span style="font-size:10px;font-family:'DM Mono',monospace;color:#4da8f5;display:flex;align-items:center;gap:4px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:#4da8f5;display:inline-block;"></span>Ink ${fmt(inkCash)}
+      </span>
+      <span style="font-size:10px;font-family:'DM Mono',monospace;color:#5ce0a8;display:flex;align-items:center;gap:4px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:#5ce0a8;display:inline-block;"></span>Fang ${fmt(fangCash)}
+      </span>
+    </div>` : '';
+  const hhInvestContrib = tab === 'household' ? `
+    <div style="display:flex;gap:16px;margin-bottom:10px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;">
+      <span style="font-size:10px;font-family:'DM Mono',monospace;color:#4da8f5;display:flex;align-items:center;gap:4px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:#4da8f5;display:inline-block;"></span>Ink ${fmt(inkInvest)}
+      </span>
+      <span style="font-size:10px;font-family:'DM Mono',monospace;color:#5ce0a8;display:flex;align-items:center;gap:4px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:#5ce0a8;display:inline-block;"></span>Fang ${fmt(fangInvest)}
+      </span>
+    </div>` : '';
+
   // ── 5. Assemble card ──
   const now = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
   const card = document.createElement('div');
@@ -1652,7 +1738,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v2.9</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.0</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -1672,20 +1758,28 @@ function buildSummaryCard(tab, maskVals) {
       <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">Goal Progress</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
             <span style="font-size:12px;font-weight:500;">Cash</span>
             <span style="font-size:16px;font-family:'DM Mono',monospace;font-weight:500;">${fmt(cashVal)}</span>
           </div>
-          ${goalBar('Short-term', cashVal, goals.cash.st)}
-          ${goalBar('Long-term',  cashVal, goals.cash.lt)}
+          ${hhCashContrib}
+          <div style="margin-bottom:10px;padding:5px 0 5px;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:10px;font-family:'DM Mono',monospace;color:${cashMoM.col};">${maskVals ? '••••' : cashMoM.text}</span>
+          </div>
+          ${tab === 'household' ? goalBarStacked('Short-term', inkCash, fangCash, goals.cash.st) : goalBar('Short-term', cashVal, goals.cash.st)}
+          ${tab === 'household' ? goalBarStacked('Long-term',  inkCash, fangCash, goals.cash.lt) : goalBar('Long-term',  cashVal, goals.cash.lt)}
         </div>
         <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
             <span style="font-size:12px;font-weight:500;">Investible Assets</span>
             <span style="font-size:16px;font-family:'DM Mono',monospace;font-weight:500;">${fmt(investVal)}</span>
           </div>
-          ${goalBar('Short-term', investVal, goals.invest.st)}
-          ${goalBar('Long-term',  investVal, goals.invest.lt)}
+          ${hhInvestContrib}
+          <div style="margin-bottom:10px;padding:5px 0 5px;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:10px;font-family:'DM Mono',monospace;color:${investMoM.col};">${maskVals ? '••••' : investMoM.text}</span>
+          </div>
+          ${tab === 'household' ? goalBarStacked('Short-term', inkInvest, fangInvest, goals.invest.st) : goalBar('Short-term', investVal, goals.invest.st)}
+          ${tab === 'household' ? goalBarStacked('Long-term',  inkInvest, fangInvest, goals.invest.lt) : goalBar('Long-term',  investVal, goals.invest.lt)}
         </div>
       </div>
     </div>
@@ -1698,7 +1792,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v2.9${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.0${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
