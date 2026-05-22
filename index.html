@@ -9,58 +9,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<script>
-// ═══════════════════════════════════════════════════════════════════
-// PULL TO REFRESH
-// ═══════════════════════════════════════════════════════════════════
-(function() {
-  const THRESHOLD    = 80;   // px to pull before triggering refresh
-  const MAX_PULL     = 110;  // px max visual stretch
-  let startY         = 0;
-  let pulling        = false;
-  let refreshing     = false;
-  const indicator    = document.getElementById('ptr-indicator');
-  const ptrText      = document.getElementById('ptr-text');
-
-  function atTop() { return window.scrollY <= 0; }
-
-  document.addEventListener('touchstart', e => {
-    if (refreshing) return;
-    if (atTop()) { startY = e.touches[0].clientY; pulling = true; }
-  }, { passive: true });
-
-  document.addEventListener('touchmove', e => {
-    if (!pulling || refreshing) return;
-    const dy = Math.max(0, e.touches[0].clientY - startY);
-    if (dy > 5 && atTop()) {
-      const pull = Math.min(dy * 0.5, MAX_PULL);
-      indicator.className = 'pulling';
-      indicator.style.height = pull + 'px';
-      ptrText.textContent = pull >= THRESHOLD * 0.5 ? 'Release to refresh' : 'Pull down to refresh';
-    }
-  }, { passive: true });
-
-  document.addEventListener('touchend', async () => {
-    if (!pulling || refreshing) return;
-    pulling = false;
-    const h = parseInt(indicator.style.height || '0');
-    if (h >= THRESHOLD * 0.5) {
-      refreshing = true;
-      indicator.className = 'refreshing';
-      indicator.style.height = '48px';
-      ptrText.textContent = 'Refreshing…';
-      const ok = await loadData();
-      if (ok) renderAll(currentTab);
-      refreshing = false;
-    }
-    indicator.className = '';
-    indicator.style.height = '0';
-    ptrText.textContent = 'Pull down to refresh';
-  });
-})();
-</script>
-
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -101,9 +49,20 @@
   .topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   .last-updated { font-family: var(--font-mono); font-size: 11px; color: var(--text3); white-space: nowrap; }
   .version-badge { font-family: var(--font-mono); font-size: 10px; color: var(--text3); background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; letter-spacing: .04em; white-space: nowrap; }
-  .refresh-btn, .export-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; }
-  .refresh-btn:hover, .export-btn:hover { color: var(--text); background: var(--surface); }
+  .refresh-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; }
+  .refresh-btn:hover { color: var(--text); background: var(--surface); }
   .refresh-btn .refresh-label { display: inline; }
+  
+  /* EXPORT COMPONENT CONTROLS */
+  .export-container { position: relative; display: inline-block; }
+  .export-btn { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text); font-size: 12px; padding: 5px 12px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; display: flex; align-items: center; gap: 4px; }
+  .export-btn:hover { background: var(--surface); border-color: var(--accent); }
+  .export-dropdown { display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); min-width: 170px; z-index: 50; box-shadow: 0 4px 20px rgba(0,0,0,0.5); overflow: hidden; }
+  .export-dropdown.show { display: block; }
+  .export-group-title { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; color: var(--text3); padding: 6px 12px 2px; letter-spacing: .05em; }
+  .export-item { width: 100%; background: none; border: none; text-align: left; padding: 6px 14px; font-size: 12px; color: var(--text2); cursor: pointer; font-family: var(--font-sans); display: block; transition: all .12s; }
+  .export-item:hover { background: var(--surface); color: var(--accent); }
+  
   .logout-btn { background: none; border: none; color: var(--text3); font-size: 12px; cursor: pointer; font-family: var(--font-mono); letter-spacing: .04em; padding: 0; transition: color .15s; white-space: nowrap; }
   .logout-btn:hover { color: var(--text2); }
   .main { max-width: 1100px; margin: 0 auto; padding: 36px 32px 64px; width: 100%; }
@@ -172,14 +131,7 @@
   .donut-card-title { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 16px; }
   .donut-card-body { display: flex; align-items: center; gap: 18px; }
   .donut-canvas-wrap { position: relative; flex-shrink: 0; }
-  .donut-center {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 60%;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    pointer-events: none; text-align: center;
-  }
+  .donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; text-align: center; }
   .donut-center-total { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; word-break: break-all; }
   .donut-center-label { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 2px; }
   .donut-center-hover-pct { font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.2; display: none; }
@@ -213,38 +165,6 @@
   .num-mask::after { content: '••••••'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: .75em; letter-spacing: .1em; filter: blur(0); }
 
   body.privacy .y-axis-blur { filter: blur(6px); pointer-events: none; }
-
-  /* EXPORT MODAL & TEMPLATE */
-  #export-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 300; display: none; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
-  #export-modal.active { display: flex; }
-  .export-window { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); width: 100%; max-width: 420px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
-  .export-actions { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg); }
-  .export-actions-left { font-family: var(--font-mono); font-size: 12px; color: var(--text2); }
-  .export-buttons { display: flex; gap: 8px; }
-  .export-action-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); border-radius: var(--radius); padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: var(--font-sans); }
-  .export-action-btn.primary { background: var(--accent); color: #0d0d0d; border-color: var(--accent); font-weight: 500; }
-  .export-action-btn:hover { opacity: 0.9; }
-  
-  /* Container for the mobile-ready summary card layout */
-  .export-preview-container { padding: 20px; background: var(--bg); overflow-x: auto; display: flex; justify-content: center; }
-  #export-summary-card { width: 360px; background: #111111; border: 1px solid #222222; border-radius: 16px; padding: 24px; color: #f0efe8; font-family: var(--font-sans); box-sizing: border-box; }
-  .exp-header { border-bottom: 1px dashed #222222; padding-bottom: 16px; margin-bottom: 20px; text-align: center; }
-  .exp-brand { font-family: var(--font-mono); font-size: 11px; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 4px; }
-  .exp-title { font-size: 20px; font-weight: 500; color: #ffffff; letter-spacing: -0.01em; }
-  .exp-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text3); margin-top: 4px; }
-  .exp-main-metric { text-align: center; background: #161616; padding: 16px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; }
-  .exp-label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; color: var(--text3); letter-spacing: 0.08em; margin-bottom: 4px; }
-  .exp-val { font-family: var(--font-mono); font-size: 26px; font-weight: 500; color: #ffffff; }
-  .exp-sub { font-family: var(--font-mono); font-size: 11px; margin-top: 2px; }
-  .exp-sub.pos { color: var(--green); }
-  .exp-sub.neg { color: var(--red); }
-  .exp-section-title { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; color: var(--text2); letter-spacing: 0.1em; border-bottom: 1px solid #222222; padding-bottom: 6px; margin-bottom: 10px; }
-  .exp-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-  .exp-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
-  .exp-item-name { color: var(--text2); display: flex; align-items: center; gap: 6px; }
-  .exp-item-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .exp-item-val { font-family: var(--font-mono); color: #ffffff; }
-  .exp-footer { text-align: center; font-family: var(--font-mono); font-size: 9px; color: var(--text3); border-top: 1px dashed #222222; padding-top: 14px; margin-top: 10px; }
 
   @media (max-width: 480px) {
     .topbar { padding: 0 14px; height: auto; min-height: 52px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; gap: 6px; }
@@ -336,68 +256,16 @@
   .skel-bar.short { width: 35%; }
   .skel-chart { width: 100%; height: 280px; border-radius: var(--radius-lg); margin-top: 16px; margin-bottom: 20px; }
   #skeleton-screen { display: none; padding: 0; }
-
-  /* HISTORICAL BANNER */
-  .historical-banner {
-    display: none; align-items: center; gap: 8px;
-    background: rgba(240,180,41,0.1); border: 1px solid rgba(240,180,41,0.3);
-    border-radius: 99px; padding: 5px 14px; margin-bottom: 16px;
-    font-family: var(--font-mono); font-size: 11px; color: var(--amber);
-    width: fit-content;
-  }
-  .historical-banner.show { display: flex; }
-  .historical-banner-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
-
-  /* SPARKLINE on metric card */
-  .metric-card-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-  .metric-sparkline { flex-shrink: 0; margin-top: 2px; }
-
-  /* HOUSEHOLD COMPARISON TABLE */
-  .hh-compare { margin-bottom: 28px; }
-  .hh-compare-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; }
-  .hh-compare-table { width: 100%; border-collapse: collapse; }
-  .hh-compare-table th { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); padding: 6px 12px; text-align: right; font-weight: 400; border-bottom: 1px solid var(--border); }
-  .hh-compare-table th:first-child { text-align: left; }
-  .hh-compare-table td { font-family: var(--font-mono); font-size: 12px; color: var(--text); padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--border); }
-  .hh-compare-table td:first-child { text-align: left; font-size: 11px; color: var(--text2); }
-  .hh-compare-table tr:last-child td { border-bottom: none; }
-  .hh-compare-table .pos { color: var(--green); }
-  .hh-compare-table .neg { color: var(--red); }
-
-  /* PULL TO REFRESH */
-  #ptr-indicator {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-    display: flex; align-items: center; justify-content: center;
-    height: 0; overflow: hidden;
-    background: rgba(13,13,13,0.95); backdrop-filter: blur(8px);
-    transition: height .2s ease;
-    font-family: var(--font-mono); font-size: 11px; color: var(--text3);
-    border-bottom: 1px solid var(--border);
-  }
-  #ptr-indicator.pulling { height: 48px; }
-  #ptr-indicator.refreshing { height: 48px; color: var(--accent); }
-  .ptr-spinner { width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: ptr-spin .7s linear infinite; margin-right: 8px; display: none; }
-  #ptr-indicator.refreshing .ptr-spinner { display: block; }
-  @keyframes ptr-spin { to { transform: rotate(360deg); } }
-
-  /* MILESTONE LINES legend */
-  .milestone-legend { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
-  .milestone-legend-item { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; color: var(--text3); }
-  .milestone-legend-line { width: 20px; height: 2px; border-radius: 1px; }
 </style>
 </head>
 <body>
 
-<div id="ptr-indicator">
-  <div class="ptr-spinner"></div>
-  <span id="ptr-text">Pull down to refresh</span>
-</div>
 <div id="gate">
   <div class="gate-box">
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v2.5</p>
+      <p class="gate-version">v2.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -418,11 +286,30 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v2.5</span>
+      <span class="version-badge">v2.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
-      <button class="export-btn" id="export-modal-open-btn">↑ Export</button>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
+      
+      <div class="export-container">
+        <button class="export-btn" id="export-trigger-btn">
+          <span>&#128190;</span><span>Export Summary</span>
+        </button>
+        <div class="export-dropdown" id="export-dropdown-menu">
+          <p class="export-group-title">Ink Portfolio</p>
+          <button class="export-item" onclick="executeSummaryExport('ink', 'jpg')">Ink Summary (.JPG)</button>
+          <button class="export-item" onclick="executeSummaryExport('ink', 'pdf')">Ink Summary (.PDF)</button>
+          
+          <p class="export-group-title">Fang Portfolio</p>
+          <button class="export-item" onclick="executeSummaryExport('fang', 'jpg')">Fang Summary (.JPG)</button>
+          <button class="export-item" onclick="executeSummaryExport('fang', 'pdf')">Fang Summary (.PDF)</button>
+          
+          <p class="export-group-title">Household Total</p>
+          <button class="export-item" onclick="executeSummaryExport('household', 'jpg')">Household (.JPG)</button>
+          <button class="export-item" onclick="executeSummaryExport('household', 'pdf')">Household (.PDF)</button>
+        </div>
+      </div>
+
       <button class="logout-btn" id="logout-btn">lock</button>
     </div>
   </nav>
@@ -460,11 +347,9 @@
       <div class="filter-scroll" id="filter-scroll"></div>
     </div>
 
-    <div id="historical-banner" class="historical-banner"><span class="historical-banner-dot"></span><span id="historical-banner-text">Viewing —</span></div>
     <div id="metric-grid" class="metric-grid"></div>
     <div class="error-box" id="error-box"></div>
 
-    <div id="hh-compare" class="hh-compare" style="display:none;"></div>
     <div class="goal-section" id="goal-section">
       <p class="goal-section-title">Goal Progress</p>
       <div class="goal-grid" id="goal-grid"></div>
@@ -479,7 +364,6 @@
       <div class="chart-tooltip" id="chart-tooltip"></div>
     </div>
     <div class="legend" id="legend"></div>
-    <div class="milestone-legend" id="milestone-legend" style="display:none;"></div>
 
     <div class="donut-section" id="donut-section" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
@@ -499,49 +383,25 @@
   </main>
 </div>
 
-<div id="export-modal">
-  <div class="export-window">
-    <div class="export-actions">
-      <div class="export-actions-left">Export Summary</div>
-      <div class="export-buttons">
-        <button class="export-action-btn" id="export-cancel-btn">Close</button>
-        <button class="export-action-btn" id="export-jpg-btn">JPG</button>
-        <button class="export-action-btn primary" id="export-pdf-btn">PDF</button>
-      </div>
-    </div>
-    <div class="export-preview-container">
-      <div id="export-summary-card">
-        <div class="exp-header">
-          <div class="exp-brand" id="exp-brand-tab">TAB SUMMARY</div>
-          <div class="exp-title">Net Worth Slip</div>
-          <div class="exp-meta" id="exp-meta-date">Date Range</div>
-        </div>
-        <div class="exp-main-metric">
-          <div class="exp-label">Net Worth</div>
-          <div class="exp-val" id="exp-total-val">0.00 THB</div>
-          <div class="exp-sub" id="exp-total-sub">—</div>
-        </div>
-        <div class="exp-section-title">Asset Components</div>
-        <div class="exp-list" id="exp-components-list">
-          </div>
-        <div class="exp-section-title">Milestones & Goals</div>
-        <div class="exp-list" id="exp-goals-list">
-          </div>
-        <div class="exp-footer">
-          VS NP Dashboard • Generated Assets Summary Slip
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
 // CONFIG
-const VERSION  = 'v2.5';
+const VERSION  = 'v2.6';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
 let privacyMode = false;
+
+// Global explicit storage hooks accessed by our summary generation pipeline
+let inkData = null;
+let fangData = null;
+let householdData = null;
+let currentTab = 'ink';
+let activeMonthIdx = null;
+
+// Track donut live configuration mapping datasets
+let inkDonutData = [];
+let fangDonutData = [];
+let donutFilterState = { ink: '', fang: '' };
 
 function mask(val) {
   return privacyMode ? '••••••' : val;
@@ -589,169 +449,761 @@ const FANG_CONFIG = {
 
 // Goals (all in THB)
 const GOALS = {
-  ink: { cash: { st: 500000, lt: 8000000 }, invest: { st: 15000000, lt: 40000000 } },
-  fang: { cash: { st: 500000, lt: 8000000 }, invest: { st: 15000000, lt: 40000000 } },
-  household: { cash: { st: 1000000, lt: 16000000 }, invest: { st: 30000000, lt: 80000000 } },
+  ink:       { cash: { st: 500000,    lt: 8000000  }, invest: { st: 15000000, lt: 40000000 } },
+  fang:      { cash: { st: 500000,    lt: 8000000  }, invest: { st: 15000000, lt: 40000000 } },
+  household: { cash: { st: 1000000,   lt: 16000000 }, invest: { st: 30000000, lt: 80000000 } },
 };
 
-// State Variables
-let inkData = null, fangData = null, householdData = null;
-let currentTab = 'ink';
-let currentMonthIdx = -1;
+const INK_DONUTS = [
+  { title:'Growth portfolio',     url:csv(353664994),  assetRowStart:3,  assetRowEnd:15, currencyRow:18 },
+  { title:'Dividend portfolio',   url:csv(1618449229), assetRowStart:3,  assetRowEnd:7,  currencyRow:9  },
+  { title:'Provident fund',       url:csv(381603952),  assetRowStart:3,  assetRowEnd:8,  currencyRow:10 },
+  { title:'Tax-saving portfolio', url:csv(1424875369), assetRowStart:3,  assetRowEnd:10, currencyRow:12 },
+  { title:'Crypto',               url:csv(1578394134), assetRowStart:3,  assetRowEnd:9,  currencyRow:11 },
+  { title:'Cash',                 url:csv(1773567471), assetRowStart:3,  assetRowEnd:9,  currencyRow:11 },
+];
+const FANG_DONUTS = [
+  { title:'Cash portfolio',       url:csv(825635991),  assetRowStart:3,  assetRowEnd:10, currencyRow:12 },
+  { title:'Mutual fund',          url:csv(1253576610), assetRowStart:3,  assetRowEnd:27, currencyRow:29 },
+  { title:'Thai stock portfolio', url:csv(748123998),  assetRowStart:3,  assetRowEnd:12, currencyRow:14 },
+  { title:'US stock portfolio',   url:csv(672939154),  assetRowStart:3,  assetRowEnd:12, currencyRow:14 },
+  { title:'Provident fund',       url:csv(753946380),  assetRowStart:3,  assetRowEnd:6,  currencyRow:8  },
+];
 
-// Global placeholders for dashboard core logic metrics
-function formatCurrency(val) {
-  if (isNaN(val)) return '0.00';
-  return Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const PALETTE = [
+  '#4da8f5','#5ce0a8','#a78bfa','#f0b429','#f472b6','#fb923c',
+  '#34d399','#60a5fa','#f87171','#fbbf24','#c084fc','#38bdf8',
+  '#a3e635','#e879f9','#4ade80','#fb7185','#818cf8','#facc15',
+  '#2dd4bf','#f97316','#84cc16','#e11d48',
+];
+
+// AUTH
+const SK = 'vsnp_auth';
+function checkAuth() { return sessionStorage.getItem(SK) === 'true'; }
+function unlock() {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  sessionStorage.setItem(SK, 'true');
+  init();
 }
-
-// ═══════════════════════════════════════════════════════════════════
-// EXPORT PIPELINE METHODS
-// ═══════════════════════════════════════════════════════════════════
-function prepareExportCardData() {
-  // Capture values directly from active tab DOM view targets cleanly
-  document.getElementById('exp-brand-tab').innerText = currentTab.toUpperCase() + " ACCOUNT SUMMARY";
-  
-  const dataRangeText = document.getElementById('data-range').innerText;
-  const activeMonthBarEl = document.querySelector('.filter-pill.active');
-  const contextMonthText = activeMonthBarEl ? activeMonthBarEl.innerText : '';
-  document.getElementById('exp-meta-date').innerText = contextMonthText + " (" + dataRangeText + ")";
-
-  // Main net worth value capture
-  const primaryCards = document.querySelectorAll('#metric-grid .metric-card');
-  if (primaryCards.length > 0) {
-    const mainVal = primaryCards[0].querySelector('.metric-val').innerText;
-    const mainSub = primaryCards[0].querySelector('.metric-sub').innerText;
-    const isPos = primaryCards[0].querySelector('.metric-sub').classList.contains('pos');
-    
-    document.getElementById('exp-total-val').innerText = mainVal + (privacyMode ? "" : " THB");
-    const subTarget = document.getElementById('exp-total-sub');
-    subTarget.innerText = mainSub;
-    subTarget.className = "exp-sub " + (isPos ? "pos" : "neg");
+document.getElementById('gate-submit').addEventListener('click', () => {
+  if (document.getElementById('pwd-input').value === PASSWORD) { unlock(); }
+  else {
+    const e = document.getElementById('gate-error');
+    e.classList.add('show');
+    document.getElementById('pwd-input').value = '';
+    setTimeout(() => e.classList.remove('show'), 2500);
   }
+});
+document.getElementById('pwd-input').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('gate-submit').click(); });
+let pwdVis = false;
+document.getElementById('pwd-toggle').addEventListener('click', () => {
+  pwdVis = !pwdVis;
+  document.getElementById('pwd-input').type = pwdVis ? 'text' : 'password';
+});
+document.getElementById('logout-btn').addEventListener('click', () => { sessionStorage.removeItem(SK); location.reload(); });
+document.getElementById('privacy-btn').addEventListener('click', () => { privacyMode = !privacyMode; applyPrivacyMode(); });
 
-  // Component breakdown capture loop
-  const componentContainer = document.getElementById('exp-components-list');
-  componentContainer.innerHTML = '';
-  
-  // Scrape metrics rows dynamically
-  primaryCards.forEach((card, idx) => {
-    if (idx === 0) return; // Skip Net Worth overall row
-    const label = card.querySelector('.metric-label').innerText;
-    const val = card.querySelector('.metric-val').innerText;
-    const subEl = card.querySelector('.metric-sub');
-    const subText = subEl ? subEl.innerText : '';
-    
-    const item = document.createElement('div');
-    item.className = 'exp-item';
-    item.innerHTML = `
-      <div class="exp-item-name">
-        <span class="exp-item-dot" style="background: ${getPaletteColor(idx-1)}"></span>
-        <span>${label}</span>
-      </div>
-      <div class="exp-item-val">${val} <span style="font-size:10px; color:#555;">${subText}</span></div>
-    `;
-    componentContainer.appendChild(item);
-  });
+// Dropdown Action Toggle Controls
+document.getElementById('export-trigger-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('export-dropdown-menu').classList.toggle('show');
+});
+document.addEventListener('click', () => {
+  document.getElementById('export-dropdown-menu').classList.remove('show');
+});
 
-  // Render Target goals summary cards row snapshots
-  const goalContainer = document.getElementById('exp-goals-list');
-  goalContainer.innerHTML = '';
-  const goalCards = document.querySelectorAll('#goal-grid .goal-card');
-  goalCards.forEach(card => {
-    const title = card.querySelector('.goal-card-title').innerText;
-    const currentVal = card.querySelector('.goal-card-current').innerText;
-    const progressPill = card.querySelector('.goal-bar-pct') ? card.querySelector('.goal-bar-pct').innerText : '0%';
-    
-    const item = document.createElement('div');
-    item.className = 'exp-item';
-    item.innerHTML = `
-      <div class="exp-item-name" style="color: #aaa;">${title}</div>
-      <div class="exp-item-val">${currentVal} <span style="color:#c8f542; font-size:11px;">(${progressPill})</span></div>
-    `;
-    goalContainer.appendChild(item);
+if (checkAuth()) unlock();
+
+// CSV PARSING
+function parseCSV(text) {
+  return text.split('\n').map(line => {
+    const cols=[]; let cur='', inQ=false;
+    for (let i=0;i<line.length;i++) {
+      const c=line[i];
+      if (c==='"') { inQ=!inQ; }
+      else if (c===',' && !inQ) { cols.push(cur.trim()); cur=''; }
+      else cur+=c;
+    }
+    cols.push(cur.trim());
+    return cols;
   });
 }
-
-function getPaletteColor(idx) {
-  const colors = ['#4da8f5','#5ce0a8','#a78bfa','#f0b429','#f472b6','#fb923c','#34d399','#60a5fa'];
-  return colors[idx % colors.length];
+function numVal(s) {
+  if (!s) return 0;
+  const n = parseFloat(String(s).replace(/[^0-9.\-]/g,''));
+  return isNaN(n) ? 0 : n;
+}
+async function fetchCSV(url) {
+  const res = await fetch(url + '&_=' + Date.now());
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return parseCSV(await res.text());
+}
+function detectCurrency(raw) {
+  const s = String(raw||'');
+  if (s.includes('$')) return 'USD';
+  return 'THB';
+}
+function fmtCurrency(val, currency) {
+  if (currency === 'USD') return '$' + val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return '฿' + Math.round(val).toLocaleString('th-TH');
 }
 
-// UI Event Wireframes
-document.getElementById('export-modal-open-btn').addEventListener('click', () => {
-  prepareExportCardData();
-  document.getElementById('export-modal').classList.add('active');
-});
+function extractData(rows, config) {
+  const labelRow = rows[config.monthLabelRow] || [];
+  const months = [];
+  let emptyStreak = 0;
+  for (let c=config.dataStartCol; c<500; c++) {
+    const lbl = (labelRow[c]||'').trim();
+    if (!lbl) {
+      emptyStreak++;
+      if (emptyStreak>10) break;
+      continue;
+    }
+    emptyStreak = 0;
+    const ll = lbl.toLowerCase();
+    if (/^\d{4}/.test(lbl)||ll.includes('market value')||ll.includes('actual')||
+        ll.includes('budget')||ll.includes('target')||ll.includes('projected')||
+        ll.includes('goal')||ll.includes('percentage')) continue;
+    if (!config.componentRows.some(ri => numVal((rows[ri]||[])[c]) > 0)) continue;
+    months.push({ col:c, label:lbl });
+  }
+  if (!months.length) return null;
+  const components = config.componentRows.map((ri,idx) => ({
+    name: config.componentNames[idx],
+    color: config.colors[idx],
+    values: months.map(m => numVal((rows[ri]||[])[m.col]))
+  }));
+  const totals = months.map(m => config.componentRows.reduce((s,ri) => s + numVal((rows[ri]||[])[m.col]), 0));
+  const labels = months.map(m => m.label);
+  return { months:labels, components, totals };
+}
 
-document.getElementById('export-cancel-btn').addEventListener('click', () => {
-  document.getElementById('export-modal').classList.remove('active');
-});
-
-// Capture engine executions
-document.getElementById('export-jpg-btn').addEventListener('click', () => {
-  const target = document.getElementById('export-summary-card');
-  // High scale parameters keep rendering crystal clear on high retina density mobile views
-  html2canvas(target, {
-    backgroundColor: '#0d0d0d',
-    scale: 3, 
-    useCORS: true,
-    logging: false
-  }).then(canvas => {
-    const link = document.createElement('a');
-    link.download = `Summary_${currentTab}_${new Date().toISOString().slice(0,10)}.jpg`;
-    link.href = canvas.toDataURL('image/jpeg', 0.95);
-    link.click();
+function computeHousehold(ink, fang) {
+  if (!ink || !fang) return null;
+  const allM = Array.from(new Set([...ink.months, ...fang.months])).sort();
+  const components = [
+    { name: 'Ink Total', color: '#c8f542', values: [] },
+    { name: 'Fang Total', color: '#5ce0a8', values: [] }
+  ];
+  const totals = [];
+  allM.forEach(m => {
+    const iIdx = ink.months.indexOf(m);
+    const fIdx = fang.months.indexOf(m);
+    const iVal = iIdx>-1 ? ink.totals[iIdx] : (totals[totals.length-1]?ink.totals[ink.totals.length-1]:0);
+    const fVal = fIdx>-1 ? fang.totals[fIdx] : (totals[totals.length-1]?fang.totals[fang.totals.length-1]:0);
+    components[0].values.push(iVal);
+    components[1].values.push(fVal);
+    totals.push(iVal + fVal);
   });
-});
+  return { months: allM, components, totals };
+}
 
-document.getElementById('export-pdf-btn').addEventListener('click', () => {
-  const target = document.getElementById('export-summary-card');
-  html2canvas(target, {
-    backgroundColor: '#0d0d0d',
-    scale: 3,
-    useCORS: true
-  }).then(canvas => {
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const { jsPDF } = window.jspdf;
-    
-    // Adapt canvas bounding boxes directly into document limits
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgWidth = 190; 
-    const pageHeight = 295;  
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
-    pdf.setFillColor(13, 13, 13);
-    pdf.rect(0, 0, 210, 297, 'F');
-    pdf.addImage(imgData, 'JPEG', 10, 15, imgWidth, imgHeight);
-    pdf.save(`Summary_${currentTab}_${new Date().toISOString().slice(0,10)}.pdf`);
-  });
-});
-
-// Mock load functions to ensure stub dashboard executes fallback bindings
+// DATA LOADING
 async function loadData() {
-  // Emulates your dashboard load configuration
-  document.getElementById('skeleton-screen').style.display = 'block';
-  setTimeout(() => {
+  try {
+    setStatus('Updating indices...', true);
+    const [inkRaw, fangRaw] = await Promise.all([
+      fetchCSV(INK_CSV_URL),
+      fetchCSV(FANG_CSV_URL)
+    ]);
+    inkData = extractData(inkRaw, INK_CONFIG);
+    fangData = extractData(fangRaw, FANG_CONFIG);
+    householdData = computeHousehold(inkData, fangData);
+    
+    if (inkData) activeMonthIdx = inkData.months.length - 1;
+    
+    setStatus('Ready');
     document.getElementById('skeleton-screen').style.display = 'none';
     document.getElementById('page-content').style.display = 'block';
-    document.getElementById('data-range').innerText = "Jan 2026 - Dec 2026";
-    document.getElementById('status-text').innerText = "Data loaded successfully";
-  }, 400);
-  return true;
+    
+    // Non-blocking background parsing for allocation tables
+    loadAllocationDonuts();
+    renderAll(currentTab);
+    return true;
+  } catch(e) {
+    console.error(e);
+    setStatus('Sync failure', false, true);
+    document.getElementById('error-box').textContent = 'Sync connection breakdown: ' + e.message;
+    document.getElementById('error-box').classList.add('show');
+    return false;
+  }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  loadData();
-  // Wire up tabs buttons standard bindings handlers toggle
-  document.querySelectorAll('.tab').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      e.target.classList.add('active');
-      currentTab = e.target.getAttribute('data-tab');
+async function loadAllocationDonuts() {
+  const fetchSingle = async (item) => {
+    try {
+      const csvData = await fetchCSV(item.url);
+      const rowLabels = csvData[0] || [];
+      const mvRowIdx = csvData.findIndex(r => String(r[0]).toLowerCase().includes('market value thb'));
+      if (mvRowIdx === -1) return null;
+      
+      const monthsFound = [];
+      for (let c=1; c<rowLabels.length; c++) {
+        if (rowLabels[c] && rowLabels[c].trim()) monthsFound.push({ label: rowLabels[c].trim(), col: c });
+      }
+      
+      const byMonth = {};
+      monthsFound.forEach(m => {
+        const assets = [];
+        for (let r=item.assetRowStart; r<=item.assetRowEnd; r++) {
+          if (!csvData[r]) continue;
+          const name = (csvData[r][0] || '').trim();
+          const val = numVal(csvData[r][m.col]);
+          if (name && val > 0) {
+            assets.push({ name, value: val, currency: detectCurrency(csvData[item.currencyRow]?.[m.col]) });
+          }
+        }
+        const sum = assets.reduce((s,x)=>s+x.value,0);
+        if (sum > 0) {
+          assets.forEach(x => x.pct = (x.value/sum)*100);
+          byMonth[m.label] = assets;
+        }
+      });
+      return { title: item.title, byMonth };
+    } catch(err) { return null; }
+  };
+  
+  const inkRes = await Promise.all(INK_DONUTS.map(fetchSingle));
+  inkDonutData = inkRes.filter(x => x !== null);
+  const fangRes = await Promise.all(FANG_DONUTS.map(fetchSingle));
+  fangDonutData = fangRes.filter(x => x !== null);
+  
+  if (inkDonutData.length || fangDonutData.length) {
+    document.getElementById('donut-section').style.display = 'block';
+    renderDonutFilter(currentTab);
+    renderDonuts(currentTab);
+  }
+}
+
+function setStatus(text, loading=false, error=false) {
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot' + (loading?' loading':'') + (error?' error':'');
+  document.getElementById('status-text').textContent = text;
+}
+
+// RENDER PIPELINE
+function renderAll(tab) {
+  renderFilterBar(tab);
+  renderMetrics(tab);
+  renderGoals(tab);
+  renderMainChart(tab);
+  renderDonutFilter(tab);
+  renderDonuts(tab);
+  
+  const dataset = tab==='ink' ? inkData : (tab==='fang'?fangData:householdData);
+  if (dataset) {
+    document.getElementById('data-range').textContent = 'Time-Series Sequence: ' + dataset.months[0] + ' \u2192 ' + dataset.months[dataset.months.length-1];
+    document.getElementById('last-updated').textContent = 'As of ' + dataset.months[dataset.months.length-1];
+  }
+}
+
+function renderFilterBar(tab) {
+  const dataset = tab==='ink' ? inkData : (tab==='fang'?fangData:householdData);
+  const wrap = document.getElementById('filter-scroll');
+  wrap.innerHTML = '';
+  if (!dataset) return;
+  dataset.months.forEach((m, idx) => {
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill' + (idx === activeMonthIdx ? ' active':'');
+    pill.textContent = m;
+    pill.addEventListener('click', () => {
+      activeMonthIdx = idx;
+      renderAll(tab);
+    });
+    wrap.appendChild(pill);
+  });
+}
+
+function renderMetrics(tab) {
+  const dataset = tab==='ink' ? inkData : (tab==='fang'?fangData:householdData);
+  const grid = document.getElementById('metric-grid');
+  grid.innerHTML = '';
+  if (!dataset || activeMonthIdx === null || activeMonthIdx >= dataset.months.length) return;
+  
+  const total = dataset.totals[activeMonthIdx];
+  let deltaStr = '\u2014';
+  let deltaClass = 'metric-sub';
+  if (activeMonthIdx > 0) {
+    const prev = dataset.totals[activeMonthIdx-1];
+    const diff = total - prev;
+    const pct = (diff/prev)*100;
+    deltaStr = (diff>=0?'+': '') + Math.round(pct).toLocaleString() + '% MoM';
+    deltaClass = 'metric-sub' + (diff>=0?' pos':' neg');
+  }
+  
+  // Total Card
+  grid.appendChild(createMetricCard('Net Worth Total', fmtCurrency(total, 'THB'), deltaStr, deltaClass));
+  
+  if (tab !== 'household') {
+    const config = tab === 'ink' ? INK_CONFIG : FANG_CONFIG;
+    const cashVal = dataset.components[config.cashComponentIdx].values[activeMonthIdx];
+    const investVal = total - cashVal;
+    grid.appendChild(createMetricCard('Liquid Cash Capital', fmtCurrency(cashVal, 'THB'), 'Safety Reserves'));
+    grid.appendChild(createMetricCard('Market Investment Base', fmtCurrency(investVal, 'THB'), 'Risk Portfolio'));
+  } else {
+    const inkVal = inkData ? inkData.totals[inkData.months.indexOf(dataset.months[activeMonthIdx])] || 0 : 0;
+    const fangVal = fangData ? fangData.totals[fangData.months.indexOf(dataset.months[activeMonthIdx])] || 0 : 0;
+    grid.appendChild(createMetricCard('Ink Allocation Share', fmtCurrency(inkVal, 'THB'), ((inkVal/total)*100).toFixed(1) + '% Contribution'));
+    grid.appendChild(createMetricCard('Fang Allocation Share', fmtCurrency(fangVal, 'THB'), ((fangVal/total)*100).toFixed(1) + '% Contribution'));
+  }
+}
+
+function createMetricCard(lbl, val, sub, subClass='metric-sub') {
+  const div = document.createElement('div');
+  div.className = 'metric-card';
+  div.innerHTML = `<p class="metric-label">${lbl}</p><p class="metric-val">${mask(val)}</p><p class="${subClass}">${sub}</p>`;
+  return div;
+}
+
+function renderGoals(tab) {
+  const dataset = tab==='ink' ? inkData : (tab==='fang'?fangData:householdData);
+  const grid = document.getElementById('goal-grid');
+  grid.innerHTML = '';
+  if (!dataset || activeMonthIdx === null) return;
+  
+  const total = dataset.totals[activeMonthIdx];
+  const config = tab==='ink'? INK_CONFIG : FANG_CONFIG;
+  const cashVal = tab==='household' ? (inkData.components[INK_CONFIG.cashComponentIdx].values[inkData.months.indexOf(dataset.months[activeMonthIdx])]||0)+(fangData.components[FANG_CONFIG.cashComponentIdx].values[fangData.months.indexOf(dataset.months[activeMonthIdx])]||0) : dataset.components[config.cashComponentIdx].values[activeMonthIdx];
+  const investVal = total - cashVal;
+  
+  const g = GOALS[tab];
+  grid.appendChild(createGoalCard('Liquidity Cash Target Tracker', cashVal, g.cash.st, g.cash.lt));
+  grid.appendChild(createGoalCard('Long Term Wealth Target Tracker', investVal, g.invest.st, g.invest.lt));
+}
+
+function createGoalCard(title, val, st, lt) {
+  const div = document.createElement('div');
+  div.className = 'goal-card';
+  const stPct = Math.min((val/st)*100, 100);
+  const ltPct = Math.min((val/lt)*100, 100);
+  
+  div.innerHTML = `
+    <div class="goal-card-header"><span class="goal-card-title">${title}</span></div>
+    <div class="goal-card-current">${mask(fmtCurrency(val, 'THB'))}</div>
+    <div class="goal-bars">
+      <div class="goal-bar-row">
+        <div class="goal-bar-meta"><span class="goal-bar-label">Short-Term Baseline Target</span><span class="goal-bar-pct">${stPct.toFixed(1)}%</span></div>
+        <div class="goal-track-wrap"><div class="goal-bar-track"><div class="goal-bar-fill" style="width:${stPct}%; background:${stPct>=100?'var(--green)':'var(--accent)'}"></div></div></div>
+        <p class="goal-bar-target">Target Milestone: ${fmtCurrency(st, 'THB')}</p>
+      </div>
+      <div class="goal-bar-row">
+        <div class="goal-bar-meta"><span class="goal-bar-label">Long-Term Wealth Horizon</span><span class="goal-bar-pct">${ltPct.toFixed(1)}%</span></div>
+        <div class="goal-track-wrap"><div class="goal-bar-track"><div class="goal-bar-fill" style="width:${ltPct}%; background:${ltPct>=100?'var(--green)':'#3b82f6'}"></div></div></div>
+        <p class="goal-bar-target">Target Milestone: ${fmtCurrency(lt, 'THB')}</p>
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+// CHART ENGINE
+let chartInstance = null;
+function renderMainChart(tab) {
+  const dataset = tab==='ink' ? inkData : (tab==='fang'?fangData:householdData);
+  const ctx = document.getElementById('main-chart').getContext('2d');
+  document.getElementById('chart-loading').style.display = 'none';
+  if (!dataset) return;
+  
+  if (chartInstance) chartInstance.destroy();
+  
+  const ds = dataset.components.map(c => ({
+    label: c.name,
+    data: c.values,
+    borderColor: c.color,
+    backgroundColor: c.color + '15',
+    borderWidth: 2,
+    pointRadius: 3,
+    pointHoverRadius: 6,
+    fill: true,
+    tension: 0.15
+  }));
+  
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dataset.months, datasets: ds },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#888780', font: { family: 'DM Mono', size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { callback: (v)=> privacyMode ? '•••' : v.toLocaleString(), color: '#888780', font: { family: 'DM Mono', size: 10 } } }
+      }
+    }
+  });
+  renderLegend(tab);
+}
+
+function renderLegend(tab) {
+  const dataset = tab==='ink' ? inkData : (tab==='fang'?fangData:householdData);
+  const leg = document.getElementById('legend');
+  leg.innerHTML = '';
+  if (!dataset || !chartInstance) return;
+  
+  dataset.components.forEach((c, idx) => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<span class="legend-dot" style="background:${c.color}"></span><span>${c.name}</span>`;
+    item.addEventListener('click', () => {
+      const meta = chartInstance.getDatasetMeta(idx);
+      meta.hidden = meta.hidden === null ? !chartInstance.data.datasets[idx].hidden : null;
+      item.classList.toggle('hidden', meta.hidden);
+      chartInstance.update();
+    });
+    leg.appendChild(item);
+  });
+}
+
+// ALLOCATION DONUTS ENGINE
+function getDonutMonths(tab) {
+  const list = tab==='ink' ? inkDonutData : fangDonutData;
+  if (!list.length) return [];
+  const set = new Set();
+  list.forEach(item => { Object.keys(item.byMonth).forEach(m => set.add(m)); });
+  return Array.from(set).sort();
+}
+
+function renderDonutFilter(tab) {
+  const scroll = document.getElementById('donut-filter-scroll');
+  scroll.innerHTML = '';
+  if (tab === 'household') {
+    document.getElementById('donut-section').style.display = 'none';
+    return;
+  }
+  const months = getDonutMonths(tab);
+  if (!months.length) {
+    document.getElementById('donut-section').style.display = 'none';
+    return;
+  }
+  document.getElementById('donut-section').style.display = 'block';
+  const latest = months[months.length - 1];
+  if (!donutFilterState[tab]) donutFilterState[tab] = latest;
+  
+  months.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-pill' + (donutFilterState[tab] === m ? ' active' : '');
+    btn.textContent = m;
+    btn.addEventListener('click', () => {
+      donutFilterState[tab] = m;
+      renderDonutFilter(tab);
+      renderDonuts(tab);
+    });
+    scroll.appendChild(btn);
+  });
+}
+
+function renderDonuts(tab) {
+  const grid = document.getElementById('donut-grid');
+  grid.innerHTML = '';
+  if (tab === 'household') return;
+  
+  const list = tab==='ink' ? inkDonutData : fangDonutData;
+  const activeMonth = donutFilterState[tab];
+  if (!list.length || !activeMonth) {
+    grid.innerHTML = '<div class="donut-empty">No item breakdowns parsed yet</div>';
+    return;
+  }
+  
+  list.forEach((dataItem, cIdx) => {
+    const assets = dataItem.byMonth[activeMonth] || [];
+    if (!assets.length) return;
+    
+    const card = document.createElement('div');
+    card.className = 'donut-card';
+    
+    const title = document.createElement('p');
+    title.className = 'donut-card-title';
+    title.textContent = dataItem.title;
+    card.appendChild(title);
+    
+    const body = document.createElement('div');
+    body.className = 'donut-card-body';
+    
+    const canvasWrap = document.createElement('div');
+    canvasWrap.className = 'donut-canvas-wrap';
+    canvasWrap.style.width = '120px'; canvasWrap.style.height = '120px';
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = 120; canvas.height = 120;
+    canvasWrap.appendChild(canvas);
+    
+    const center = document.createElement('div');
+    center.className = 'donut-center';
+    const totalVal = assets.reduce((s,x)=>s+x.value,0);
+    
+    center.innerHTML = `
+      <span class="donut-center-total" id="d-total-${cIdx}-${tab}">${mask(fmtCurrency(totalVal, assets[0].currency))}</span>
+      <span class="donut-center-label" id="d-label-${cIdx}-${tab}">Total</span>
+      <span class="donut-center-hover-pct" id="d-hpct-${cIdx}-${tab}"></span>
+      <span class="donut-center-hover-val" id="d-hval-${cIdx}-${tab}"></span>
+      <span class="donut-center-hover-name" id="d-hname-${cIdx}-${tab}"></span>
+    `;
+    canvasWrap.appendChild(center);
+    body.appendChild(canvasWrap);
+    
+    const leg = document.createElement('div');
+    leg.className = 'donut-leg';
+    
+    // Sort assets by size descending
+    const sortedAssets = [...assets].sort((a,b)=>b.pct - a.pct);
+    const chartColors = sortedAssets.map((_,i) => PALETTE[i % PALETTE.length]);
+    
+    sortedAssets.forEach((a, aIdx) => {
+      const col = chartColors[aIdx];
+      const item = document.createElement('div');
+      item.className = 'donut-leg-item';
+      item.innerHTML = `
+        <span class="donut-leg-dot" style="background:${col}"></span>
+        <span class="donut-leg-name">${a.name}</span>
+        <span class="donut-leg-pct">${a.pct.toFixed(1)}%</span>
+        <span class="donut-leg-val">${mask(fmtCurrency(a.value, a.currency))}</span>
+      `;
+      
+      item.addEventListener('mouseenter', () => toggleDonutCenterHover(tab, cIdx, aIdx, true));
+      item.addEventListener('mouseleave', () => toggleDonutCenterHover(tab, cIdx, aIdx, false));
+      leg.appendChild(item);
+    });
+    
+    body.appendChild(leg);
+    card.appendChild(body);
+    grid.appendChild(card);
+    
+    // Instantiate background chart architecture wrapper configuration context
+    new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: sortedAssets.map(x=>x.name),
+        datasets: [{
+          data: sortedAssets.map(x=>x.value),
+          backgroundColor: chartColors,
+          borderWidth: 0,
+          hoverOffset: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        cutout: '76%'
+      }
     });
   });
+}
+
+function toggleDonutCenterHover(tab, cardIdx, assetIdx, entering) {
+  const totalEl = document.getElementById(`d-total-${cardIdx}-${tab}`);
+  const labelEl = document.getElementById(`d-label-${cardIdx}-${tab}`);
+  const hPctEl  = document.getElementById(`d-hpct-${cardIdx}-${tab}`);
+  const hValEl  = document.getElementById(`d-hval-${cardIdx}-${tab}`);
+  const hNameEl = document.getElementById(`d-hname-${cardIdx}-${tab}`);
+  
+  if (totalEl && labelEl && hPctEl && hValEl && hNameEl) {
+    const list = tab==='ink' ? inkDonutData : fangDonutData;
+    const activeM = donutFilterState[tab];
+    const d = list[cardIdx];
+    let assets = d ? (d.byMonth[activeM] || []) : [];
+    assets = [...assets].sort((a,b) => b.pct - a.pct);
+    const a = assets[assetIdx];
+    
+    if (entering && a) {
+      totalEl.style.display = 'none'; labelEl.style.display = 'none';
+      hPctEl.style.display = 'block'; hValEl.style.display = 'block'; hNameEl.style.display = 'block';
+      hPctEl.textContent  = a.pct.toFixed(1) + '%';
+      hValEl.textContent  = mask(fmtCurrency(a.value, a.currency));
+      hNameEl.textContent = a.name;
+    } else {
+      const totalVal = assets.reduce((s,x)=>s+x.value,0);
+      totalEl.style.display = 'block'; totalEl.textContent = mask(fmtCurrency(totalVal, assets[0]?.currency || 'THB'));
+      labelEl.style.display = 'block';
+      hPctEl.style.display = 'none'; hValEl.style.display = 'none'; hNameEl.style.display = 'none';
+    }
+  }
+}
+
+// TAB MANAGEMENT NAVIGATION
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', e => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    e.target.classList.add('active');
+    currentTab = e.target.getAttribute('data-tab');
+    if (currentTab === 'household') {
+      if (inkData) activeMonthIdx = householdData.months.indexOf(inkData.months[inkData.months.length-1]);
+    } else {
+      const d = currentTab === 'ink' ? inkData : fangData;
+      if (d) activeMonthIdx = d.months.length - 1;
+    }
+    renderAll(currentTab);
+  });
 });
+
+document.getElementById('refresh-btn').addEventListener('click', () => loadData());
+
+function init() {
+  applyPrivacyMode();
+  loadData();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CLientside SUMMARY EXPORT SYSTEM (v2.6 ADDITION)
+// ═══════════════════════════════════════════════════════════════════
+async function executeSummaryExport(targetTab, outputFormat) {
+  setStatus('Compiling summary snapshot...', true);
+  
+  // Choose standard base dataset targets context
+  let sourceDataset = inkData;
+  let titleHeader = "INK PORTFOLIO SUMMARY";
+  let donorAllocation = inkDonutData;
+  let donutMonth = donutFilterState['ink'];
+  
+  if (targetTab === 'fang') {
+    sourceDataset = fangData;
+    titleHeader = "FANG PORTFOLIO SUMMARY";
+    donorAllocation = fangDonutData;
+    donutMonth = donutFilterState['fang'];
+  } else if (targetTab === 'household') {
+    sourceDataset = householdData;
+    titleHeader = "HOUSEHOLD COMBINED TOTAL NET WORTH SUMMARY";
+    donorAllocation = null;
+  }
+  
+  if (!sourceDataset || activeMonthIdx === null) {
+    alert("Data context is currently empty or loading. Try again shortly.");
+    setStatus('Ready');
+    return;
+  }
+  
+  const selectedMonth = sourceDataset.months[activeMonthIdx];
+  const totalNetWorth = sourceDataset.totals[activeMonthIdx];
+  
+  // Construct clean container styled with high contrast theme for beautiful mobile rendering
+  const exportFrame = document.createElement('div');
+  exportFrame.style.position = 'absolute';
+  exportFrame.style.left = '-9999px';
+  exportFrame.style.top = '-9999px';
+  exportFrame.style.width = '420px'; // Structured exactly for sharp clear mobile viewport tracking
+  exportFrame.style.backgroundColor = '#0d0d0d';
+  exportFrame.style.color = '#f0efe8';
+  exportFrame.style.fontFamily = "'DM Sans', sans-serif";
+  exportFrame.style.padding = '24px';
+  exportFrame.style.boxSizing = 'border-box';
+  
+  // Header Blocks
+  let frameHtml = `
+    <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; margin-bottom: 20px;">
+      <p style="font-family:'DM Mono', monospace; font-size:10px; color:#888780; margin:0; letter-spacing:0.1em; text-transform:uppercase;">Financial Report</p>
+      <h2 style="font-size:20px; font-weight:500; margin:4px 0 2px 0; color:#c8f542; letter-spacing:-0.01em;">${titleHeader}</h2>
+      <p style="font-family:'DM Mono', monospace; font-size:11px; color:#555450; margin:0;">Sequence Scope Cycle: ${selectedMonth} &middot; v2.6</p>
+    </div>
+    
+    <div style="background: #161616; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 18px; margin-bottom: 18px; text-align:center;">
+      <p style="font-family:'DM Mono', monospace; font-size:9px; color:#888780; text-transform:uppercase; margin:0 0 4px 0; letter-spacing:0.08em;">Aggregated Net Worth Value</p>
+      <p style="font-family:'DM Mono', monospace; font-size:26px; font-weight:500; color:#f0efe8; margin:0; letter-spacing:-0.02em;">${fmtCurrency(totalNetWorth, 'THB')}</p>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+      <p style="font-family:'DM Mono', monospace; font-size:10px; color:#888780; text-transform:uppercase; margin:0 0 10px 0; letter-spacing:0.06em;">Asset Streams Matrix</p>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+  `;
+  
+  sourceDataset.components.forEach(comp => {
+    const assetVal = comp.values[activeMonthIdx] || 0;
+    const proportionPct = totalNetWorth > 0 ? ((assetVal / totalNetWorth) * 100).toFixed(1) : 0;
+    frameHtml += `
+      <div style="display:flex; align-items:center; justify-content:space-between; background:#161616; padding:10px 12px; border-radius:6px; border-left:3px solid ${comp.color};">
+        <span style="font-size:13px; color:#f0efe8; font-weight:400;">${comp.name}</span>
+        <div style="text-align:right; font-family:'DM Mono', monospace;">
+          <span style="font-size:13px; color:#f0efe8; font-weight:500; display:block;">${fmtCurrency(assetVal, 'THB')}</span>
+          <span style="font-size:10px; color:#888780;">${proportionPct}% allocation</span>
+        </div>
+      </div>
+    `;
+  });
+  
+  frameHtml += `</div></div>`;
+  
+  // If donuts asset sub-allocations are live parsed, extract and display deep sub-allocations nested inside summaries cleanly
+  if (donorAllocation && donorAllocation.length && donutMonth) {
+    frameHtml += `
+      <div style="margin-bottom: 12px; border-top:1px solid rgba(255,255,255,0.06); padding-top:16px;">
+        <p style="font-family:'DM Mono', monospace; font-size:10px; color:#888780; text-transform:uppercase; margin:0 0 10px 0; letter-spacing:0.06em;">Sub-Asset Allocation Splits (${donutMonth})</p>
+    `;
+    
+    donorAllocation.forEach(subItem => {
+      const tokens = subItem.byMonth[donutMonth] || [];
+      if (!tokens.length) return;
+      
+      frameHtml += `
+        <div style="margin-bottom:14px; background:#1e1e1e; padding:10px; border-radius:6px;">
+          <p style="font-size:11px; font-weight:500; color:#c8f542; margin:0 0 6px 0; font-family:'DM Mono', monospace;">&raquo; ${subItem.title}</p>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+      `;
+      
+      const limitedSorted = [...tokens].sort((a,b)=>b.pct-a.pct);
+      limitedSorted.forEach(t => {
+        frameHtml += `
+          <div style="display:flex; justify-content:space-between; font-size:11px; font-family:'DM Mono', monospace; color:#888780;">
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:240px;">${t.name}</span>
+            <span style="color:#f0efe8; flex-shrink:0;">${t.pct.toFixed(1)}% (${fmtCurrency(t.value, t.currency)})</span>
+          </div>
+        `;
+      });
+      
+      frameHtml += `</div></div>`;
+    });
+    frameHtml += `</div>`;
+  }
+  
+  // Footer branding
+  frameHtml += `
+    <div style="text-align:center; border-top:1px solid rgba(255,255,255,0.06); padding-top:12px; margin-top:20px;">
+      <p style="font-family:'DM Mono', monospace; font-size:9px; color:#555450; margin:0; letter-spacing:0.04em;">VS NP METRIC INTELLIGENCE NETWORTH DASHBOARD BUILD ENGINE</p>
+    </div>
+  `;
+  
+  exportFrame.innerHTML = frameHtml;
+  document.body.appendChild(exportFrame);
+  
+  try {
+    // Render clean viewport utilizing standard resolution scales
+    const options = {
+      scale: 2, // High DPI density output for dynamic razor-sharp renders
+      useCORS: true,
+      backgroundColor: '#0d0d0d',
+      logging: false
+    };
+    
+    const canvas = await html2canvas(exportFrame, options);
+    const fileNameString = `${targetTab}_summary_${selectedMonth.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    
+    if (outputFormat === 'jpg' || outputFormat === 'jpeg') {
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const link = document.createElement('a');
+      link.download = `${fileNameString}.jpg`;
+      link.href = imgData;
+      link.click();
+    } else if (outputFormat === 'pdf') {
+      const { jsPDF } = window.jspdf;
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      
+      // Calculate optimized dimensional layout targets mapping clean parameters
+      const pdfWidth = 210; // Standard A4 base
+      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+      
+      const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight]);
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${fileNameString}.pdf`);
+    }
+  } catch (err) {
+    console.error("Export pipeline failure details:", err);
+    alert("Export generation pipeline encounter. Details: " + err.message);
+  } finally {
+    document.body.removeChild(exportFrame);
+    setStatus('Ready');
+  }
+}
 </script>
 </body>
 </html>
