@@ -1398,7 +1398,12 @@ function setExportFmt(fmt) {
   document.getElementById('fmt-pdf').classList.toggle('selected', fmt === 'pdf');
 }
 
-// ── Build a clean off-screen summary card ──
+// ── Capture a live canvas to a data URL safely ──
+function captureCanvas(canvasEl) {
+  try { return canvasEl.toDataURL('image/png'); } catch(e) { return null; }
+}
+
+// ── Build a clean off-screen summary card (with live chart + donut images) ──
 function buildSummaryCard(tab, maskVals) {
   const active = getActiveData(tab);
   const fi = filterState[tab];
@@ -1407,10 +1412,96 @@ function buildSummaryCard(tab, maskVals) {
   const viewingLabel = fi < 0 ? months[months.length - 1] : months[fi];
   const tabLabel = tab === 'ink' ? 'Ink' : tab === 'fang' ? 'Fang' : 'Household';
 
-  function fmt(v) { return maskVals ? '••••••' : fmtM(v); }
+  function fmt(v)       { return maskVals ? '••••••' : fmtM(v); }
   function fmtC(v, cur) { return maskVals ? '••••••' : fmtCurrency(v, cur); }
 
-  // ── Metric values ──
+  // ── 1. Capture live chart canvas ──
+  const mainChartEl = document.getElementById('main-chart');
+  const chartDataUrl = mainChartEl ? captureCanvas(mainChartEl) : null;
+
+  // Build chart legend HTML (mirrors live legend)
+  let legendHTML = '';
+  if (tab === 'household') {
+    legendHTML = [{n:'Ink',c:'#4da8f5'},{n:'Fang',c:'#5ce0a8'},{n:'Household total',c:'#c8f542'}]
+      .map(i=>`<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888780;margin-right:14px;"><span style="width:8px;height:8px;border-radius:2px;background:${i.c};flex-shrink:0;display:inline-block;"></span>${i.n}</span>`).join('');
+  } else {
+    const d = tab === 'ink' ? inkData : fangData;
+    legendHTML = d.components.map(c =>
+      `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888780;margin-right:14px;"><span style="width:8px;height:8px;border-radius:2px;background:${c.color};flex-shrink:0;display:inline-block;"></span>${c.name}</span>`
+    ).join('');
+  }
+
+  const chartSection = chartDataUrl ? `
+    <div style="margin-bottom:24px;">
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Net Worth Over Time</p>
+      <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;">
+        <img src="${chartDataUrl}" style="width:100%;display:block;border-radius:6px;" />
+        <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:4px 0;">${legendHTML}</div>
+      </div>
+    </div>` : '';
+
+  // ── 2. Capture live donut canvases ──
+  let donutSection = '';
+  if (tab !== 'household') {
+    const list = tab === 'ink' ? inkDonutData : fangDonutData;
+    const allM = getDonutMonths(tab);
+    const latest = allM[allM.length - 1];
+    const activeMonth = donutFilterState[tab] || latest;
+
+    const cards = list.map((d, idx) => {
+      // Get assets for this card (same fallback logic as renderDonuts)
+      let assets = d.byMonth[activeMonth];
+      if (!assets || !assets.length) {
+        const available = d.months.filter(m => {
+          const ai = allM.indexOf(m), ac = allM.indexOf(activeMonth);
+          return ai <= ac;
+        });
+        const fallback = available[available.length - 1];
+        assets = fallback ? (d.byMonth[fallback] || []) : [];
+      }
+      if (!assets.length) return '';
+      assets = [...assets].sort((a, b) => b.pct - a.pct);
+      const totalVal = assets.reduce((s, a) => s + a.value, 0);
+
+      // Capture the live donut canvas
+      const donutCanvas = document.getElementById(`dc-${tab}-${idx}`);
+      const donutDataUrl = donutCanvas ? captureCanvas(donutCanvas) : null;
+
+      const donutImg = donutDataUrl
+        ? `<img src="${donutDataUrl}" style="width:90px;height:90px;flex-shrink:0;" />`
+        : `<div style="width:90px;height:90px;flex-shrink:0;background:#1e1e1e;border-radius:50%;"></div>`;
+
+      const legRows = assets.map((a, ai) => `
+        <div style="display:flex;align-items:center;gap:6px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <span style="width:7px;height:7px;border-radius:50%;background:${PALETTE[ai % PALETTE.length]};flex-shrink:0;display:inline-block;"></span>
+          <span style="flex:1;font-size:10px;color:#888780;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name}</span>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;color:#c8f542;margin-left:4px;">${a.pct.toFixed(1)}%</span>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;color:#555450;margin-left:8px;">${fmtC(a.value, d.currency)}</span>
+        </div>`).join('');
+
+      return `
+        <div style="background:#1e1e1e;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <p style="font-size:12px;font-weight:500;color:#f0efe8;margin:0;">${d.title}</p>
+            <p style="font-size:11px;font-family:'DM Mono',monospace;color:#888780;margin:0;">${fmtC(totalVal, d.currency)}</p>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start;">
+            ${donutImg}
+            <div style="flex:1;min-width:0;">${legRows}</div>
+          </div>
+        </div>`;
+    }).filter(Boolean).join('');
+
+    if (cards) {
+      donutSection = `
+        <div style="margin-bottom:24px;">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">Asset Allocation · ${activeMonth}</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;">${cards}</div>
+        </div>`;
+    }
+  }
+
+  // ── 3. Metric values ──
   let metricRows = [];
   if (tab === 'ink') {
     const d = active.ink;
@@ -1448,7 +1539,7 @@ function buildSummaryCard(tab, maskVals) {
     ];
   }
 
-  // ── Goal values ──
+  // ── 4. Goal values ──
   let cashVal = 0, investVal = 0, goals;
   if (tab === 'ink') {
     const v = getLatestValues(active.ink, INK_CONFIG);
@@ -1471,72 +1562,17 @@ function buildSummaryCard(tab, maskVals) {
           <span style="font-size:11px;color:#888780;font-family:'DM Mono',monospace;">${label}</span>
           <span style="font-size:11px;font-family:'DM Mono',monospace;color:${col};">${pct.toFixed(1)}%</span>
         </div>
-        <div style="height:5px;background:#1e1e1e;border-radius:99px;overflow:hidden;">
+        <div style="height:5px;background:#222;border-radius:99px;overflow:hidden;">
           <div style="width:${pct}%;height:100%;background:${col};border-radius:99px;"></div>
         </div>
         <div style="text-align:right;font-size:10px;color:#555450;font-family:'DM Mono',monospace;margin-top:2px;">Target: ${maskVals ? '••••' : fmtM(target)}</div>
       </div>`;
   }
 
-  // ── Asset allocation (donut data) for ink/fang ──
-  let donutSection = '';
-  if (tab !== 'household') {
-    const list = tab === 'ink' ? inkDonutData : fangDonutData;
-    const allM = getDonutMonths(tab);
-    const latest = allM[allM.length - 1];
-    const activeMonth = donutFilterState[tab] || latest;
-
-    const cards = list.map(d => {
-      let assets = d.byMonth[activeMonth];
-      if (!assets || !assets.length) {
-        const available = d.months.filter(m => {
-          const ai = allM.indexOf(m), ac = allM.indexOf(activeMonth);
-          return ai <= ac;
-        });
-        const fallback = available[available.length - 1];
-        assets = fallback ? (d.byMonth[fallback] || []) : [];
-      }
-      if (!assets.length) return '';
-      assets = [...assets].sort((a, b) => b.pct - a.pct);
-      const totalVal = assets.reduce((s, a) => s + a.value, 0);
-
-      const rows = assets.slice(0, 8).map((a, ai) => `
-        <div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-          <span style="width:8px;height:8px;border-radius:50%;background:${PALETTE[ai % PALETTE.length]};flex-shrink:0;display:inline-block;"></span>
-          <span style="flex:1;font-size:10px;color:#888780;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name}</span>
-          <span style="font-size:10px;font-family:'DM Mono',monospace;color:#c8f542;">${a.pct.toFixed(1)}%</span>
-          <span style="font-size:10px;font-family:'DM Mono',monospace;color:#555450;">${fmtC(a.value, d.currency)}</span>
-        </div>`).join('');
-
-      return `
-        <div style="background:#1e1e1e;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;break-inside:avoid;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <p style="font-size:12px;font-weight:500;color:#f0efe8;margin:0;">${d.title}</p>
-            <p style="font-size:11px;font-family:'DM Mono',monospace;color:#888780;margin:0;">${fmtC(totalVal, d.currency)}</p>
-          </div>
-          ${rows}
-          ${assets.length > 8 ? `<p style="font-size:10px;color:#555450;margin-top:6px;font-family:'DM Mono',monospace;">+${assets.length - 8} more holdings</p>` : ''}
-        </div>`;
-    }).filter(Boolean).join('');
-
-    if (cards) {
-      donutSection = `
-        <div style="margin-top:24px;">
-          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">Asset Allocation · ${activeMonth}</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">${cards}</div>
-        </div>`;
-    }
-  }
-
-  // ── Assemble card HTML ──
+  // ── 5. Assemble card ──
   const now = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-
   const card = document.createElement('div');
-  card.style.cssText = `
-    width:800px; background:#0d0d0d; color:#f0efe8;
-    font-family:'DM Sans',sans-serif; font-size:14px; line-height:1.6;
-    padding:36px; box-sizing:border-box;
-  `;
+  card.style.cssText = `width:800px;background:#0d0d0d;color:#f0efe8;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6;padding:36px;box-sizing:border-box;`;
 
   card.innerHTML = `
     <!-- Header -->
@@ -1585,10 +1621,14 @@ function buildSummaryCard(tab, maskVals) {
       </div>
     </div>
 
+    <!-- Chart -->
+    ${chartSection}
+
+    <!-- Donuts -->
     ${donutSection}
 
     <!-- Footer -->
-    <div style="margin-top:28px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
+    <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v2.8${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
@@ -1609,56 +1649,57 @@ async function runExport() {
   try {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
 
-    prog.textContent = 'Building summary…';
+    prog.textContent = 'Capturing charts…';
     const maskVals = document.getElementById('export-mask-cb')?.checked ?? privacyMode;
+
+    // If privacy export differs from current mode, we need to briefly
+    // toggle privacy, re-render metrics, then restore — for the text values.
+    // Charts are captured from live canvas so they always reflect current state.
+    // We handle masking purely in buildSummaryCard via the maskVals flag.
     const card = buildSummaryCard(currentTab, maskVals);
 
-    // Mount off-screen (must be in DOM for html2canvas)
+    // Mount off-screen — must be in DOM for html2canvas
     card.style.position = 'fixed';
     card.style.top = '-9999px';
     card.style.left = '-9999px';
     document.body.appendChild(card);
 
     prog.textContent = 'Rendering…';
+    // Give browser a frame to lay out the card
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 80)));
 
-    // Wait a tick for fonts
-    await new Promise(r => setTimeout(r, 120));
-
+    const scale = exportFmt === 'pdf' ? 2 : 2.5;
     const canvas = await html2canvas(card, {
       backgroundColor: '#0d0d0d',
-      scale: exportFmt === 'pdf' ? 2 : 2.5,
+      scale,
       useCORS: true,
+      allowTaint: true,
       logging: false,
+      imageTimeout: 0,
     });
 
     document.body.removeChild(card);
 
-    const tabLabel = currentTab === 'ink' ? 'ink' : currentTab === 'fang' ? 'fang' : 'household';
+    const tabSlug = currentTab;
     const fi = filterState[currentTab];
     const months = currentTab === 'household' ? inkData.months
                  : currentTab === 'ink'       ? inkData.months : fangData.months;
     const viewSlug = (fi < 0 ? months[months.length-1] : months[fi]).replace(/\s+/g,'-').toLowerCase();
-    const filename = `vsnp-${tabLabel}-${viewSlug}`;
+    const filename = `vsnp-${tabSlug}-${viewSlug}`;
 
     if (exportFmt === 'jpg') {
-      prog.textContent = 'Generating JPG…';
+      prog.textContent = 'Saving JPG…';
       const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
       const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = filename + '.jpg';
-      a.click();
+      a.href = dataUrl; a.download = filename + '.jpg'; a.click();
       prog.textContent = '✓ Downloaded!';
     } else {
       prog.textContent = 'Loading PDF library…';
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-      prog.textContent = 'Generating PDF…';
-
+      prog.textContent = 'Saving PDF…';
       const { jsPDF } = window.jspdf;
-      const imgW = canvas.width;
-      const imgH = canvas.height;
-      // A4 in px at 96dpi ≈ 794×1123; use canvas aspect ratio
       const pdfW = 794;
-      const pdfH = Math.round(imgH / imgW * pdfW);
+      const pdfH = Math.round(canvas.height / canvas.width * pdfW);
       const pdf = new jsPDF({ orientation: pdfH > pdfW ? 'p' : 'l', unit: 'px', format: [pdfW, pdfH] });
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, pdfH);
       pdf.save(filename + '.pdf');
