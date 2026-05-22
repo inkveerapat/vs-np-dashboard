@@ -230,7 +230,30 @@
     .filter-pill { font-size: 10px; padding: 3px 10px; }
   }
 
-  /* SKELETON / SHIMMER */
+  /* EXPORT */
+  .export-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; }
+  .export-btn:hover { color: var(--text); background: var(--surface); border-color: var(--accent); }
+  .export-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .export-modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 28px 28px 24px; width: 340px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; gap: 18px; }
+  .export-modal-title { font-size: 15px; font-weight: 500; color: var(--text); }
+  .export-modal-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .export-format-row { display: flex; gap: 10px; }
+  .export-fmt-btn { flex: 1; padding: 10px 8px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--surface2); color: var(--text2); font-family: var(--font-mono); font-size: 12px; cursor: pointer; transition: all .15s; text-align: center; }
+  .export-fmt-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .export-fmt-btn.selected { border-color: var(--accent); background: rgba(200,245,66,0.08); color: var(--accent); font-weight: 500; }
+  .export-privacy-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text2); }
+  .export-privacy-row input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+  .export-privacy-label { cursor: pointer; user-select: none; }
+  .export-actions { display: flex; gap: 10px; margin-top: 4px; }
+  .export-go-btn { flex: 1; background: var(--accent); color: #0d0d0d; border: none; border-radius: var(--radius); padding: 11px 16px; font-family: var(--font-sans); font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity .15s; }
+  .export-go-btn:hover { opacity: .88; }
+  .export-go-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .export-cancel-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); padding: 11px 16px; color: var(--text3); font-family: var(--font-sans); font-size: 13px; cursor: pointer; transition: all .15s; }
+  .export-cancel-btn:hover { color: var(--text2); background: var(--surface2); }
+  .export-progress { font-family: var(--font-mono); font-size: 11px; color: var(--text3); text-align: center; min-height: 16px; }
+  @media (max-width: 480px) {
+    .export-btn { font-size: 11px; padding: 4px 8px; }
+  }
   @keyframes shimmer {
     0%   { background-position: -600px 0; }
     100% { background-position:  600px 0; }
@@ -259,7 +282,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v2.7</p>
+      <p class="gate-version">v2.8</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -280,9 +303,10 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v2.7</span>
+      <span class="version-badge">v2.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
+      <button class="export-btn" id="export-btn">&#8681; Export</button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
       <button class="logout-btn" id="logout-btn">lock</button>
     </div>
@@ -362,7 +386,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v2.4';
+const VERSION  = 'v2.8';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1302,6 +1326,357 @@ function renderAll(tab) {
 document.getElementById('refresh-btn').addEventListener('click', async () => {
   const ok = await loadData();
   if (ok) renderAll(currentTab);
+});
+
+// ─── EXPORT ────────────────────────────────────────────────────────────────────
+// Supported on: Ink, Fang, Household tabs
+// Formats: JPG/JPEG (mobile-friendly) and PDF
+
+// Load html2canvas dynamically
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+// ── Modal ──
+let exportFmt = 'jpg'; // 'jpg' | 'pdf'
+let exportMaskValues = false;
+
+function openExportModal() {
+  if (document.getElementById('export-modal')) return;
+  exportMaskValues = privacyMode;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'export-modal-overlay';
+  overlay.id = 'export-modal';
+
+  const tabLabel = currentTab === 'ink' ? 'Ink' : currentTab === 'fang' ? 'Fang' : 'Household';
+  const fi = filterState[currentTab];
+  const months = currentTab === 'household' ? inkData.months
+               : currentTab === 'ink'       ? inkData.months : fangData.months;
+  const viewingLabel = fi < 0 ? months[months.length - 1] + ' (latest)' : months[fi];
+
+  overlay.innerHTML = `
+    <div class="export-modal">
+      <div>
+        <p class="export-modal-title">Export Summary</p>
+        <p class="export-modal-sub">${tabLabel} · ${viewingLabel}</p>
+      </div>
+      <div>
+        <p style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Format</p>
+        <div class="export-format-row">
+          <button class="export-fmt-btn selected" id="fmt-jpg" onclick="setExportFmt('jpg')">JPG / JPEG</button>
+          <button class="export-fmt-btn" id="fmt-pdf" onclick="setExportFmt('pdf')">PDF</button>
+        </div>
+      </div>
+      <label class="export-privacy-row">
+        <input type="checkbox" id="export-mask-cb" ${exportMaskValues ? 'checked' : ''} onchange="exportMaskValues=this.checked">
+        <span class="export-privacy-label">Hide financial values (privacy mode)</span>
+      </label>
+      <p class="export-progress" id="export-progress"></p>
+      <div class="export-actions">
+        <button class="export-cancel-btn" onclick="closeExportModal()">Cancel</button>
+        <button class="export-go-btn" id="export-go-btn" onclick="runExport()">Download</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeExportModal(); });
+}
+
+function closeExportModal() {
+  const m = document.getElementById('export-modal');
+  if (m) m.remove();
+}
+
+function setExportFmt(fmt) {
+  exportFmt = fmt;
+  document.getElementById('fmt-jpg').classList.toggle('selected', fmt === 'jpg');
+  document.getElementById('fmt-pdf').classList.toggle('selected', fmt === 'pdf');
+}
+
+// ── Build a clean off-screen summary card ──
+function buildSummaryCard(tab, maskVals) {
+  const active = getActiveData(tab);
+  const fi = filterState[tab];
+  const months = tab === 'household' ? inkData.months
+               : tab === 'ink'       ? inkData.months : fangData.months;
+  const viewingLabel = fi < 0 ? months[months.length - 1] : months[fi];
+  const tabLabel = tab === 'ink' ? 'Ink' : tab === 'fang' ? 'Fang' : 'Household';
+
+  function fmt(v) { return maskVals ? '••••••' : fmtM(v); }
+  function fmtC(v, cur) { return maskVals ? '••••••' : fmtCurrency(v, cur); }
+
+  // ── Metric values ──
+  let metricRows = [];
+  if (tab === 'ink') {
+    const d = active.ink;
+    const last = d.totals[d.totals.length-1], prev = d.totals[d.totals.length-2] ?? last, first = d.totals[0];
+    const peak = Math.max(...d.totals);
+    metricRows = [
+      { label: 'Current Net Worth', val: fmt(last), sub: fmtPct(last,prev) + ' MoM', pos: last >= prev },
+      { label: 'All-time Growth',   val: fmtPct(last,first), sub: 'Since ' + d.firstLabel },
+      { label: 'Peak',              val: fmt(peak), sub: d.months[d.totals.indexOf(peak)] },
+      { label: 'Months Tracked',    val: d.months.length, sub: d.firstLabel + ' → ' + d.lastLabel },
+    ];
+  } else if (tab === 'fang') {
+    const d = active.fang;
+    const last = d.totals[d.totals.length-1], prev = d.totals[d.totals.length-2] ?? last, first = d.totals[0];
+    const peak = Math.max(...d.totals);
+    metricRows = [
+      { label: 'Current Net Worth', val: fmt(last), sub: fmtPct(last,prev) + ' MoM', pos: last >= prev },
+      { label: 'All-time Growth',   val: fmtPct(last,first), sub: 'Since ' + d.firstLabel },
+      { label: 'Peak',              val: fmt(peak), sub: d.months[d.totals.indexOf(peak)] },
+      { label: 'Months Tracked',    val: d.months.length, sub: d.firstLabel + ' → ' + d.lastLabel },
+    ];
+  } else {
+    const inkS = active.ink, fangS = active.fang;
+    const iL = inkS.totals[inkS.totals.length-1];
+    const fL = fangS.totals.length ? fangS.totals[fangS.totals.length-1] : 0;
+    const tot = iL + fL;
+    const iP = inkS.totals[inkS.totals.length-2] ?? iL;
+    const fP = fangS.totals.length > 1 ? fangS.totals[fangS.totals.length-2] : fL;
+    const mom = fmtPct(tot, iP + fP);
+    metricRows = [
+      { label: 'Household Net Worth', val: fmt(tot), sub: mom + ' MoM', pos: parseFloat(mom) >= 0 },
+      { label: "Ink's Share",  val: tot > 0 ? (iL/tot*100).toFixed(0)+'%' : '—', sub: fmt(iL) },
+      { label: "Fang's Share", val: tot > 0 ? (fL/tot*100).toFixed(0)+'%' : '—', sub: fmt(fL) },
+      { label: 'Data Since',   val: inkData.firstLabel, sub: 'Ink started first' },
+    ];
+  }
+
+  // ── Goal values ──
+  let cashVal = 0, investVal = 0, goals;
+  if (tab === 'ink') {
+    const v = getLatestValues(active.ink, INK_CONFIG);
+    cashVal = v.cash; investVal = v.invest; goals = GOALS.ink;
+  } else if (tab === 'fang') {
+    const v = getLatestValues(active.fang, FANG_CONFIG);
+    cashVal = v.cash; investVal = v.invest; goals = GOALS.fang;
+  } else {
+    const vi = getLatestValues(active.ink, INK_CONFIG);
+    const vf = getLatestValues(fangData, FANG_CONFIG);
+    cashVal = vi.cash + vf.cash; investVal = vi.invest + vf.invest; goals = GOALS.household;
+  }
+
+  function goalBar(label, cur, target) {
+    const pct = Math.min(cur / target * 100, 100);
+    const col = goalColor(pct);
+    return `
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:11px;color:#888780;font-family:'DM Mono',monospace;">${label}</span>
+          <span style="font-size:11px;font-family:'DM Mono',monospace;color:${col};">${pct.toFixed(1)}%</span>
+        </div>
+        <div style="height:5px;background:#1e1e1e;border-radius:99px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${col};border-radius:99px;"></div>
+        </div>
+        <div style="text-align:right;font-size:10px;color:#555450;font-family:'DM Mono',monospace;margin-top:2px;">Target: ${maskVals ? '••••' : fmtM(target)}</div>
+      </div>`;
+  }
+
+  // ── Asset allocation (donut data) for ink/fang ──
+  let donutSection = '';
+  if (tab !== 'household') {
+    const list = tab === 'ink' ? inkDonutData : fangDonutData;
+    const allM = getDonutMonths(tab);
+    const latest = allM[allM.length - 1];
+    const activeMonth = donutFilterState[tab] || latest;
+
+    const cards = list.map(d => {
+      let assets = d.byMonth[activeMonth];
+      if (!assets || !assets.length) {
+        const available = d.months.filter(m => {
+          const ai = allM.indexOf(m), ac = allM.indexOf(activeMonth);
+          return ai <= ac;
+        });
+        const fallback = available[available.length - 1];
+        assets = fallback ? (d.byMonth[fallback] || []) : [];
+      }
+      if (!assets.length) return '';
+      assets = [...assets].sort((a, b) => b.pct - a.pct);
+      const totalVal = assets.reduce((s, a) => s + a.value, 0);
+
+      const rows = assets.slice(0, 8).map((a, ai) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <span style="width:8px;height:8px;border-radius:50%;background:${PALETTE[ai % PALETTE.length]};flex-shrink:0;display:inline-block;"></span>
+          <span style="flex:1;font-size:10px;color:#888780;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name}</span>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;color:#c8f542;">${a.pct.toFixed(1)}%</span>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;color:#555450;">${fmtC(a.value, d.currency)}</span>
+        </div>`).join('');
+
+      return `
+        <div style="background:#1e1e1e;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;break-inside:avoid;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <p style="font-size:12px;font-weight:500;color:#f0efe8;margin:0;">${d.title}</p>
+            <p style="font-size:11px;font-family:'DM Mono',monospace;color:#888780;margin:0;">${fmtC(totalVal, d.currency)}</p>
+          </div>
+          ${rows}
+          ${assets.length > 8 ? `<p style="font-size:10px;color:#555450;margin-top:6px;font-family:'DM Mono',monospace;">+${assets.length - 8} more holdings</p>` : ''}
+        </div>`;
+    }).filter(Boolean).join('');
+
+    if (cards) {
+      donutSection = `
+        <div style="margin-top:24px;">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">Asset Allocation · ${activeMonth}</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">${cards}</div>
+        </div>`;
+    }
+  }
+
+  // ── Assemble card HTML ──
+  const now = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+
+  const card = document.createElement('div');
+  card.style.cssText = `
+    width:800px; background:#0d0d0d; color:#f0efe8;
+    font-family:'DM Sans',sans-serif; font-size:14px; line-height:1.6;
+    padding:36px; box-sizing:border-box;
+  `;
+
+  card.innerHTML = `
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,0.07);">
+      <div>
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:#555450;text-transform:uppercase;margin-bottom:4px;">VS NP · Net Worth Dashboard</p>
+        <h1 style="font-size:22px;font-weight:300;letter-spacing:-.02em;margin:0;">${tabLabel} <strong style="font-weight:500;">Summary</strong></h1>
+        <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
+      </div>
+      <div style="text-align:right;">
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v2.8</span>
+        <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;">
+      ${metricRows.map(c => `
+        <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;">
+          <p style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;font-family:'DM Mono',monospace;margin-bottom:5px;">${c.label}</p>
+          <p style="font-size:19px;font-weight:500;color:#f0efe8;font-family:'DM Mono',monospace;letter-spacing:-.02em;margin-bottom:2px;">${c.val}</p>
+          <p style="font-size:10px;font-family:'DM Mono',monospace;color:${c.pos === true ? '#5ce0a8' : c.pos === false ? '#f06b6b' : '#555450'};">${c.sub}</p>
+        </div>`).join('')}
+    </div>
+
+    <!-- Goals -->
+    <div style="margin-bottom:24px;">
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">Goal Progress</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:12px;font-weight:500;">Cash</span>
+            <span style="font-size:16px;font-family:'DM Mono',monospace;font-weight:500;">${fmt(cashVal)}</span>
+          </div>
+          ${goalBar('Short-term', cashVal, goals.cash.st)}
+          ${goalBar('Long-term',  cashVal, goals.cash.lt)}
+        </div>
+        <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:12px;font-weight:500;">Investible Assets</span>
+            <span style="font-size:16px;font-family:'DM Mono',monospace;font-weight:500;">${fmt(investVal)}</span>
+          </div>
+          ${goalBar('Short-term', investVal, goals.invest.st)}
+          ${goalBar('Long-term',  investVal, goals.invest.lt)}
+        </div>
+      </div>
+    </div>
+
+    ${donutSection}
+
+    <!-- Footer -->
+    <div style="margin-top:28px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v2.8${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
+    </div>`;
+
+  return card;
+}
+
+// ── Run export ──
+async function runExport() {
+  const goBtn = document.getElementById('export-go-btn');
+  const prog  = document.getElementById('export-progress');
+  if (!goBtn || !prog) return;
+
+  goBtn.disabled = true;
+  goBtn.textContent = 'Preparing…';
+  prog.textContent = 'Loading export library…';
+
+  try {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+
+    prog.textContent = 'Building summary…';
+    const maskVals = document.getElementById('export-mask-cb')?.checked ?? privacyMode;
+    const card = buildSummaryCard(currentTab, maskVals);
+
+    // Mount off-screen (must be in DOM for html2canvas)
+    card.style.position = 'fixed';
+    card.style.top = '-9999px';
+    card.style.left = '-9999px';
+    document.body.appendChild(card);
+
+    prog.textContent = 'Rendering…';
+
+    // Wait a tick for fonts
+    await new Promise(r => setTimeout(r, 120));
+
+    const canvas = await html2canvas(card, {
+      backgroundColor: '#0d0d0d',
+      scale: exportFmt === 'pdf' ? 2 : 2.5,
+      useCORS: true,
+      logging: false,
+    });
+
+    document.body.removeChild(card);
+
+    const tabLabel = currentTab === 'ink' ? 'ink' : currentTab === 'fang' ? 'fang' : 'household';
+    const fi = filterState[currentTab];
+    const months = currentTab === 'household' ? inkData.months
+                 : currentTab === 'ink'       ? inkData.months : fangData.months;
+    const viewSlug = (fi < 0 ? months[months.length-1] : months[fi]).replace(/\s+/g,'-').toLowerCase();
+    const filename = `vsnp-${tabLabel}-${viewSlug}`;
+
+    if (exportFmt === 'jpg') {
+      prog.textContent = 'Generating JPG…';
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = filename + '.jpg';
+      a.click();
+      prog.textContent = '✓ Downloaded!';
+    } else {
+      prog.textContent = 'Loading PDF library…';
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      prog.textContent = 'Generating PDF…';
+
+      const { jsPDF } = window.jspdf;
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+      // A4 in px at 96dpi ≈ 794×1123; use canvas aspect ratio
+      const pdfW = 794;
+      const pdfH = Math.round(imgH / imgW * pdfW);
+      const pdf = new jsPDF({ orientation: pdfH > pdfW ? 'p' : 'l', unit: 'px', format: [pdfW, pdfH] });
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, pdfH);
+      pdf.save(filename + '.pdf');
+      prog.textContent = '✓ Downloaded!';
+    }
+
+    goBtn.textContent = 'Done ✓';
+    setTimeout(closeExportModal, 1200);
+  } catch(err) {
+    prog.textContent = '⚠ Export failed: ' + err.message;
+    goBtn.disabled = false;
+    goBtn.textContent = 'Retry';
+    console.error('Export error:', err);
+  }
+}
+
+document.getElementById('export-btn').addEventListener('click', () => {
+  if (inkData && fangData) openExportModal();
 });
 
 async function init() {
