@@ -88,7 +88,11 @@
   .goal-bar-track { height: 5px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
   .goal-bar-fill { height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.4,0,.2,1); }
   .goal-bar-target { font-family: var(--font-mono); font-size: 10px; color: var(--text3); text-align: right; margin-top: 1px; }
-  .goal-bar-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1px; }
+  .goal-card-mom { font-family: var(--font-mono); font-size: 11px; display: block; margin-bottom: 14px; margin-top: -6px; }
+  .goal-card-mom.pos { color: var(--green); }
+  .goal-card-mom.neg { color: var(--red); }
+  .goal-card-mom.flat { color: var(--text3); }
+  .goal-bar-footer { display: flex; justify-content: flex-end; align-items: center; margin-top: 1px; }
   .goal-bar-mom { font-family: var(--font-mono); font-size: 10px; }
   .goal-bar-mom.pos { color: var(--green); }
   .goal-bar-mom.neg { color: var(--red); }
@@ -230,7 +234,11 @@
     .filter-pill { font-size: 10px; padding: 3px 10px; }
   }
 
-  /* EXPORT */
+  /* RANGE BUTTONS */
+  .range-bar { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }
+  .range-btn { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--text3); font-family: var(--font-mono); font-size: 10px; padding: 3px 9px; cursor: pointer; transition: all .15s; letter-spacing: .04em; }
+  .range-btn:hover { color: var(--text2); border-color: var(--border2); }
+  .range-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(200,245,66,0.06); }
   .export-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; }
   .export-btn:hover { color: var(--text); background: var(--surface); border-color: var(--accent); }
   .export-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
@@ -282,7 +290,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v3.2</p>
+      <p class="gate-version">v3.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -303,7 +311,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v3.2</span>
+      <span class="version-badge">v3.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="export-btn" id="export-btn">&#8681; Export</button>
@@ -355,6 +363,12 @@
     </div>
 
     <div style="position:relative;">
+      <div class="range-bar" id="range-bar">
+        <button class="range-btn active" data-range="all" onclick="setRange('all')">All</button>
+        <button class="range-btn" data-range="12" onclick="setRange('12')">12M</button>
+        <button class="range-btn" data-range="6" onclick="setRange('6')">6M</button>
+        <button class="range-btn" data-range="3" onclick="setRange('3')">3M</button>
+      </div>
       <div class="chart-wrap">
         <canvas id="main-chart"></canvas>
         <div class="chart-loading" id="chart-loading">Loading&hellip;</div>
@@ -386,7 +400,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v3.2';
+const VERSION  = 'v3.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -730,15 +744,10 @@ function goalColor(pct) {
   return '#f06b6b';
 }
 
-function goalBarHTML(label, current, prev, target) {
+function goalBarHTML(label, current, target) {
   const pct    = Math.min(current / target * 100, 100);
   const color  = goalColor(pct);
   const pctStr = pct.toFixed(1) + '%';
-  const diff   = current - prev;
-  const momCls = diff > 0 ? 'pos' : diff < 0 ? 'neg' : 'flat';
-  const momStr = diff === 0
-    ? 'No change'
-    : (diff > 0 ? '+' : '') + fmtM(diff) + ' MoM';
   return `
     <div class="goal-bar-row">
       <div class="goal-bar-meta">
@@ -749,21 +758,17 @@ function goalBarHTML(label, current, prev, target) {
         <div class="goal-bar-fill" style="width:${pct}%;background:${color}"></div>
       </div>
       <div class="goal-bar-footer">
-        <span class="goal-bar-mom ${momCls}">${mask(momStr)}</span>
         <span class="goal-bar-target">Target: ${mask(fmtM(target))}</span>
       </div>
     </div>`;
 }
 
 // Stacked Ink/Fang variant — used in Household tab only
-function goalBarStackedHTML(label, inkVal, fangVal, prev, target) {
+function goalBarStackedHTML(label, inkVal, fangVal, target) {
   const total   = inkVal + fangVal;
   const pct     = Math.min(total / target * 100, 100);
   const color   = goalColor(pct);
   const pctStr  = pct.toFixed(1) + '%';
-  const diff    = total - prev;
-  const momCls  = diff > 0 ? 'pos' : diff < 0 ? 'neg' : 'flat';
-  const momStr  = diff === 0 ? 'No change' : (diff > 0 ? '+' : '') + fmtM(diff) + ' MoM';
 
   // Ink and Fang segment widths as % of the full track (not just of total)
   const inkPct  = Math.min(inkVal  / target * 100, 100);
@@ -784,7 +789,6 @@ function goalBarStackedHTML(label, inkVal, fangVal, prev, target) {
         <div style="position:absolute;left:${inkPct}%;top:0;height:100%;width:${fangPct}%;background:#5ce0a8;border-radius:${inkPct === 0 ? '99px' : '0'} ${inkPct + fangPct >= 99.9 ? '99px' : '0'} ${inkPct + fangPct >= 99.9 ? '99px' : '0'} ${inkPct === 0 ? '99px' : '0'};transition:width .6s cubic-bezier(.4,0,.2,1),left .6s cubic-bezier(.4,0,.2,1);"></div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
-        <span class="goal-bar-mom ${momCls}">${mask(momStr)}</span>
         <span style="display:flex;gap:8px;align-items:center;">
           <span style="font-family:var(--font-mono);font-size:9px;color:#4da8f5;display:flex;align-items:center;gap:3px;">
             <span style="width:5px;height:5px;border-radius:50%;background:#4da8f5;display:inline-block;flex-shrink:0;"></span>Ink ${inkShare}%
@@ -792,8 +796,8 @@ function goalBarStackedHTML(label, inkVal, fangVal, prev, target) {
           <span style="font-family:var(--font-mono);font-size:9px;color:#5ce0a8;display:flex;align-items:center;gap:3px;">
             <span style="width:5px;height:5px;border-radius:50%;background:#5ce0a8;display:inline-block;flex-shrink:0;"></span>Fang ${fangShare}%
           </span>
-          <span class="goal-bar-target">Target: ${mask(fmtM(target))}</span>
         </span>
+        <span class="goal-bar-target">Target: ${mask(fmtM(target))}</span>
       </div>
     </div>`;
 }
@@ -849,6 +853,12 @@ function renderGoals(tab) {
     } else { prevCash = cashVal; prevInvest = investVal; }
 
     // Household: render stacked Ink/Fang bars
+    function goalMomHTML(cur, prev) {
+      const diff = cur - prev;
+      if (diff === 0) return `<span class="goal-card-mom flat">No change MoM</span>`;
+      const cls = diff > 0 ? 'pos' : 'neg';
+      return `<span class="goal-card-mom ${cls}">${diff > 0 ? '+' : ''}${mask(fmtM(diff))} MoM</span>`;
+    }
     grid.innerHTML = `
       <div class="goal-card">
         <div class="goal-card-header">
@@ -856,9 +866,10 @@ function renderGoals(tab) {
           <span class="goal-card-icon">&#128176;</span>
         </div>
         <div class="goal-card-current">${mask(fmtM(cashVal))}</div>
+        ${goalMomHTML(cashVal, prevCash)}
         <div class="goal-bars">
-          ${goalBarStackedHTML('Short-term', vi.cash, vf.cash, prevCash,   goals.cash.st)}
-          ${goalBarStackedHTML('Long-term',  vi.cash, vf.cash, prevCash,   goals.cash.lt)}
+          ${goalBarStackedHTML('Short-term', vi.cash, vf.cash, goals.cash.st)}
+          ${goalBarStackedHTML('Long-term',  vi.cash, vf.cash, goals.cash.lt)}
         </div>
       </div>
       <div class="goal-card">
@@ -867,12 +878,21 @@ function renderGoals(tab) {
           <span class="goal-card-icon">&#128200;</span>
         </div>
         <div class="goal-card-current">${mask(fmtM(investVal))}</div>
+        ${goalMomHTML(investVal, prevInvest)}
         <div class="goal-bars">
-          ${goalBarStackedHTML('Short-term', vi.invest, vf.invest, prevInvest, goals.invest.st)}
-          ${goalBarStackedHTML('Long-term',  vi.invest, vf.invest, prevInvest, goals.invest.lt)}
+          ${goalBarStackedHTML('Short-term', vi.invest, vf.invest, goals.invest.st)}
+          ${goalBarStackedHTML('Long-term',  vi.invest, vf.invest, goals.invest.lt)}
         </div>
       </div>`;
     return;
+  }
+
+  // Compute MoM string for goal card header
+  function goalMomHTML(cur, prev) {
+    const diff = cur - prev;
+    if (diff === 0) return `<span class="goal-card-mom flat">No change MoM</span>`;
+    const cls = diff > 0 ? 'pos' : 'neg';
+    return `<span class="goal-card-mom ${cls}">${diff > 0 ? '+' : ''}${mask(fmtM(diff))} MoM</span>`;
   }
 
   grid.innerHTML = `
@@ -882,9 +902,10 @@ function renderGoals(tab) {
         <span class="goal-card-icon">&#128176;</span>
       </div>
       <div class="goal-card-current">${mask(fmtM(cashVal))}</div>
+      ${goalMomHTML(cashVal, prevCash)}
       <div class="goal-bars">
-        ${goalBarHTML('Short-term', cashVal, prevCash, goals.cash.st)}
-        ${goalBarHTML('Long-term',  cashVal, prevCash, goals.cash.lt)}
+        ${goalBarHTML('Short-term', cashVal, goals.cash.st)}
+        ${goalBarHTML('Long-term',  cashVal, goals.cash.lt)}
       </div>
     </div>
     <div class="goal-card">
@@ -893,9 +914,10 @@ function renderGoals(tab) {
         <span class="goal-card-icon">&#128200;</span>
       </div>
       <div class="goal-card-current">${mask(fmtM(investVal))}</div>
+      ${goalMomHTML(investVal, prevInvest)}
       <div class="goal-bars">
-        ${goalBarHTML('Short-term', investVal, prevInvest, goals.invest.st)}
-        ${goalBarHTML('Long-term',  investVal, prevInvest, goals.invest.lt)}
+        ${goalBarHTML('Short-term', investVal, goals.invest.st)}
+        ${goalBarHTML('Long-term',  investVal, goals.invest.lt)}
       </div>
     </div>`;
 }
@@ -998,6 +1020,27 @@ function renderDataRange(tab) {
 // LINE CHART
 let chartInst = null;
 let hiddenSeries = new Set();
+let chartRange = 'all'; // 'all' | '12' | '6' | '3'
+
+function setRange(r) {
+  chartRange = r;
+  document.querySelectorAll('.range-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === r);
+  });
+  renderChart(currentTab);
+}
+
+function sliceByRange(months, datasets) {
+  if (chartRange === 'all') return { months, datasets };
+  const n = parseInt(chartRange);
+  const start = Math.max(0, months.length - n);
+  const slicedMonths = months.slice(start);
+  const slicedDatasets = datasets.map(ds => ({
+    ...ds,
+    data: ds.data.slice(start),
+  }));
+  return { months: slicedMonths, datasets: slicedDatasets };
+}
 
 function buildDatasets(tab) {
   const active = getActiveData(tab);
@@ -1026,7 +1069,8 @@ function buildDatasets(tab) {
 
 function renderChart(tab) {
   if (chartInst) { chartInst.destroy(); chartInst=null; }
-  const {labels,datasets} = buildDatasets(tab);
+  const raw = buildDatasets(tab);
+  const { months: labels, datasets } = sliceByRange(raw.labels, raw.datasets);
   chartInst = new Chart(document.getElementById('main-chart').getContext('2d'), {
     type:'line', data:{labels,datasets},
     options:{
@@ -1722,11 +1766,6 @@ function buildSummaryCard(tab, maskVals) {
     } else { prevCash = cashVal; prevInvest = investVal; }
   }
 
-  function momStr(cur, prev) {
-    const diff = cur - prev;
-    if (diff === 0) return { text: 'No change', col: '#555450' };
-    return { text: (diff > 0 ? '+' : '') + fmtM(diff) + ' MoM', col: diff > 0 ? '#5ce0a8' : '#f06b6b' };
-  }
 
   function goalBar(label, cur, target) {
     const pct = Math.min(cur / target * 100, 100);
@@ -1772,9 +1811,16 @@ function buildSummaryCard(tab, maskVals) {
       </div>`;
   }
 
+  function exportMomLine(cur, prev) {
+    const diff = cur - prev;
+    if (diff === 0) return `<p style="font-family:'DM Mono',monospace;font-size:11px;color:#555450;margin-bottom:12px;">No change MoM</p>`;
+    const col = diff > 0 ? '#5ce0a8' : '#f06b6b';
+    return `<p style="font-family:'DM Mono',monospace;font-size:11px;color:${col};margin-bottom:12px;">${diff > 0 ? '+' : ''}${maskVals ? '••••' : fmtM(diff)} MoM</p>`;
+  }
+
   // MoM strings
-  const cashMoM   = momStr(cashVal,   prevCash);
-  const investMoM = momStr(investVal, prevInvest);
+  const cashMoM   = exportMomLine(cashVal,   prevCash);
+  const investMoM = exportMomLine(investVal, prevInvest);
 
   // Household contribution rows
   const hhCashContrib = tab === 'household' ? `
@@ -1810,7 +1856,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.2</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.3</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -1830,26 +1876,22 @@ function buildSummaryCard(tab, maskVals) {
       <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">Goal Progress</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
             <span style="font-size:12px;font-weight:500;">Cash</span>
             <span style="font-size:16px;font-family:'DM Mono',monospace;font-weight:500;">${fmt(cashVal)}</span>
           </div>
           ${hhCashContrib}
-          <div style="margin-bottom:10px;padding:5px 0 5px;border-bottom:1px solid rgba(255,255,255,0.05);">
-            <span style="font-size:10px;font-family:'DM Mono',monospace;color:${cashMoM.col};">${maskVals ? '••••' : cashMoM.text}</span>
-          </div>
+          ${cashMoM}
           ${tab === 'household' ? goalBarStacked('Short-term', inkCash, fangCash, goals.cash.st) : goalBar('Short-term', cashVal, goals.cash.st)}
           ${tab === 'household' ? goalBarStacked('Long-term',  inkCash, fangCash, goals.cash.lt) : goalBar('Long-term',  cashVal, goals.cash.lt)}
         </div>
         <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
             <span style="font-size:12px;font-weight:500;">Investible Assets</span>
             <span style="font-size:16px;font-family:'DM Mono',monospace;font-weight:500;">${fmt(investVal)}</span>
           </div>
           ${hhInvestContrib}
-          <div style="margin-bottom:10px;padding:5px 0 5px;border-bottom:1px solid rgba(255,255,255,0.05);">
-            <span style="font-size:10px;font-family:'DM Mono',monospace;color:${investMoM.col};">${maskVals ? '••••' : investMoM.text}</span>
-          </div>
+          ${investMoM}
           ${tab === 'household' ? goalBarStacked('Short-term', inkInvest, fangInvest, goals.invest.st) : goalBar('Short-term', investVal, goals.invest.st)}
           ${tab === 'household' ? goalBarStacked('Long-term',  inkInvest, fangInvest, goals.invest.lt) : goalBar('Long-term',  investVal, goals.invest.lt)}
         </div>
@@ -1864,7 +1906,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.2${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.3${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
