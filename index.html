@@ -282,7 +282,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v3.1</p>
+      <p class="gate-version">v3.2</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -303,7 +303,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v3.1</span>
+      <span class="version-badge">v3.2</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="export-btn" id="export-btn">&#8681; Export</button>
@@ -386,7 +386,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v3.1';
+const VERSION  = 'v3.2';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1613,27 +1613,35 @@ function buildSummaryCard(tab, maskVals) {
     }
   }
 
-  // ── 3. Metric values ──
+  // ── 3. Metric values (mirrors renderMetrics exactly) ──
   let metricRows = [];
   if (tab === 'ink') {
     const d = active.ink;
     const last = d.totals[d.totals.length-1], prev = d.totals[d.totals.length-2] ?? last, first = d.totals[0];
     const peak = Math.max(...d.totals);
+    const mom  = fmtPct(last, prev);
+    const ytd  = calcYTD(d.months, d.totals);
+    const ytdVal = ytd ? (ytd.diff >= 0 ? '+' : '') + fmtM(ytd.diff) + ' (' + (ytd.pct >= 0 ? '+' : '') + ytd.pct.toFixed(1) + '%)' : '—';
     metricRows = [
-      { label: 'Current Net Worth', val: fmt(last), sub: fmtPct(last,prev) + ' MoM', pos: last >= prev },
-      { label: 'All-time Growth',   val: fmtPct(last,first), sub: 'Since ' + d.firstLabel },
-      { label: 'Peak',              val: fmt(peak), sub: d.months[d.totals.indexOf(peak)] },
-      { label: 'Months Tracked',    val: d.months.length, sub: d.firstLabel + ' → ' + d.lastLabel },
+      { label: 'Current Net Worth', val: fmt(last),            sub: mom + ' MoM',                           pos: parseFloat(mom) >= 0 },
+      { label: 'All-time Growth',   val: fmtPct(last, first),  sub: 'Since ' + d.firstLabel,                pos: null },
+      { label: 'Peak',              val: fmt(peak),            sub: d.months[d.totals.indexOf(peak)],       pos: null },
+      { label: ytd ? ytd.label : 'YTD', val: ytd ? (maskVals ? '••••••' : ytdVal) : '—',
+        sub: ytd ? 'vs ' + fmt(ytd.janVal) + ' Jan' : 'No Jan in range',                                   pos: ytd ? ytd.diff >= 0 : null },
     ];
   } else if (tab === 'fang') {
     const d = active.fang;
     const last = d.totals[d.totals.length-1], prev = d.totals[d.totals.length-2] ?? last, first = d.totals[0];
     const peak = Math.max(...d.totals);
+    const mom  = fmtPct(last, prev);
+    const ytd  = calcYTD(d.months, d.totals);
+    const ytdVal = ytd ? (ytd.diff >= 0 ? '+' : '') + fmtM(ytd.diff) + ' (' + (ytd.pct >= 0 ? '+' : '') + ytd.pct.toFixed(1) + '%)' : '—';
     metricRows = [
-      { label: 'Current Net Worth', val: fmt(last), sub: fmtPct(last,prev) + ' MoM', pos: last >= prev },
-      { label: 'All-time Growth',   val: fmtPct(last,first), sub: 'Since ' + d.firstLabel },
-      { label: 'Peak',              val: fmt(peak), sub: d.months[d.totals.indexOf(peak)] },
-      { label: 'Months Tracked',    val: d.months.length, sub: d.firstLabel + ' → ' + d.lastLabel },
+      { label: 'Current Net Worth', val: fmt(last),            sub: mom + ' MoM',                           pos: parseFloat(mom) >= 0 },
+      { label: 'All-time Growth',   val: fmtPct(last, first),  sub: 'Since ' + d.firstLabel,                pos: null },
+      { label: 'Peak',              val: fmt(peak),            sub: d.months[d.totals.indexOf(peak)],       pos: null },
+      { label: ytd ? ytd.label : 'YTD', val: ytd ? (maskVals ? '••••••' : ytdVal) : '—',
+        sub: ytd ? 'vs ' + fmt(ytd.janVal) + ' Jan' : 'No Jan in range',                                   pos: ytd ? ytd.diff >= 0 : null },
     ];
   } else {
     const inkS = active.ink, fangS = active.fang;
@@ -1643,11 +1651,32 @@ function buildSummaryCard(tab, maskVals) {
     const iP = inkS.totals[inkS.totals.length-2] ?? iL;
     const fP = fangS.totals.length > 1 ? fangS.totals[fangS.totals.length-2] : fL;
     const mom = fmtPct(tot, iP + fP);
+    // Household YTD (same logic as renderMetrics)
+    let hhJanIdx = -1;
+    for (let i = inkS.totals.length - 1; i >= 0; i--) {
+      if (/^jan/i.test(inkS.months[i])) { hhJanIdx = i; break; }
+    }
+    let hhYtd = null;
+    if (hhJanIdx >= 0) {
+      const fangStart  = inkS.months.indexOf(fangS.months[0]);
+      const inkJanVal  = inkS.totals[hhJanIdx];
+      const fangJanIdx = fangStart >= 0 ? hhJanIdx - fangStart : -1;
+      const fangJanVal = (fangJanIdx >= 0 && fangJanIdx < fangS.totals.length) ? fangS.totals[fangJanIdx] : 0;
+      const janTot = inkJanVal + fangJanVal;
+      const diff   = tot - janTot;
+      const pct    = janTot !== 0 ? diff / Math.abs(janTot) * 100 : 0;
+      const year   = inkS.months[hhJanIdx].replace(/[^0-9]/g, '').slice(-2);
+      hhYtd = { diff, pct, label: "YTD '" + (year || '?'), janVal: janTot };
+    }
+    const hhYtdVal = hhYtd
+      ? (hhYtd.diff >= 0 ? '+' : '') + fmtM(hhYtd.diff) + ' (' + (hhYtd.pct >= 0 ? '+' : '') + hhYtd.pct.toFixed(1) + '%)'
+      : '—';
     metricRows = [
-      { label: 'Household Net Worth', val: fmt(tot), sub: mom + ' MoM', pos: parseFloat(mom) >= 0 },
-      { label: "Ink's Share",  val: tot > 0 ? (iL/tot*100).toFixed(0)+'%' : '—', sub: fmt(iL) },
-      { label: "Fang's Share", val: tot > 0 ? (fL/tot*100).toFixed(0)+'%' : '—', sub: fmt(fL) },
-      { label: 'Data Since',   val: inkData.firstLabel, sub: 'Ink started first' },
+      { label: 'Household Net Worth', val: fmt(tot),                          sub: mom + ' MoM',           pos: parseFloat(mom) >= 0 },
+      { label: "Ink's Share",         val: tot > 0 ? (iL/tot*100).toFixed(0) + '%' : '—', sub: fmt(iL),  pos: null },
+      { label: "Fang's Share",        val: tot > 0 ? (fL/tot*100).toFixed(0) + '%' : '—', sub: fmt(fL),  pos: null },
+      { label: hhYtd ? hhYtd.label : 'YTD', val: hhYtd ? (maskVals ? '••••••' : hhYtdVal) : '—',
+        sub: hhYtd ? 'vs ' + fmt(hhYtd.janVal) + ' Jan' : 'No Jan in range',                              pos: hhYtd ? hhYtd.diff >= 0 : null },
     ];
   }
 
@@ -1781,7 +1810,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.1</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.2</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -1835,7 +1864,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.1${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.2${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -1921,6 +1950,69 @@ async function runExport() {
     console.error('Export error:', err);
   }
 }
+
+// ─── KEYBOARD SHORTCUTS ────────────────────────────────────────────────────────
+// ← / → step through months on the active tab
+document.addEventListener('keydown', e => {
+  if (!inkData || !fangData) return;
+  // Don't fire if user is typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+
+  const tab    = currentTab;
+  const months = tab === 'household' ? inkData.months
+               : tab === 'ink'       ? inkData.months : fangData.months;
+  const fi     = filterState[tab];
+  const cur    = fi < 0 ? months.length - 1 : fi;
+
+  let next;
+  if (e.key === 'ArrowLeft')  next = Math.max(0, cur - 1);          // older
+  if (e.key === 'ArrowRight') next = Math.min(months.length - 1, cur + 1); // newer
+
+  if (next === cur) return;
+  e.preventDefault();
+  selectFilter(tab, next);
+
+  // Flash the active pill into view
+  const scroll = document.getElementById('filter-scroll');
+  if (scroll) {
+    const active = scroll.querySelector('.filter-pill.active');
+    if (active) active.scrollIntoView({ inline: 'center', behavior: 'smooth' });
+  }
+});
+
+// ─── SWIPE GESTURES (mobile tab switching) ────────────────────────────────────
+// Left swipe → next tab, Right swipe → prev tab
+(function initSwipe() {
+  const TABS = ['ink', 'fang', 'household'];
+  const MIN_DIST  = 50;   // px minimum horizontal travel
+  const MAX_VERT  = 80;   // px max vertical drift (avoids triggering on scroll)
+  let startX = null, startY = null;
+
+  const app = document.getElementById('app');
+
+  app.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  app.addEventListener('touchend', e => {
+    if (startX === null) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    startX = startY = null;
+
+    if (Math.abs(dx) < MIN_DIST || Math.abs(dy) > MAX_VERT) return;
+
+    const cur  = TABS.indexOf(currentTab);
+    const next = dx < 0 ? Math.min(cur + 1, TABS.length - 1)   // swipe left → next tab
+                        : Math.max(cur - 1, 0);                  // swipe right → prev tab
+    if (next === cur) return;
+
+    const btn = document.querySelector(`.tab[data-tab="${TABS[next]}"]`);
+    if (btn) btn.click();
+  }, { passive: true });
+})();
 
 document.getElementById('export-btn').addEventListener('click', () => {
   if (inkData && fangData) openExportModal();
