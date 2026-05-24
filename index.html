@@ -297,7 +297,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v3.6</p>
+      <p class="gate-version">v3.7</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -318,7 +318,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v3.6</span>
+      <span class="version-badge">v3.7</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="export-btn" id="export-btn">&#8681; Export</button>
@@ -408,7 +408,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v3.6';
+const VERSION  = 'v3.7';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1950,7 +1950,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.6</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.7</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2000,7 +2000,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.6${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.7${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -2061,34 +2061,6 @@ async function runExport() {
     if (exportFmt === 'jpg') {
       prog.textContent = 'Saving JPG…';
       const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
-
-      // On mobile, try native share sheet first
-      if (navigator.share && navigator.canShare) {
-        try {
-          const blob = await (await fetch(dataUrl)).blob();
-          const file = new File([blob], filename + '.jpg', { type: 'image/jpeg' });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: `VS NP · ${tabSlug} summary`,
-            });
-            prog.textContent = '✓ Shared!';
-            goBtn.textContent = 'Done ✓';
-            setTimeout(closeExportModal, 1200);
-            return;
-          }
-        } catch (shareErr) {
-          // User cancelled or share failed — fall through to download
-          if (shareErr.name === 'AbortError') {
-            prog.textContent = '';
-            goBtn.disabled = false;
-            goBtn.textContent = 'Download';
-            return;
-          }
-        }
-      }
-
-      // Desktop fallback — direct download
       const a = document.createElement('a');
       a.href = dataUrl; a.download = filename + '.jpg'; a.click();
       prog.textContent = '✓ Downloaded!';
