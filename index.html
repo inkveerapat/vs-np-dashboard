@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VS NP Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d0d0d'/><polyline points='3,24 9,18 14,20 20,10 27,8' fill='none' stroke='%23c8f542' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/><circle cx='27' cy='8' r='2' fill='%23c8f542'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -178,7 +179,6 @@
     .topbar-right { flex: 1 1 100%; justify-content: flex-end; gap: 6px; }
     .topbar-sep { display: none; }
     .topbar-title { display: none; }
-    .version-badge { display: none; }
     .last-updated { display: none; }
     .refresh-btn .refresh-label { display: none; }
 
@@ -214,7 +214,6 @@
 
   @media (min-width: 481px) and (max-width: 768px) {
     .topbar { padding: 0 16px; }
-    .version-badge { display: none; }
     .last-updated { display: none; }
     .main { padding: 28px 20px 56px; }
     .metric-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -298,7 +297,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v3.5</p>
+      <p class="gate-version">v3.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -319,7 +318,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v3.5</span>
+      <span class="version-badge">v3.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="export-btn" id="export-btn">&#8681; Export</button>
@@ -409,7 +408,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v3.5';
+const VERSION  = 'v3.6';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1381,6 +1380,11 @@ document.querySelectorAll('.tab').forEach(btn => {
     hiddenSeries.clear();
     filterState[currentTab] = -1;
     donutFilterState[currentTab] = null;
+    // Reset range to All on every tab switch
+    chartRange = 'all';
+    document.querySelectorAll('.range-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.range === 'all');
+    });
     renderAll(currentTab);
   });
 });
@@ -1672,9 +1676,10 @@ function buildSummaryCard(tab, maskVals) {
     ).join('');
   }
 
+  const chartRangeLabel = chartRange === 'all' ? 'All time' : chartRange + ' months';
   const chartSection = chartDataUrl ? `
     <div style="margin-bottom:24px;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Net Worth Over Time</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Net Worth Over Time · ${chartRangeLabel}</p>
       <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;">
         <img src="${chartDataUrl}" style="width:100%;display:block;border-radius:6px;" />
         <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:4px 0;">${legendHTML}</div>
@@ -1945,7 +1950,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.5</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.6</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -1995,7 +2000,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.5${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.6${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -2056,6 +2061,34 @@ async function runExport() {
     if (exportFmt === 'jpg') {
       prog.textContent = 'Saving JPG…';
       const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
+
+      // On mobile, try native share sheet first
+      if (navigator.share && navigator.canShare) {
+        try {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], filename + '.jpg', { type: 'image/jpeg' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: `VS NP · ${tabSlug} summary`,
+            });
+            prog.textContent = '✓ Shared!';
+            goBtn.textContent = 'Done ✓';
+            setTimeout(closeExportModal, 1200);
+            return;
+          }
+        } catch (shareErr) {
+          // User cancelled or share failed — fall through to download
+          if (shareErr.name === 'AbortError') {
+            prog.textContent = '';
+            goBtn.disabled = false;
+            goBtn.textContent = 'Download';
+            return;
+          }
+        }
+      }
+
+      // Desktop fallback — direct download
       const a = document.createElement('a');
       a.href = dataUrl; a.download = filename + '.jpg'; a.click();
       prog.textContent = '✓ Downloaded!';
@@ -2084,32 +2117,19 @@ async function runExport() {
 
 // ─── KEYBOARD SHORTCUTS ────────────────────────────────────────────────────────
 // ← / → step through months on the active tab
-document.addEventListener('keydown', e => {
-  if (!inkData || !fangData) return;
-  // Don't fire if user is typing in an input
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-
-  const tab    = currentTab;
-  const months = tab === 'household' ? inkData.months
-               : tab === 'ink'       ? inkData.months : fangData.months;
-  const fi     = filterState[tab];
-  const cur    = fi < 0 ? months.length - 1 : fi;
-
-  let next;
-  if (e.key === 'ArrowLeft')  next = Math.max(0, cur - 1);          // older
-  if (e.key === 'ArrowRight') next = Math.min(months.length - 1, cur + 1); // newer
-
-  if (next === cur) return;
-  e.preventDefault();
-  selectFilter(tab, next);
-
-  // Flash the active pill into view
-  const scroll = document.getElementById('filter-scroll');
-  if (scroll) {
-    const active = scroll.querySelector('.filter-pill.active');
-    if (active) active.scrollIntoView({ inline: 'center', behavior: 'smooth' });
-  }
+// ─── ORIENTATION / RESIZE FIX ────────────────────────────────────────────────
+// Chart.js responsive resize sometimes drops datasets (especially the total
+// line) after orientation change. Force a full redraw with a small delay so
+// the browser has finished reflowing before we rebuild the canvas.
+let _resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    if (inkData && fangData) {
+      renderLegend(currentTab);
+      renderChart(currentTab);
+    }
+  }, 120);
 });
 
 // ─── SWIPE GESTURES (mobile tab switching) ────────────────────────────────────
