@@ -106,13 +106,14 @@
   .goal-bar-mom.flat { color: var(--text3); }
 
   /* LINE CHART */
-  .chart-wrap { position: relative; width: 100%; height: 340px; }
+  .chart-wrap { position: relative; width: 100%; height: clamp(240px, 38vh, 420px); }
   .chart-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; color: var(--text3); }
   .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 18px; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text3); cursor: pointer; padding: 3px 0; transition: color .15s; user-select: none; }
   .legend-item:hover { color: var(--text2); }
   .legend-item.hidden { opacity: .3; }
   .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .chart-crosshair { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.12); pointer-events: none; display: none; transform: translateX(-50%); }
   .chart-tooltip { position: absolute; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 12px 16px; font-size: 12px; pointer-events: none; z-index: 20; min-width: 200px; display: none; }
   .tt-month { font-family: var(--font-mono); font-size: 11px; color: var(--text3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .06em; }
   .tt-row { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 2px 0; color: var(--text2); }
@@ -198,7 +199,7 @@
     .goal-card { padding: 14px 14px; }
     .goal-card-current { font-size: 15px; }
 
-    .chart-wrap { height: 220px; }
+    .chart-wrap { height: clamp(180px, 32vh, 260px); }
     .legend { gap: 6px 12px; margin-top: 12px; }
     .legend-item { font-size: 10px; }
 
@@ -218,7 +219,7 @@
     .main { padding: 28px 20px 56px; }
     .metric-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
     .goal-grid { grid-template-columns: 1fr 1fr; }
-    .chart-wrap { height: 260px; }
+    .chart-wrap { height: clamp(220px, 35vh, 320px); }
     .donut-grid { grid-template-columns: 1fr; }
     .privacy-btn { font-size: 11px; padding: 5px 8px; }
   }
@@ -297,7 +298,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v3.4</p>
+      <p class="gate-version">v3.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -318,7 +319,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v3.4</span>
+      <span class="version-badge">v3.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="export-btn" id="export-btn">&#8681; Export</button>
@@ -378,6 +379,7 @@
       </div>
       <div class="chart-wrap">
         <canvas id="main-chart"></canvas>
+        <div class="chart-crosshair" id="chart-crosshair"></div>
         <div class="chart-loading" id="chart-loading">Loading&hellip;</div>
         <div id="yaxis-blur" style="position:absolute;top:0;left:0;width:64px;height:100%;pointer-events:none;backdrop-filter:blur(0px);transition:backdrop-filter .2s;" aria-hidden="true"></div>
       </div>
@@ -407,7 +409,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v3.4';
+const VERSION  = 'v3.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1062,27 +1064,67 @@ function sliceByRange(months, datasets) {
   return { months: slicedMonths, datasets: slicedDatasets };
 }
 
+function makeGradient(ctx, color, alpha1 = 0.22, alpha2 = 0.0) {
+  const grad = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+  grad.addColorStop(0, hexA(color, alpha1));
+  grad.addColorStop(1, hexA(color, alpha2));
+  return grad;
+}
+
 function buildDatasets(tab) {
+  const canvas = document.getElementById('main-chart');
+  const ctx2d  = canvas ? canvas.getContext('2d') : null;
   const active = getActiveData(tab);
-  if (tab==='ink'||tab==='fang') {
-    const d = tab==='ink' ? active.ink : active.fang;
-    const ds = d.components.filter(c=>!hiddenSeries.has(c.name)).map(c=>({
-      label:c.name, data:c.values, borderColor:c.color, backgroundColor:hexA(c.color,0.15),
-      borderWidth:1.5, fill:'origin', tension:0.4, pointRadius:2, pointHoverRadius:5,
-      pointBackgroundColor:c.color, stack:'stack'
+
+  if (tab === 'ink' || tab === 'fang') {
+    const d  = tab === 'ink' ? active.ink : active.fang;
+    const ds = d.components.filter(c => !hiddenSeries.has(c.name)).map(c => ({
+      label: c.name, data: c.values,
+      borderColor: c.color,
+      backgroundColor: ctx2d ? makeGradient(ctx2d, c.color, 0.18, 0) : hexA(c.color, 0.12),
+      borderWidth: 1.5, fill: 'origin', tension: 0.3,
+      pointRadius: 2, pointHoverRadius: 5, pointBackgroundColor: c.color,
+      stack: 'stack'
     }));
-    ds.push({ label:'__total__', data:d.totals, borderColor:'rgba(255,255,255,0.35)', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], fill:false, tension:0.4, pointRadius:0, pointHoverRadius:4, stack:undefined });
-    return { labels:d.months, datasets:ds };
+    // Total line — thicker, white, dashed anchor
+    ds.push({
+      label: '__total__', data: d.totals,
+      borderColor: 'rgba(255,255,255,0.55)',
+      backgroundColor: 'transparent',
+      borderWidth: 2.5, borderDash: [4, 3], fill: false, tension: 0.3,
+      pointRadius: 0, pointHoverRadius: 4,
+    });
+    return { labels: d.months, datasets: ds };
   } else {
-    const inkS=active.ink, fangS=active.fang;
-    const im=inkS.months;
-    const fs=im.indexOf(fangS.months[0]);
-    const combined = inkS.totals.map((v,i)=>{ const fi=fs!==-1?i-fs:-1; return v+(fi>=0&&fi<fangS.totals.length?fangS.totals[fi]:0); });
-    const fAl = im.map((_,i)=>{ const fi=fs!==-1?i-fs:-1; return fi>=0&&fi<fangS.totals.length?fangS.totals[fi]:null; });
-    return { labels:im, datasets:[
-      {label:'Ink',  data:inkS.totals, borderColor:'#4da8f5', backgroundColor:hexA('#4da8f5',0.08), borderWidth:2, fill:false, tension:0.4, pointRadius:2, pointHoverRadius:5, pointBackgroundColor:'#4da8f5'},
-      {label:'Fang', data:fAl, borderColor:'#5ce0a8', backgroundColor:hexA('#5ce0a8',0.08), borderWidth:2, fill:false, tension:0.4, pointRadius:2, pointHoverRadius:5, pointBackgroundColor:'#5ce0a8', spanGaps:false},
-      {label:'Household total', data:combined, borderColor:'#c8f542', backgroundColor:hexA('#c8f542',0.06), borderWidth:2, borderDash:[5,3], fill:false, tension:0.4, pointRadius:0, pointHoverRadius:5, pointBackgroundColor:'#c8f542'}
+    const inkS = active.ink, fangS = active.fang;
+    const im   = inkS.months;
+    const fs   = im.indexOf(fangS.months[0]);
+    const combined = inkS.totals.map((v, i) => {
+      const fi = fs !== -1 ? i - fs : -1;
+      return v + (fi >= 0 && fi < fangS.totals.length ? fangS.totals[fi] : 0);
+    });
+    const fAl = im.map((_, i) => {
+      const fi = fs !== -1 ? i - fs : -1;
+      return fi >= 0 && fi < fangS.totals.length ? fangS.totals[fi] : null;
+    });
+    return { labels: im, datasets: [
+      // Component lines — thinner
+      { label: 'Ink',  data: inkS.totals,
+        borderColor: '#4da8f5',
+        backgroundColor: ctx2d ? makeGradient(ctx2d, '#4da8f5', 0.14, 0) : hexA('#4da8f5', 0.08),
+        borderWidth: 1.5, fill: false, tension: 0.3,
+        pointRadius: 2, pointHoverRadius: 5, pointBackgroundColor: '#4da8f5' },
+      { label: 'Fang', data: fAl,
+        borderColor: '#5ce0a8',
+        backgroundColor: ctx2d ? makeGradient(ctx2d, '#5ce0a8', 0.14, 0) : hexA('#5ce0a8', 0.08),
+        borderWidth: 1.5, fill: false, tension: 0.3,
+        pointRadius: 2, pointHoverRadius: 5, pointBackgroundColor: '#5ce0a8', spanGaps: false },
+      // Household total — thicker anchor line
+      { label: 'Household total', data: combined,
+        borderColor: '#c8f542',
+        backgroundColor: ctx2d ? makeGradient(ctx2d, '#c8f542', 0.16, 0) : hexA('#c8f542', 0.06),
+        borderWidth: 3, borderDash: [5, 3], fill: false, tension: 0.3,
+        pointRadius: 0, pointHoverRadius: 5, pointBackgroundColor: '#c8f542' },
     ]};
   }
 }
@@ -1105,33 +1147,56 @@ function renderChart(tab) {
   });
 }
 
-// ENHANCEMENT: Tooltip asset elements now sort by value descending
+// CROSSHAIR + CUSTOM TOOLTIP
 function extTooltip(ctx) {
-  const tt=document.getElementById('chart-tooltip');
-  if (ctx.tooltip.opacity===0){tt.style.display='none';return;}
-  const t=ctx.tooltip;
-  
-  // Filter out system placeholders
-  const vis=t.dataPoints.filter(p=>p.dataset.label!=='__total__'&&p.raw!==null);
-  
-  // Sort individual asset values descending (Highest -> Lowest)
+  const tt   = document.getElementById('chart-tooltip');
+  const xhair = document.getElementById('chart-crosshair');
+
+  if (ctx.tooltip.opacity === 0) {
+    tt.style.display    = 'none';
+    if (xhair) xhair.style.display = 'none';
+    return;
+  }
+  const t = ctx.tooltip;
+
+  // ── Crosshair ──
+  if (xhair) {
+    const chartArea = chartInst.chartArea;
+    const x = t.caretX;
+    // Only show crosshair within chart plot area
+    if (x >= chartArea.left && x <= chartArea.right) {
+      xhair.style.display = 'block';
+      xhair.style.left    = x + 'px';
+      xhair.style.top     = chartArea.top + 'px';
+      xhair.style.height  = (chartArea.bottom - chartArea.top) + 'px';
+    } else {
+      xhair.style.display = 'none';
+    }
+  }
+
+  // ── Tooltip content ──
+  const vis   = t.dataPoints.filter(p => p.dataset.label !== '__total__' && p.raw !== null);
   vis.sort((a, b) => b.raw - a.raw);
-  
-  const totPt=t.dataPoints.find(p=>p.dataset.label==='__total__');
-  const hhPt=t.dataPoints.find(p=>p.dataset.label==='Household total');
-  
-  let html=`<div class="tt-month">${t.title[0]||''}</div>`;
-  vis.forEach(p=>{
-    html+=`<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${mask(fmtM(p.raw))}</span></div>`;
+  const totPt = t.dataPoints.find(p => p.dataset.label === '__total__');
+  const hhPt  = t.dataPoints.find(p => p.dataset.label === 'Household total');
+
+  let html = `<div class="tt-month">${t.title[0] || ''}</div>`;
+  vis.forEach(p => {
+    html += `<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${mask(fmtM(p.raw))}</span></div>`;
   });
-  
-  if (totPt) html+=`<div class="tt-row tt-total"><span>Total</span><span class="tt-val">${mask(fmtM(totPt.raw))}</span></div>`;
-  else if (hhPt&&hhPt.raw!==null) html+=`<div class="tt-row tt-total"><span>Household</span><span class="tt-val">${mask(fmtM(hhPt.raw))}</span></div>`;
-  
-  tt.innerHTML=html; tt.style.display='block';
-  const wr=tt.parentElement.getBoundingClientRect();
-  let l=t.caretX+18; if(l+220>wr.width)l=t.caretX-230;
-  tt.style.left=Math.max(0,l)+'px'; tt.style.top=Math.max(0,t.caretY-20)+'px';
+  if (totPt) html += `<div class="tt-row tt-total"><span>Total</span><span class="tt-val">${mask(fmtM(totPt.raw))}</span></div>`;
+  else if (hhPt && hhPt.raw !== null) html += `<div class="tt-row tt-total"><span>Household</span><span class="tt-val">${mask(fmtM(hhPt.raw))}</span></div>`;
+
+  tt.innerHTML = html;
+  tt.style.display = 'block';
+
+  // ── Position tooltip: flip to left if too close to right edge ──
+  const wr = tt.parentElement.getBoundingClientRect();
+  const ttW = 220;
+  let l = t.caretX + 18;
+  if (l + ttW > wr.width) l = t.caretX - ttW - 10;
+  tt.style.left = Math.max(0, l) + 'px';
+  tt.style.top  = Math.max(0, t.caretY - 20) + 'px';
 }
 
 // LEGEND RENDER
@@ -1880,7 +1945,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.4</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.5</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -1930,7 +1995,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.4${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.5${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -1990,7 +2055,7 @@ async function runExport() {
 
     if (exportFmt === 'jpg') {
       prog.textContent = 'Saving JPG…';
-const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
       const a = document.createElement('a');
       a.href = dataUrl; a.download = filename + '.jpg'; a.click();
       prog.textContent = '✓ Downloaded!';
@@ -2058,6 +2123,9 @@ document.addEventListener('keydown', e => {
   const app = document.getElementById('app');
 
   app.addEventListener('touchstart', e => {
+    // Ignore swipe if touch starts on or inside the chart canvas
+    const chartEl = document.getElementById('main-chart');
+    if (chartEl && chartEl.contains(e.target)) { startX = null; return; }
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
   }, { passive: true });
@@ -2091,4 +2159,3 @@ async function init() {
 </script>
 </body>
 </html>
-     
