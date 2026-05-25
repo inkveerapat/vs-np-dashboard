@@ -5,19 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VS NP Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d0d0d'/><polyline points='3,24 9,18 14,20 20,10 27,8' fill='none' stroke='%23c8f542' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/><circle cx='27' cy='8' r='2' fill='%23c8f542'/></svg>">
-<link rel="manifest" href="data:application/json,{
-  %22name%22:%22VS NP Dashboard%22,
-  %22short_name%22:%22VS NP%22,
-  %22description%22:%22Personal net worth tracker%22,
-  %22start_url%22:%22.%22,
-  %22display%22:%22standalone%22,
-  %22background_color%22:%22%230d0d0d%22,
-  %22theme_color%22:%22%230d0d0d%22,
-  %22orientation%22:%22any%22,
-  %22icons%22:[
-    {%22src%22:%22data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230d0d0d'/><polyline points='48,384 144,288 224,320 320,160 432,128' fill='none' stroke='%23c8f542' stroke-width='40' stroke-linecap='round' stroke-linejoin='round'/><circle cx='432' cy='128' r='36' fill='%23c8f542'/></svg>%22,%22sizes%22:%22any%22,%22type%22:%22image/svg+xml%22,%22purpose%22:%22any maskable%22}
-  ]
-}">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -270,7 +259,9 @@
   .range-btn { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--text3); font-family: var(--font-mono); font-size: 10px; padding: 3px 9px; cursor: pointer; transition: all .15s; letter-spacing: .04em; }
   .range-btn:hover { color: var(--text2); border-color: var(--border2); }
   .range-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(200,245,66,0.06); }
-  .export-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; }
+  .install-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; display: none; }
+  .install-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(200,245,66,0.06); }
+  @media (max-width: 480px) { .install-btn { font-size: 11px; padding: 4px 8px; } }
   .export-btn:hover { color: var(--text); background: var(--surface); border-color: var(--accent); }
   .export-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
   .export-modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 28px 28px 24px; width: 340px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; gap: 18px; }
@@ -345,6 +336,7 @@
       <span class="version-badge">v3.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
+      <button class="install-btn" id="install-btn">⊕ Install App</button>
       <button class="export-btn" id="export-btn">&#8681; Export</button>
       <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
       <button class="logout-btn" id="logout-btn">lock</button>
@@ -2137,6 +2129,29 @@ async function init() {
   const ok = await loadData();
   if (ok) renderAll('ink');
 }
+
+// ─── PWA INSTALL PROMPT ───────────────────────────────────────────────────────
+let _installPrompt = null;
+const installBtn = document.getElementById('install-btn');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _installPrompt = e;
+  installBtn.style.display = 'block'; // show button only when prompt is available
+});
+
+installBtn.addEventListener('click', async () => {
+  if (!_installPrompt) return;
+  _installPrompt.prompt();
+  const { outcome } = await _installPrompt.userChoice;
+  _installPrompt = null;
+  installBtn.style.display = 'none';
+});
+
+window.addEventListener('appinstalled', () => {
+  installBtn.style.display = 'none';
+  _installPrompt = null;
+});
 
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
