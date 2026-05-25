@@ -262,6 +262,7 @@
   .install-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; display: none; }
   .install-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(200,245,66,0.06); }
   @media (max-width: 480px) { .install-btn { font-size: 11px; padding: 4px 8px; } }
+  .export-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-size: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-sans); transition: all .15s; white-space: nowrap; }
   .export-btn:hover { color: var(--text); background: var(--surface); border-color: var(--accent); }
   .export-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
   .export-modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 28px 28px 24px; width: 340px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; gap: 18px; }
@@ -312,7 +313,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v3.8</p>
+      <p class="gate-version">v3.9</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -333,12 +334,14 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v3.8</span>
+      <span class="version-badge">v3.9</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
       <button class="export-btn" id="export-btn">&#8681; Export</button>
-      <button class="privacy-btn" id="privacy-btn" title="Hide financial values">&#128065; Hide</button>
+      <button class="privacy-btn" id="privacy-btn" title="Hide financial values">
+        <svg id="privacy-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span id="privacy-label">Hide</span>
+      </button>
       <button class="logout-btn" id="logout-btn">lock</button>
     </div>
   </nav>
@@ -424,7 +427,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v3.8';
+const VERSION  = 'v3.9';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -434,16 +437,19 @@ function mask(val) {
   return privacyMode ? '••••••' : val;
 }
 
+const EYE_OPEN   = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const EYE_CLOSED = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:4px;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+
 function applyPrivacyMode() {
-  const btn = document.getElementById('privacy-btn');
+  const btn   = document.getElementById('privacy-btn');
   const yBlur = document.getElementById('yaxis-blur');
   if (privacyMode) {
-    btn.innerHTML = '&#129640; Show';
+    btn.innerHTML = EYE_CLOSED + '<span>Show</span>';
     btn.classList.add('active');
     document.body.classList.add('privacy');
     if (yBlur) yBlur.style.backdropFilter = 'blur(8px)';
   } else {
-    btn.innerHTML = '&#128065; Hide';
+    btn.innerHTML = EYE_OPEN + '<span>Hide</span>';
     btn.classList.remove('active');
     document.body.classList.remove('privacy');
     if (yBlur) yBlur.style.backdropFilter = 'blur(0px)';
@@ -1966,7 +1972,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.8</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.9</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2016,7 +2022,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.8${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.9${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -2156,7 +2162,7 @@ window.addEventListener('appinstalled', () => {
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'vsnp-v3.8';
+const CACHE = 'vsnp-v3.9';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
