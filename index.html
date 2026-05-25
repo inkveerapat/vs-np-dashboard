@@ -313,7 +313,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v3.9</p>
+      <p class="gate-version">v4.0</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -334,7 +334,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v3.9</span>
+      <span class="version-badge">v4.0</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -427,7 +427,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v3.9';
+const VERSION  = 'v4.0';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -460,8 +460,9 @@ function applyPrivacyMode() {
 const BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=';
 const csv  = gid => BASE + gid + '&single=true&output=csv';
 
-const INK_CSV_URL  = csv(0);
-const FANG_CSV_URL = csv(576373003);
+const INK_CSV_URL   = csv(0);
+const FANG_CSV_URL  = csv(576373003);
+const CONDO_CSV_URL = csv(1610069706);
 
 const INK_CONFIG = {
   monthLabelRow: 0,
@@ -667,6 +668,7 @@ function extractDonutAllMonths(rows, config) {
 
 // STATE
 let inkData=null, fangData=null;
+let condoData=null; // KNB107 condo loan payoff
 let inkDonutData=[], fangDonutData=[];
 let donutInstances={};
 const donutFilterState = { ink: null, fang: null };
@@ -693,6 +695,64 @@ function getHouseholdSliced(fi) {
   return { inkSliced, fangSliced };
 }
 
+// CONDO LOAN EXTRACT
+// Row 0: year labels (merged across months)
+// Row 1: month labels
+// Row 2: column headers ("Paid Principal", "Outstanding Balance", etc.)
+// Row 3: data values; col B (index 1) = full condo cost
+// For each column, if "Paid Principal" value is non-empty, record that month.
+function extractCondoData(rows) {
+  const yearRow    = rows[0] || [];
+  const monthRow   = rows[1] || [];
+  const headerRow  = rows[2] || [];
+  const dataRow    = rows[3] || [];
+
+  // Full cost is at col B (index 1) of the data row
+  const fullCost = numVal(dataRow[1]);
+
+  // Find column indices for "Paid Principal" and "Outstanding Balance"
+  // They can appear multiple times (once per month block) – we scan across
+  const months = [];
+  let lastYear = '';
+
+  for (let c = 1; c < headerRow.length; c++) {
+    const hdr = (headerRow[c] || '').trim().toLowerCase();
+    if (hdr === 'paid principal') {
+      const rawPaid = (dataRow[c] || '').trim();
+      if (!rawPaid) continue; // skip blank months
+
+      const paid = numVal(rawPaid);
+
+      // Find matching "Outstanding Balance" – look right from this col
+      let outstanding = 0;
+      for (let cc = c + 1; cc < headerRow.length; cc++) {
+        const hdr2 = (headerRow[cc] || '').trim().toLowerCase();
+        if (hdr2 === 'paid principal') break; // next month block started
+        if (hdr2 === 'outstanding balance') {
+          outstanding = numVal((dataRow[cc] || '').trim());
+          break;
+        }
+      }
+
+      // Resolve year (carry forward merged cell)
+      const yr = (yearRow[c] || '').trim();
+      if (yr && /\d{4}/.test(yr)) lastYear = yr;
+      const mo = (monthRow[c] || '').trim();
+      const label = mo && lastYear ? `${mo} ${lastYear}` : (mo || lastYear || `Col${c}`);
+
+      months.push({ label, paid, outstanding });
+    }
+  }
+
+  // Total paid = sum of all paid principal entries
+  const totalPaid = months.reduce((s, m) => s + m.paid, 0);
+  // Latest outstanding balance = last recorded month's outstanding balance
+  const latestOutstanding = months.length ? months[months.length - 1].outstanding : (fullCost - totalPaid);
+  const pct = fullCost > 0 ? Math.min(totalPaid / fullCost * 100, 100) : 0;
+
+  return { fullCost, totalPaid, latestOutstanding, pct, months };
+}
+
 // LOAD DATA
 async function loadData() {
   setStatus('loading','Fetching from Google Sheets\u2026');
@@ -703,9 +763,10 @@ async function loadData() {
   document.getElementById('chart-loading').style.display = 'flex';
   document.getElementById('error-box').classList.remove('show');
   try {
-    const [inkRows, fangRows] = await Promise.all([fetchCSV(INK_CSV_URL), fetchCSV(FANG_CSV_URL)]);
+    const [inkRows, fangRows, condoRows] = await Promise.all([fetchCSV(INK_CSV_URL), fetchCSV(FANG_CSV_URL), fetchCSV(CONDO_CSV_URL)]);
     inkData  = extractData(inkRows,  INK_CONFIG);
     fangData = extractData(fangRows, FANG_CONFIG);
+    condoData = extractCondoData(condoRows);
     if (!inkData.months.length || !fangData.months.length)
       throw new Error('No data found \u2014 check sheet is published');
 
@@ -816,6 +877,48 @@ function goalBarStackedHTML(label, inkVal, fangVal, target) {
       </div>
       <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:3px;">
         <span class="goal-bar-target">Target: ${mask(fmtM(target))}</span>
+      </div>
+    </div>`;
+}
+
+// CONDO GOAL CARD HTML
+function condoGoalCardHTML() {
+  if (!condoData || condoData.fullCost <= 0) return '';
+  const { fullCost, totalPaid, latestOutstanding, pct } = condoData;
+  const color = goalColor(pct);
+  const pctStr = pct.toFixed(1) + '%';
+
+  return `
+    <div class="goal-card" style="grid-column: 1 / -1;">
+      <div class="goal-card-header">
+        <span class="goal-card-title">KNB107 Condo Loan Payoff</span>
+        <span class="goal-card-icon">&#127968;</span>
+      </div>
+      <div class="goal-card-current" style="color:${color}">${pctStr} <span style="font-size:13px;color:var(--text3);font-weight:400;">paid off</span></div>
+      <div class="goal-bars" style="margin-top:8px;">
+        <div class="goal-bar-row">
+          <div class="goal-bar-meta">
+            <span class="goal-bar-label">Payoff Progress</span>
+            <span class="goal-bar-pct" style="color:${color}">${pctStr}</span>
+          </div>
+          <div class="goal-bar-track">
+            <div class="goal-bar-fill" style="width:${pct}%;background:${color}"></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px;">
+        <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 12px;">
+          <p style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Original Cost</p>
+          <p style="font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--text);">${mask(fmtM(fullCost))}</p>
+        </div>
+        <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 12px;">
+          <p style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Paid Principal</p>
+          <p style="font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--green);">${mask(fmtM(totalPaid))}</p>
+        </div>
+        <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 12px;">
+          <p style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Outstanding</p>
+          <p style="font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--amber);">${mask(fmtM(latestOutstanding))}</p>
+        </div>
       </div>
     </div>`;
 }
@@ -962,7 +1065,8 @@ function renderGoals(tab) {
         ${goalBarHTML('Short-term', investVal, goals.invest.st)}
         ${goalBarHTML('Long-term',  investVal, goals.invest.lt)}
       </div>
-    </div>`;
+    </div>
+    ${tab === 'ink' ? condoGoalCardHTML() : ''}`;
 }
 
 // METRICS
@@ -1972,7 +2076,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.9</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.0</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2022,7 +2126,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.9${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.0${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -2162,7 +2266,7 @@ window.addEventListener('appinstalled', () => {
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'vsnp-v3.9';
+const CACHE = 'vsnp-v4.0';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
