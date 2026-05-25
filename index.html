@@ -92,7 +92,7 @@
   .goal-bar-row { display: flex; flex-direction: column; gap: 4px; }
   .goal-bar-meta { display: flex; justify-content: space-between; align-items: center; }
   .goal-bar-label { font-family: var(--font-mono); font-size: 10px; color: var(--text3); letter-spacing: .04em; }
-  .goal-bar-pct { font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+  .goal-bar-pct { font-family: var(--font-mono); font-size: 11px; font-weight: 500; min-width: 4.5em; text-align: right; flex-shrink: 0; }
   .goal-bar-track { height: 5px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
   .goal-bar-fill { height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.4,0,.2,1); }
   .goal-bar-target { font-family: var(--font-mono); font-size: 10px; color: var(--text3); text-align: right; margin-top: 1px; }
@@ -313,7 +313,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v4.0</p>
+      <p class="gate-version">v4.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -334,7 +334,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v4.0</span>
+      <span class="version-badge">v4.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -427,7 +427,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v4.0';
+const VERSION  = 'v4.1';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -696,52 +696,63 @@ function getHouseholdSliced(fi) {
 }
 
 // CONDO LOAN EXTRACT
-// Row 0: year labels (merged across months)
-// Row 1: month labels
+// Row 0 (0-indexed): year labels — merged cells, so value only in first col of merge
+// Row 1: month labels — likewise may be in first col of each month's block
 // Row 2: column headers ("Paid Principal", "Outstanding Balance", etc.)
 // Row 3: data values; col B (index 1) = full condo cost
-// For each column, if "Paid Principal" value is non-empty, record that month.
+// For each "Paid Principal" column, carry-forward the nearest year/month
+// by scanning LEFT from that column (merged cells only populate the leftmost col in CSV).
 function extractCondoData(rows) {
-  const yearRow    = rows[0] || [];
-  const monthRow   = rows[1] || [];
-  const headerRow  = rows[2] || [];
-  const dataRow    = rows[3] || [];
+  const yearRow   = rows[0] || [];
+  const monthRow  = rows[1] || [];
+  const headerRow = rows[2] || [];
+  const dataRow   = rows[3] || [];
 
   // Full cost is at col B (index 1) of the data row
   const fullCost = numVal(dataRow[1]);
 
-  // Find column indices for "Paid Principal" and "Outstanding Balance"
-  // They can appear multiple times (once per month block) – we scan across
+  // Build carry-forward maps for year and month:
+  // Because merged cells in Google Sheets export only the first column with a value,
+  // we pre-scan and fill in each column's effective year/month by carrying forward.
+  const effectiveYear  = new Array(headerRow.length).fill('');
+  const effectiveMonth = new Array(headerRow.length).fill('');
+  let lastYear = '', lastMonth = '';
+  for (let c = 0; c < headerRow.length; c++) {
+    const yr = (yearRow[c]  || '').trim();
+    const mo = (monthRow[c] || '').trim();
+    if (yr && /\d{4}/.test(yr)) lastYear  = yr;
+    if (mo) lastMonth = mo;
+    effectiveYear[c]  = lastYear;
+    effectiveMonth[c] = lastMonth;
+  }
+
   const months = [];
-  let lastYear = '';
 
   for (let c = 1; c < headerRow.length; c++) {
     const hdr = (headerRow[c] || '').trim().toLowerCase();
-    if (hdr === 'paid principal') {
-      const rawPaid = (dataRow[c] || '').trim();
-      if (!rawPaid) continue; // skip blank months
+    if (hdr !== 'paid principal') continue;
 
-      const paid = numVal(rawPaid);
+    const rawPaid = (dataRow[c] || '').trim();
+    if (!rawPaid) continue; // skip months with no payment yet
 
-      // Find matching "Outstanding Balance" – look right from this col
-      let outstanding = 0;
-      for (let cc = c + 1; cc < headerRow.length; cc++) {
-        const hdr2 = (headerRow[cc] || '').trim().toLowerCase();
-        if (hdr2 === 'paid principal') break; // next month block started
-        if (hdr2 === 'outstanding balance') {
-          outstanding = numVal((dataRow[cc] || '').trim());
-          break;
-        }
+    const paid = numVal(rawPaid);
+
+    // Find "Outstanding Balance" — look right until next "Paid Principal"
+    let outstanding = 0;
+    for (let cc = c + 1; cc < headerRow.length; cc++) {
+      const hdr2 = (headerRow[cc] || '').trim().toLowerCase();
+      if (hdr2 === 'paid principal') break;
+      if (hdr2 === 'outstanding balance') {
+        outstanding = numVal((dataRow[cc] || '').trim());
+        break;
       }
-
-      // Resolve year (carry forward merged cell)
-      const yr = (yearRow[c] || '').trim();
-      if (yr && /\d{4}/.test(yr)) lastYear = yr;
-      const mo = (monthRow[c] || '').trim();
-      const label = mo && lastYear ? `${mo} ${lastYear}` : (mo || lastYear || `Col${c}`);
-
-      months.push({ label, paid, outstanding });
     }
+
+    const mo  = effectiveMonth[c];
+    const yr  = effectiveYear[c];
+    const label = mo && yr ? `${mo} ${yr}` : (mo || yr || `Col${c}`);
+
+    months.push({ label, paid, outstanding });
   }
 
   // Total paid = sum of all paid principal entries
@@ -2266,7 +2277,7 @@ window.addEventListener('appinstalled', () => {
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'vsnp-v4.0';
+const CACHE = 'vsnp-v4.1';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
