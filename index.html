@@ -162,8 +162,8 @@
   .donut-leg-item:hover { color: var(--text2); background: rgba(255,255,255,0.04); }
   .donut-leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .donut-leg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
-  .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; min-width: 32px; text-align: right; }
-  .donut-leg-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); flex-shrink: 0; opacity: 0; transition: opacity .15s; margin-left: 2px; white-space: nowrap; max-width: 48px; }
+  .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; width: 42px; text-align: right; }
+  .donut-leg-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); flex-shrink: 0; opacity: 0; transition: opacity .15s; margin-left: 2px; white-space: nowrap; width: 48px; text-align: right; overflow: hidden; text-overflow: ellipsis; }
   .donut-leg-item:hover .donut-leg-val { opacity: 1; }
   .donut-empty { font-family: var(--font-mono); font-size: 11px; color: var(--text3); text-align: center; padding: 32px 0; }
 
@@ -221,7 +221,7 @@
     .donut-canvas-wrap { width: 90px !important; height: 90px !important; }
     .donut-card-body { gap: 10px; }
     .donut-leg-name { font-size: 9px; }
-    .donut-leg-pct { font-size: 9px; min-width: 28px; }
+    .donut-leg-pct { font-size: 9px; width: 38px; }
 
     .chart-tooltip { min-width: 160px; font-size: 11px; padding: 10px 12px; max-width: calc(100vw - 28px); }
     .privacy-btn { font-size: 11px; padding: 4px 8px; }
@@ -321,7 +321,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v4.2</p>
+      <p class="gate-version">v4.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -342,7 +342,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v4.2</span>
+      <span class="version-badge">v4.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -435,7 +435,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v4.2';
+const VERSION  = 'v4.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2188,7 +2188,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.2</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.3</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2240,7 +2240,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.2${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.3${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -2380,7 +2380,7 @@ window.addEventListener('appinstalled', () => {
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'vsnp-v4.2';
+const CACHE = 'vsnp-v4.3';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
