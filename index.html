@@ -157,13 +157,13 @@
   .donut-center-hover-pct { font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.2; display: none; }
   .donut-center-hover-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 2px; word-break: break-all; display: none; }
   .donut-center-hover-name { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: none; }
-  .donut-leg { flex: 1; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
-  .donut-leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); cursor: default; transition: color .15s; border-radius: 4px; padding: 1px 3px; margin: 0 -3px; }
+  .donut-leg { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .donut-leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text3); cursor: default; transition: color .15s; border-radius: 4px; padding: 1px 2px; margin: 0 -2px; min-width: 0; }
   .donut-leg-item:hover { color: var(--text2); background: rgba(255,255,255,0.04); }
-  .donut-leg-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .donut-leg-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
-  .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; width: 38px; text-align: right; }
-  .donut-leg-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); flex-shrink: 0; width: 70px; text-align: right; opacity: 0; transition: opacity .15s; margin-left: 2px; }
+  .donut-leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .donut-leg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+  .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; min-width: 32px; text-align: right; }
+  .donut-leg-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); flex-shrink: 0; opacity: 0; transition: opacity .15s; margin-left: 2px; white-space: nowrap; max-width: 48px; }
   .donut-leg-item:hover .donut-leg-val { opacity: 1; }
   .donut-empty { font-family: var(--font-mono); font-size: 11px; color: var(--text3); text-align: center; padding: 32px 0; }
 
@@ -218,8 +218,10 @@
 
     .donut-grid { grid-template-columns: 1fr; gap: 12px; }
     .donut-card { padding: 14px; }
-    .donut-canvas-wrap { width: 110px; height: 110px; }
-    .donut-card-body { gap: 12px; }
+    .donut-canvas-wrap { width: 90px !important; height: 90px !important; }
+    .donut-card-body { gap: 10px; }
+    .donut-leg-name { font-size: 9px; }
+    .donut-leg-pct { font-size: 9px; min-width: 28px; }
 
     .chart-tooltip { min-width: 160px; font-size: 11px; padding: 10px 12px; max-width: calc(100vw - 28px); }
     .privacy-btn { font-size: 11px; padding: 4px 8px; }
@@ -319,7 +321,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v4.0</p>
+      <p class="gate-version">v4.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -340,7 +342,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v4.0</span>
+      <span class="version-badge">v4.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -433,7 +435,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v4.0';
+const VERSION  = 'v4.1';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -683,61 +685,69 @@ const filterState = { ink: -1, fang: -1, household: -1 };
 // Sheet layout (1-indexed rows as described):
 //   Row 1: years  (B1, C1, D1… — may span multiple cols per year)
 //   Row 2: months (B2, C2, D2…)
-//   Row 3: labels (look for "Paid Principal" and "Outstanding Balance" in any col)
-//   Row 4: values matching row 3 labels; col B row 4 = full condo cost
+//   Row 3: labels — contains "Paid Principal" and "Outstanding Balance"
+//   Row 4: values; col B (index 1) row 4 = full condo cost = 4,052,100
+const CONDO_FULL_COST = 4052100; // fixed original cost, col B row 4
+
 function extractCondoData(rows) {
-  // rows is 0-indexed array of arrays
   if (!rows || rows.length < 4) return null;
 
-  const yearRow    = rows[0];   // row 1
-  const monthRow   = rows[1];   // row 2
-  const labelRow   = rows[2];   // row 3
-  const valueRow   = rows[3];   // row 4
-
-  // Full condo cost: col B = index 1
-  const fullCost = numVal(valueRow[1]);
-
-  // Find column indices for "Paid Principal" and "Outstanding Balance" in labelRow
-  let paidPrincipalCols = [], outstandingCols = [];
-  for (let c = 1; c < labelRow.length; c++) {
-    const lbl = String(labelRow[c] || '').trim().toLowerCase();
-    if (lbl.includes('paid principal'))       paidPrincipalCols.push(c);
-    if (lbl.includes('outstanding balance'))  outstandingCols.push(c);
+  // Find label row — the row containing "Paid Principal"
+  let labelRowIdx = -1;
+  for (let r = 0; r < Math.min(rows.length, 8); r++) {
+    const rowStr = rows[r].join(' ').toLowerCase();
+    if (rowStr.includes('paid principal')) { labelRowIdx = r; break; }
   }
+  if (labelRowIdx < 0 || labelRowIdx + 1 >= rows.length) return null;
 
-  // Build month entries — one per column, only where paidPrincipal has a value
-  // Year from yearRow spans multiple columns — carry forward last non-empty year
+  const labelRow = rows[labelRowIdx];
+  const valueRow = rows[labelRowIdx + 1]; // data row immediately after labels
+
+  // Year row is labelRowIdx - 2, month row is labelRowIdx - 1
+  const yearRow  = rows[Math.max(0, labelRowIdx - 2)];
+  const monthRow = rows[Math.max(0, labelRowIdx - 1)];
+
+  // Full cost: col B (index 1) of value row — fallback to constant if missing/zero
+  const parsedCost = numVal(valueRow[1]);
+  const fullCost   = parsedCost > 0 ? parsedCost : CONDO_FULL_COST;
+
+  // Find Paid Principal and Outstanding Balance column indices
+  const paidPrincipalCols = [], outstandingCols = [];
+  for (let c = 0; c < labelRow.length; c++) {
+    const lbl = String(labelRow[c] || '').trim().toLowerCase();
+    if (lbl.includes('paid principal'))      paidPrincipalCols.push(c);
+    if (lbl.includes('outstanding balance')) outstandingCols.push(c);
+  }
+  if (!paidPrincipalCols.length) return null;
+
+  // Build entries — iterate month row, only record where paid principal has a value
   const entries = [];
   let currentYear = '';
 
   for (let c = 1; c < monthRow.length; c++) {
+    // Carry forward year
     if (yearRow[c] && String(yearRow[c]).trim()) currentYear = String(yearRow[c]).trim();
+
     const mon = String(monthRow[c] || '').trim();
     if (!mon) continue;
 
-    // Find matching paid principal and outstanding balance for this column
-    // Each label may appear multiple times (once per year block) — match by column proximity
-    // Strategy: for each paidPrincipalCol, check if col c matches (same col) or
-    // look for the value directly at col c in the value rows
-    const paidRaw       = valueRow[c] ? String(valueRow[c]).trim() : '';
-    const outstandingRaw = valueRow[c + 1] ? String(valueRow[c + 1]).trim() : '';
+    // Only process columns that ARE a paid principal column
+    if (!paidPrincipalCols.includes(c)) continue;
 
-    // Only record if paid principal column has a value
-    // Detect which cols are paid principal vs outstanding by labelRow
-    let paidVal = null, outstandingVal = null;
+    const paidRaw = String(valueRow[c] || '').trim();
+    if (!paidRaw) continue; // blank → skip this month
 
-    // Check if this column IS a paid principal column
-    if (paidPrincipalCols.includes(c)) {
-      if (!paidRaw) continue; // blank paid principal → skip
-      paidVal = numVal(paidRaw);
-      // Outstanding balance is usually the next column or a known offset
-      const obCol = outstandingCols.find(oc => oc === c + 1 || oc === c - 1) ?? outstandingCols[0];
-      outstandingVal = obCol !== undefined ? numVal(String(valueRow[obCol] || '')) : 0;
-    } else {
-      continue; // skip non-paid-principal columns
-    }
+    const paidVal = numVal(paidRaw);
 
-    const label = mon.charAt(0).toUpperCase() + mon.slice(1, 3).toLowerCase() + " '" + currentYear.slice(-2);
+    // Find matching outstanding balance col: prefer immediately adjacent (c+1 or c-1)
+    const obCol = outstandingCols.find(oc => oc === c + 1) ??
+                  outstandingCols.find(oc => oc === c - 1) ??
+                  outstandingCols[0];
+    const outstandingVal = obCol !== undefined ? numVal(String(valueRow[obCol] || '')) : 0;
+
+    const yr  = currentYear.slice(-2);
+    const mon3 = mon.charAt(0).toUpperCase() + mon.slice(1, 3).toLowerCase();
+    const label = `${mon3} '${yr}`;
     entries.push({ label, year: currentYear, month: mon, paid: paidVal, outstanding: outstandingVal });
   }
 
@@ -1027,12 +1037,49 @@ function renderGoals(tab) {
     return `<span class="goal-card-mom ${cls}">${diff > 0 ? '+' : ''}${mask(fmtM(diff))} MoM</span>`;
   }
 
-  // Condo card — ink tab only
+  // Condo card — ink tab only, month-aware
   const condoCard = (tab === 'ink' && condoData) ? (() => {
-    const c    = condoData.latest;
-    const pct  = Math.min(c.pctPaid, 100);
-    const col  = goalColor(pct);
-    const diff = c.fullCost - c.paid - c.outstanding; // should be ~0, but just in case
+    const fullCost = condoData.fullCost || CONDO_FULL_COST;
+
+    // Find the condo entry matching the currently viewed month
+    // filterState for ink: -1 = latest, otherwise index into inkData.months
+    const fi = filterState['ink'];
+    const inkMonths = inkData.months;
+    const viewedMonthLabel = fi < 0 ? inkMonths[inkMonths.length - 1] : inkMonths[fi];
+
+    // Match condo entry to viewed month — normalise both to "Mon 'YY" format
+    function normLabel(s) { return s.replace(/\s+/g,' ').trim().toLowerCase(); }
+    const entry = condoData.entries.find(e => normLabel(e.label) === normLabel(viewedMonthLabel))
+               ?? condoData.entries.find(e => {
+                    // fallback: match just the 3-letter month + year digits
+                    const eMon = e.month.slice(0,3).toLowerCase();
+                    const eYr  = e.year.slice(-2);
+                    const vMon = viewedMonthLabel.slice(0,3).toLowerCase();
+                    const vYr  = viewedMonthLabel.replace(/\D/g,'').slice(-2);
+                    return eMon === vMon && eYr === vYr;
+                  });
+
+    if (!entry) {
+      // No condo data for this month
+      return `
+        <div class="goal-card goal-card--condo">
+          <div class="goal-card-header">
+            <span class="goal-card-title">KNB107 Condo Loan Payoff</span>
+            <span class="goal-card-icon">&#127968;</span>
+          </div>
+          <div class="goal-card-current" style="font-size:18px;color:var(--text3);">No data</div>
+          <div class="goal-card-mom flat" style="margin-bottom:12px;">No entry for ${viewedMonthLabel}</div>
+          <div class="condo-detail-row">
+            <div class="condo-detail-item">
+              <span class="condo-detail-label">Original Cost</span>
+              <span class="condo-detail-val">${mask(fmtM(fullCost))}</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    const pct = Math.min(entry.paid / fullCost * 100, 100);
+    const col = goalColor(pct);
     return `
       <div class="goal-card goal-card--condo">
         <div class="goal-card-header">
@@ -1040,19 +1087,19 @@ function renderGoals(tab) {
           <span class="goal-card-icon">&#127968;</span>
         </div>
         <div class="goal-card-current">${pct.toFixed(1)}%</div>
-        <div class="goal-card-mom flat" style="margin-bottom:12px;">As of ${c.label}</div>
+        <div class="goal-card-mom flat" style="margin-bottom:12px;">As of ${entry.label}</div>
         <div class="condo-detail-row">
           <div class="condo-detail-item">
             <span class="condo-detail-label">Original Cost</span>
-            <span class="condo-detail-val">${mask(fmtM(c.fullCost))}</span>
+            <span class="condo-detail-val">${mask(fmtM(fullCost))}</span>
           </div>
           <div class="condo-detail-item">
             <span class="condo-detail-label">Paid</span>
-            <span class="condo-detail-val pos">${mask(fmtM(c.paid))}</span>
+            <span class="condo-detail-val pos">${mask(fmtM(entry.paid))}</span>
           </div>
           <div class="condo-detail-item">
             <span class="condo-detail-label">Remaining</span>
-            <span class="condo-detail-val neg">${mask(fmtM(c.outstanding))}</span>
+            <span class="condo-detail-val neg">${mask(fmtM(entry.outstanding))}</span>
           </div>
         </div>
         <div class="goal-bars" style="margin-top:14px;">
@@ -1065,7 +1112,7 @@ function renderGoals(tab) {
               <div class="goal-bar-fill" style="width:${pct}%;background:${col};"></div>
             </div>
             <div class="goal-bar-footer">
-              <span class="goal-bar-target">Target: ${mask(fmtM(c.fullCost))}</span>
+              <span class="goal-bar-target">Target: ${mask(fmtM(fullCost))}</span>
             </div>
           </div>
         </div>
@@ -1451,7 +1498,7 @@ function renderDonuts(tab) {
         <span class="donut-leg-dot" style="background:${PALETTE[ai%PALETTE.length]}"></span>
         <span class="donut-leg-name" title="${a.name}">${a.name}</span>
         <span class="donut-leg-pct">${a.pct.toFixed(1)}%</span>
-        <span class="donut-leg-val">${mask(fmtCurrency(a.value, d.currency))}</span>
+        <span class="donut-leg-val">${mask(fmtM(a.value))}</span>
       </div>`).join('');
 
     return `
@@ -1480,7 +1527,7 @@ function renderDonuts(tab) {
       const center = document.getElementById(`dctr-${tab}-${idx}`);
       if (!canvas || !center) return;
 
-      const SZ = 120;
+      const SZ = 100;
       canvas.width  = SZ; canvas.height = SZ;
       canvas.style.width = SZ+'px'; canvas.style.height = SZ+'px';
       canvas.parentElement.style.width = SZ+'px'; canvas.parentElement.style.height = SZ+'px';
@@ -2141,7 +2188,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.0</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.1</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2193,7 +2240,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.0${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.1${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -2333,7 +2380,7 @@ window.addEventListener('appinstalled', () => {
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'vsnp-v4.0';
+const CACHE = 'vsnp-v4.1';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
