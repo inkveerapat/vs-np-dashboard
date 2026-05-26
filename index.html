@@ -152,7 +152,7 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     pointer-events: none; text-align: center;
   }
-  .donut-center-total { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; word-break: break-all; }
+  .donut-center-total { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
   .donut-center-label { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 2px; }
   .donut-center-hover-pct { font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.2; display: none; }
   .donut-center-hover-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 2px; word-break: break-all; display: none; }
@@ -321,7 +321,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v4.1</p>
+      <p class="gate-version">v4.2</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -342,7 +342,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v4.1</span>
+      <span class="version-badge">v4.2</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -435,7 +435,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v4.1';
+const VERSION  = 'v4.2';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1488,7 +1488,7 @@ function renderDonuts(tab) {
     if (!d.assets.length) return `<div class="donut-card"><p class="donut-card-title">${d.title}</p><p class="donut-empty">No data for this period</p></div>`;
 
     const totalVal = d.assets.reduce((s,a)=>s+a.value,0);
-    const totalStr = fmtCurrency(totalVal, d.currency);
+    const totalStr = fmtM(totalVal);
 
     const legItems = d.assets.map((a,ai)=>`
       <div class="donut-leg-item"
@@ -1534,7 +1534,7 @@ function renderDonuts(tab) {
 
       const colors   = d.assets.map((_,ai) => PALETTE[ai % PALETTE.length]);
       const totalVal = d.assets.reduce((s,a)=>s+a.value,0);
-      const totalStr = fmtCurrency(totalVal, d.currency);
+      const totalStr = fmtM(totalVal);
 
       const totalEl = center.querySelector('.donut-center-total');
       const labelEl = center.querySelector('.donut-center-label');
@@ -1754,7 +1754,7 @@ function donutLegHover(el, tab, cardIdx, assetIdx, entering) {
       hNameEl.textContent = a.name;
     } else {
       const totalVal = assets.reduce((s,x)=>s+x.value,0);
-      const totalStr = d ? fmtCurrency(totalVal, d.currency) : '';
+      const totalStr = fmtM(totalVal);
       totalEl.style.display = 'block'; totalEl.textContent = mask(totalStr);
       labelEl.style.display = 'block';
       hPctEl.style.display = 'none'; hValEl.style.display = 'none'; hNameEl.style.display = 'none';
@@ -2188,7 +2188,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.1</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.2</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2240,7 +2240,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.1${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.2${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -2380,7 +2380,7 @@ window.addEventListener('appinstalled', () => {
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'vsnp-v4.1';
+const CACHE = 'vsnp-v4.2';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
