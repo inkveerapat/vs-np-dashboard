@@ -107,7 +107,13 @@
   .goal-card-mom.pos { color: var(--green); }
   .goal-card-mom.neg { color: var(--red); }
   .goal-card-mom.flat { color: var(--text3); }
-  .goal-bar-footer { display: flex; justify-content: flex-end; align-items: center; margin-top: 1px; }
+  .goal-card--condo { }
+  .condo-detail-row { display: flex; gap: 8px; margin-top: 4px; }
+  .condo-detail-item { flex: 1; background: var(--surface2); border-radius: var(--radius); padding: 8px 10px; min-width: 0; }
+  .condo-detail-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); display: block; margin-bottom: 3px; }
+  .condo-detail-val { font-family: var(--font-mono); font-size: 11px; color: var(--text2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .condo-detail-val.pos { color: var(--green); }
+  .condo-detail-val.neg { color: var(--red); }
   .goal-bar-mom { font-family: var(--font-mono); font-size: 10px; }
   .goal-bar-mom.pos { color: var(--green); }
   .goal-bar-mom.neg { color: var(--red); }
@@ -156,8 +162,8 @@
   .donut-leg-item:hover { color: var(--text2); background: rgba(255,255,255,0.04); }
   .donut-leg-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .donut-leg-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
-  .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; }
-  .donut-leg-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); flex-shrink: 0; opacity: 0; transition: opacity .15s; margin-left: 2px; }
+  .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; width: 38px; text-align: right; }
+  .donut-leg-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); flex-shrink: 0; width: 70px; text-align: right; opacity: 0; transition: opacity .15s; margin-left: 2px; }
   .donut-leg-item:hover .donut-leg-val { opacity: 1; }
   .donut-empty { font-family: var(--font-mono); font-size: 11px; color: var(--text3); text-align: center; padding: 32px 0; }
 
@@ -313,7 +319,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v3.9</p>
+      <p class="gate-version">v4.0</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -334,7 +340,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v3.9</span>
+      <span class="version-badge">v4.0</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -427,7 +433,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v3.9';
+const VERSION  = 'v4.0';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -460,8 +466,9 @@ function applyPrivacyMode() {
 const BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=';
 const csv  = gid => BASE + gid + '&single=true&output=csv';
 
-const INK_CSV_URL  = csv(0);
-const FANG_CSV_URL = csv(576373003);
+const INK_CSV_URL   = csv(0);
+const FANG_CSV_URL  = csv(576373003);
+const CONDO_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=1610069706&single=true&output=csv';
 
 const INK_CONFIG = {
   monthLabelRow: 0,
@@ -666,11 +673,88 @@ function extractDonutAllMonths(rows, config) {
 }
 
 // STATE
-let inkData=null, fangData=null;
+let inkData=null, fangData=null, condoData=null;
 let inkDonutData=[], fangDonutData=[];
 let donutInstances={};
 const donutFilterState = { ink: null, fang: null };
 const filterState = { ink: -1, fang: -1, household: -1 };
+
+// CONDO LOAN PARSER
+// Sheet layout (1-indexed rows as described):
+//   Row 1: years  (B1, C1, D1… — may span multiple cols per year)
+//   Row 2: months (B2, C2, D2…)
+//   Row 3: labels (look for "Paid Principal" and "Outstanding Balance" in any col)
+//   Row 4: values matching row 3 labels; col B row 4 = full condo cost
+function extractCondoData(rows) {
+  // rows is 0-indexed array of arrays
+  if (!rows || rows.length < 4) return null;
+
+  const yearRow    = rows[0];   // row 1
+  const monthRow   = rows[1];   // row 2
+  const labelRow   = rows[2];   // row 3
+  const valueRow   = rows[3];   // row 4
+
+  // Full condo cost: col B = index 1
+  const fullCost = numVal(valueRow[1]);
+
+  // Find column indices for "Paid Principal" and "Outstanding Balance" in labelRow
+  let paidPrincipalCols = [], outstandingCols = [];
+  for (let c = 1; c < labelRow.length; c++) {
+    const lbl = String(labelRow[c] || '').trim().toLowerCase();
+    if (lbl.includes('paid principal'))       paidPrincipalCols.push(c);
+    if (lbl.includes('outstanding balance'))  outstandingCols.push(c);
+  }
+
+  // Build month entries — one per column, only where paidPrincipal has a value
+  // Year from yearRow spans multiple columns — carry forward last non-empty year
+  const entries = [];
+  let currentYear = '';
+
+  for (let c = 1; c < monthRow.length; c++) {
+    if (yearRow[c] && String(yearRow[c]).trim()) currentYear = String(yearRow[c]).trim();
+    const mon = String(monthRow[c] || '').trim();
+    if (!mon) continue;
+
+    // Find matching paid principal and outstanding balance for this column
+    // Each label may appear multiple times (once per year block) — match by column proximity
+    // Strategy: for each paidPrincipalCol, check if col c matches (same col) or
+    // look for the value directly at col c in the value rows
+    const paidRaw       = valueRow[c] ? String(valueRow[c]).trim() : '';
+    const outstandingRaw = valueRow[c + 1] ? String(valueRow[c + 1]).trim() : '';
+
+    // Only record if paid principal column has a value
+    // Detect which cols are paid principal vs outstanding by labelRow
+    let paidVal = null, outstandingVal = null;
+
+    // Check if this column IS a paid principal column
+    if (paidPrincipalCols.includes(c)) {
+      if (!paidRaw) continue; // blank paid principal → skip
+      paidVal = numVal(paidRaw);
+      // Outstanding balance is usually the next column or a known offset
+      const obCol = outstandingCols.find(oc => oc === c + 1 || oc === c - 1) ?? outstandingCols[0];
+      outstandingVal = obCol !== undefined ? numVal(String(valueRow[obCol] || '')) : 0;
+    } else {
+      continue; // skip non-paid-principal columns
+    }
+
+    const label = mon.charAt(0).toUpperCase() + mon.slice(1, 3).toLowerCase() + " '" + currentYear.slice(-2);
+    entries.push({ label, year: currentYear, month: mon, paid: paidVal, outstanding: outstandingVal });
+  }
+
+  if (!entries.length) return null;
+
+  const latest = entries[entries.length - 1];
+  return {
+    fullCost,
+    entries,
+    latest: {
+      label:       latest.label,
+      paid:        latest.paid,
+      outstanding: latest.outstanding,
+      pctPaid:     fullCost > 0 ? (latest.paid / fullCost * 100) : 0,
+    }
+  };
+}
 
 function sliceData(d, fi) {
   if (fi < 0 || fi >= d.months.length - 1) return d;
@@ -703,9 +787,14 @@ async function loadData() {
   document.getElementById('chart-loading').style.display = 'flex';
   document.getElementById('error-box').classList.remove('show');
   try {
-    const [inkRows, fangRows] = await Promise.all([fetchCSV(INK_CSV_URL), fetchCSV(FANG_CSV_URL)]);
-    inkData  = extractData(inkRows,  INK_CONFIG);
-    fangData = extractData(fangRows, FANG_CONFIG);
+    const [inkRows, fangRows, condoRows] = await Promise.all([
+      fetchCSV(INK_CSV_URL),
+      fetchCSV(FANG_CSV_URL),
+      fetchCSV(CONDO_CSV_URL + '&_=' + Date.now()),
+    ]);
+    inkData   = extractData(inkRows,  INK_CONFIG);
+    fangData  = extractData(fangRows, FANG_CONFIG);
+    condoData = extractCondoData(condoRows);
     if (!inkData.months.length || !fangData.months.length)
       throw new Error('No data found \u2014 check sheet is published');
 
@@ -938,6 +1027,51 @@ function renderGoals(tab) {
     return `<span class="goal-card-mom ${cls}">${diff > 0 ? '+' : ''}${mask(fmtM(diff))} MoM</span>`;
   }
 
+  // Condo card — ink tab only
+  const condoCard = (tab === 'ink' && condoData) ? (() => {
+    const c    = condoData.latest;
+    const pct  = Math.min(c.pctPaid, 100);
+    const col  = goalColor(pct);
+    const diff = c.fullCost - c.paid - c.outstanding; // should be ~0, but just in case
+    return `
+      <div class="goal-card goal-card--condo">
+        <div class="goal-card-header">
+          <span class="goal-card-title">KNB107 Condo Loan Payoff</span>
+          <span class="goal-card-icon">&#127968;</span>
+        </div>
+        <div class="goal-card-current">${pct.toFixed(1)}%</div>
+        <div class="goal-card-mom flat" style="margin-bottom:12px;">As of ${c.label}</div>
+        <div class="condo-detail-row">
+          <div class="condo-detail-item">
+            <span class="condo-detail-label">Original Cost</span>
+            <span class="condo-detail-val">${mask(fmtM(c.fullCost))}</span>
+          </div>
+          <div class="condo-detail-item">
+            <span class="condo-detail-label">Paid</span>
+            <span class="condo-detail-val pos">${mask(fmtM(c.paid))}</span>
+          </div>
+          <div class="condo-detail-item">
+            <span class="condo-detail-label">Remaining</span>
+            <span class="condo-detail-val neg">${mask(fmtM(c.outstanding))}</span>
+          </div>
+        </div>
+        <div class="goal-bars" style="margin-top:14px;">
+          <div class="goal-bar-row">
+            <div class="goal-bar-meta">
+              <span class="goal-bar-label">Payoff progress</span>
+              <span class="goal-bar-pct" style="color:${col}">${pct.toFixed(1)}%</span>
+            </div>
+            <div class="goal-bar-track">
+              <div class="goal-bar-fill" style="width:${pct}%;background:${col};"></div>
+            </div>
+            <div class="goal-bar-footer">
+              <span class="goal-bar-target">Target: ${mask(fmtM(c.fullCost))}</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  })() : '';
+
   grid.innerHTML = `
     <div class="goal-card">
       <div class="goal-card-header">
@@ -962,7 +1096,8 @@ function renderGoals(tab) {
         ${goalBarHTML('Short-term', investVal, goals.invest.st)}
         ${goalBarHTML('Long-term',  investVal, goals.invest.lt)}
       </div>
-    </div>`;
+    </div>
+    ${condoCard}`;
 }
 
 // METRICS
@@ -1708,7 +1843,41 @@ function buildSummaryCard(tab, maskVals) {
       </div>
     </div>` : '';
 
-  // ── 2. Capture live donut canvases ──
+  // ── Condo section (ink tab only) ──
+  let condoSection = '';
+  if (tab === 'ink' && condoData) {
+    const c   = condoData.latest;
+    const pct = Math.min(c.pctPaid, 100);
+    const col = goalColor(pct);
+    condoSection = `
+      <div style="margin-bottom:24px;">
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">KNB107 Condo Loan Payoff · ${c.label}</p>
+        <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+            <span style="font-size:12px;font-weight:500;color:#f0efe8;">Payoff Progress</span>
+            <span style="font-size:20px;font-family:'DM Mono',monospace;font-weight:500;color:${col};">${pct.toFixed(1)}%</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <div style="flex:1;background:#1e1e1e;border-radius:8px;padding:8px 10px;">
+              <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#555450;margin-bottom:3px;">Original Cost</p>
+              <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;">${maskVals ? '••••••' : fmtM(c.fullCost)}</p>
+            </div>
+            <div style="flex:1;background:#1e1e1e;border-radius:8px;padding:8px 10px;">
+              <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#555450;margin-bottom:3px;">Paid</p>
+              <p style="font-family:'DM Mono',monospace;font-size:11px;color:#5ce0a8;">${maskVals ? '••••••' : fmtM(c.paid)}</p>
+            </div>
+            <div style="flex:1;background:#1e1e1e;border-radius:8px;padding:8px 10px;">
+              <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#555450;margin-bottom:3px;">Remaining</p>
+              <p style="font-family:'DM Mono',monospace;font-size:11px;color:#f06b6b;">${maskVals ? '••••••' : fmtM(c.outstanding)}</p>
+            </div>
+          </div>
+          <div style="height:6px;background:#222;border-radius:99px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${col};border-radius:99px;"></div>
+          </div>
+          <div style="text-align:right;font-size:10px;color:#555450;font-family:'DM Mono',monospace;margin-top:4px;">Target: ${maskVals ? '••••••' : fmtM(c.fullCost)}</div>
+        </div>
+      </div>`;
+  }
   let donutSection = '';
   if (tab !== 'household') {
     const list = tab === 'ink' ? inkDonutData : fangDonutData;
@@ -1972,7 +2141,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v3.9</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.0</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2014,6 +2183,8 @@ function buildSummaryCard(tab, maskVals) {
       </div>
     </div>
 
+    ${condoSection}
+
     <!-- Chart -->
     ${chartSection}
 
@@ -2022,7 +2193,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v3.9${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.0${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -2162,7 +2333,7 @@ window.addEventListener('appinstalled', () => {
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'vsnp-v3.9';
+const CACHE = 'vsnp-v4.0';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
