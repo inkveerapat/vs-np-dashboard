@@ -218,10 +218,18 @@
 
     .donut-grid { grid-template-columns: 1fr; gap: 12px; }
     .donut-card { padding: 14px; }
-    .donut-canvas-wrap { width: 90px !important; height: 90px !important; }
-    .donut-card-body { gap: 10px; }
-    .donut-leg-name { font-size: 9px; }
-    .donut-leg-pct { font-size: 9px; width: 38px; }
+    .donut-canvas-wrap { width: 110px !important; height: 110px !important; }
+    .donut-card-body { gap: 12px; align-items: flex-start; }
+    .donut-leg-name { font-size: 10px; }
+    .donut-leg-pct { font-size: 10px; width: 40px; }
+    .donut-leg-val { opacity: 1; font-size: 9px; width: 52px; }
+    .donut-center-total { font-size: 11px; }
+    .donut-center-label { font-size: 7px; }
+    .donut-center-hover-pct { font-size: 12px; }
+    .donut-center-hover-val { font-size: 8px; word-break: break-word; max-width: 58px; text-align: center; }
+    .donut-center-hover-name { font-size: 7px; max-width: 58px; }
+    /* On mobile, legend values always visible — no hover needed */
+    .donut-leg-item .donut-leg-val { opacity: 1; }
 
     .chart-tooltip { min-width: 160px; font-size: 11px; padding: 10px 12px; max-width: calc(100vw - 28px); }
     .privacy-btn { font-size: 11px; padding: 4px 8px; }
@@ -235,6 +243,7 @@
     .goal-grid { grid-template-columns: 1fr 1fr; }
     .chart-wrap { height: clamp(220px, 35vh, 320px); }
     .donut-grid { grid-template-columns: 1fr; }
+    .donut-leg-val { opacity: 1; }
     .privacy-btn { font-size: 11px; padding: 5px 8px; }
   }
 
@@ -321,7 +330,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v4.3</p>
+      <p class="gate-version">v4.4</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -342,7 +351,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v4.3</span>
+      <span class="version-badge">v4.4</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -435,7 +444,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v4.3';
+const VERSION  = 'v4.4';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1494,7 +1503,8 @@ function renderDonuts(tab) {
       <div class="donut-leg-item"
         data-idx="${ai}"
         onmouseenter="donutLegHover(this,'${tab}',${idx},${ai},true)"
-        onmouseleave="donutLegHover(this,'${tab}',${idx},${ai},false)">
+        onmouseleave="donutLegHover(this,'${tab}',${idx},${ai},false)"
+        ontouchstart="donutLegTouch(event,this,'${tab}',${idx},${ai})">
         <span class="donut-leg-dot" style="background:${PALETTE[ai%PALETTE.length]}"></span>
         <span class="donut-leg-name" title="${a.name}">${a.name}</span>
         <span class="donut-leg-pct">${a.pct.toFixed(1)}%</span>
@@ -1527,7 +1537,7 @@ function renderDonuts(tab) {
       const center = document.getElementById(`dctr-${tab}-${idx}`);
       if (!canvas || !center) return;
 
-      const SZ = 100;
+      const SZ = window.innerWidth <= 480 ? 110 : 100;
       canvas.width  = SZ; canvas.height = SZ;
       canvas.style.width = SZ+'px'; canvas.style.height = SZ+'px';
       canvas.parentElement.style.width = SZ+'px'; canvas.parentElement.style.height = SZ+'px';
@@ -1569,6 +1579,35 @@ function renderDonuts(tab) {
         }
       });
       donutInstances[`dc-${tab}-${idx}`] = chart;
+
+      // ── Touch support: tap a slice on mobile to show its info in the center ──
+      canvas.addEventListener('touchstart', evt => {
+        evt.preventDefault();
+        const touch = evt.touches[0];
+        const rect  = canvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        const pts = chart.getElementsAtEventForMode(
+          { native: { clientX: touch.clientX, clientY: touch.clientY }, offsetX: x, offsetY: y },
+          'nearest', { intersect: true }, false
+        );
+        if (pts.length > 0) {
+          const i = pts[0].index;
+          const a = d.assets[i];
+          totalEl.style.display = 'none'; labelEl.style.display = 'none';
+          hPctEl.style.display = 'block'; hValEl.style.display = 'block'; hNameEl.style.display = 'block';
+          hPctEl.textContent  = a.pct.toFixed(1) + '%';
+          hValEl.textContent  = mask(fmtCurrency(a.value, a.currency));
+          hNameEl.textContent = a.name;
+          // Reset after 2.5s
+          clearTimeout(canvas._tapTimer);
+          canvas._tapTimer = setTimeout(() => {
+            totalEl.style.display = 'block'; totalEl.textContent = mask(totalStr);
+            labelEl.style.display = 'block';
+            hPctEl.style.display = 'none'; hValEl.style.display = 'none'; hNameEl.style.display = 'none';
+          }, 2500);
+        }
+      }, { passive: false });
     });
   });
 }
@@ -1701,6 +1740,31 @@ function getActiveData(tab) {
   } else {
     const { inkSliced, fangSliced } = getHouseholdSliced(fi);
     return { ink: inkSliced, fang: fangSliced };
+  }
+}
+
+// DONUT LEGEND TOUCH — tap a legend row on mobile to highlight and show detail
+function donutLegTouch(evt, el, tab, cardIdx, assetIdx) {
+  evt.preventDefault();
+  // Toggle: if already active, deactivate; otherwise activate
+  const isActive = el.dataset.touchActive === '1';
+  // Clear all active states in this card
+  const card = el.closest('.donut-card');
+  if (card) {
+    card.querySelectorAll('.donut-leg-item[data-touch-active="1"]').forEach(item => {
+      item.dataset.touchActive = '0';
+      donutLegHover(item, tab, cardIdx, parseInt(item.dataset.idx), false);
+    });
+  }
+  if (!isActive) {
+    el.dataset.touchActive = '1';
+    donutLegHover(el, tab, cardIdx, assetIdx, true);
+    // Auto-reset after 2.5s
+    clearTimeout(el._touchTimer);
+    el._touchTimer = setTimeout(() => {
+      el.dataset.touchActive = '0';
+      donutLegHover(el, tab, cardIdx, assetIdx, false);
+    }, 2500);
   }
 }
 
@@ -2188,7 +2252,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.3</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.4</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2240,7 +2304,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.3${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.4${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -2380,7 +2444,7 @@ window.addEventListener('appinstalled', () => {
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'vsnp-v4.3';
+const CACHE = 'vsnp-v4.4';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
