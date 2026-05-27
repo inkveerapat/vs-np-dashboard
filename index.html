@@ -158,13 +158,18 @@
   .donut-center-hover-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 2px; word-break: break-all; display: none; }
   .donut-center-hover-name { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: none; }
   .donut-leg { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-  .donut-leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text3); cursor: default; transition: color .15s; border-radius: 4px; padding: 1px 2px; margin: 0 -2px; min-width: 0; }
+  .donut-leg-item { display: flex; flex-direction: column; font-size: 11px; color: var(--text3); cursor: default; transition: color .15s; border-radius: 4px; padding: 2px 2px; margin: 0 -2px; min-width: 0; }
   .donut-leg-item:hover { color: var(--text2); background: rgba(255,255,255,0.04); }
+  .donut-leg-row1 { display: flex; align-items: center; gap: 5px; min-width: 0; }
   .donut-leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .donut-leg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
   .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; min-width: 32px; text-align: right; }
-  .donut-leg-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); flex-shrink: 0; opacity: 0; transition: opacity .15s; margin-left: 2px; white-space: nowrap; max-width: 48px; }
-  .donut-leg-item:hover .donut-leg-val { opacity: 1; }
+  .donut-leg-row2 { display: flex; align-items: center; justify-content: space-between; padding-left: 11px; margin-top: 1px; gap: 4px; min-width: 0; }
+  .donut-leg-mv { font-family: var(--font-mono); font-size: 9px; color: var(--text2); flex-shrink: 0; white-space: nowrap; }
+  .donut-leg-upl { font-family: var(--font-mono); font-size: 9px; flex-shrink: 0; white-space: nowrap; text-align: right; }
+  .donut-leg-upl.pos { color: var(--green); }
+  .donut-leg-upl.neg { color: var(--red); }
+  .donut-leg-upl.flat { color: var(--text3); }
   .donut-empty { font-family: var(--font-mono); font-size: 11px; color: var(--text3); text-align: center; padding: 32px 0; }
 
   /* STATUS */
@@ -222,6 +227,8 @@
     .donut-card-body { gap: 10px; }
     .donut-leg-name { font-size: 9px; }
     .donut-leg-pct { font-size: 9px; min-width: 28px; }
+    .donut-leg-mv { font-size: 8px; }
+    .donut-leg-upl { font-size: 8px; }
 
     .chart-tooltip { min-width: 160px; font-size: 11px; padding: 10px 12px; max-width: calc(100vw - 28px); }
     .privacy-btn { font-size: 11px; padding: 4px 8px; }
@@ -321,7 +328,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v4.2</p>
+      <p class="gate-version">v4.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -342,7 +349,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v4.2</span>
+      <span class="version-badge">v4.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -435,7 +442,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v4.2';
+const VERSION  = 'v4.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -580,8 +587,7 @@ function detectCurrency(raw) {
   return 'THB';
 }
 function fmtCurrency(val, currency) {
-  if (currency === 'USD') return '$' + val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  return '\u0e3f' + Math.round(val).toLocaleString('th-TH');
+  return fmtAbbrev(val, currency);
 }
 
 // MASTER TRACKER EXTRACT
@@ -623,6 +629,8 @@ function findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHeaderRowIdx) {
   const monthRow  = rows[monthRowIdx]    || [];
   const yearRow   = yearRowIdx !== null ? (rows[yearRowIdx] || []) : [];
   const result = [];
+  // Build a map of col -> label for all "market value" columns first
+  const mvColToLabel = {};
   for (let c = 1; c < headerRow.length; c++) {
     const hdr = (headerRow[c] || '').trim().toLowerCase();
     if (hdr === 'market value') {
@@ -636,13 +644,33 @@ function findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHeaderRowIdx) {
         }
       }
       const label = year ? `${month} ${year}` : month;
-      result.push({ col: c, monthLabel: label });
+      mvColToLabel[c] = label;
     }
+  }
+  // Now find "Unrealised P/L" columns paired with each market value column
+  // They appear in the same month group — find the nearest "unrealised p/l" col
+  const uplCols = [];
+  for (let c = 1; c < headerRow.length; c++) {
+    const hdr = (headerRow[c] || '').trim().toLowerCase();
+    if (hdr.includes('unreali') && hdr.includes('p/l') || hdr.includes('unreali') && hdr.includes('pl')) {
+      uplCols.push(c);
+    }
+  }
+  for (const [cStr, label] of Object.entries(mvColToLabel)) {
+    const mvCol = parseInt(cStr);
+    // Find nearest unrealised P/L col to the right (within 5 cols) or left
+    let uplCol = null;
+    let bestDist = 999;
+    for (const uc of uplCols) {
+      const dist = Math.abs(uc - mvCol);
+      if (dist < bestDist && dist <= 6) { bestDist = dist; uplCol = uc; }
+    }
+    result.push({ col: mvCol, monthLabel: label, uplCol });
   }
   return result;
 }
 
-function extractAssetsForCol(rows, config, col, currency) {
+function extractAssetsForCol(rows, config, col, currency, uplCol) {
   const assets = [];
   for (let r = config.assetRowStart; r <= Math.min(config.assetRowEnd, rows.length-1); r++) {
     const row  = rows[r] || [];
@@ -651,7 +679,18 @@ function extractAssetsForCol(rows, config, col, currency) {
     if (!name || !raw) continue;
     const val  = numVal(raw);
     if (val <= 0) continue;
-    assets.push({ name, value: val, currency });
+    // Detect currency per-asset from the raw cell value; fall back to portfolio currency
+    const assetCurrency = detectCurrency(raw) !== 'THB' ? detectCurrency(raw) : currency;
+    let unrealisedPL = null;
+    let unrealisedPLCurrency = assetCurrency;
+    if (uplCol !== null && uplCol !== undefined) {
+      const uplRaw = (row[uplCol] || '').trim();
+      if (uplRaw) {
+        unrealisedPL = numVal(uplRaw);
+        unrealisedPLCurrency = detectCurrency(uplRaw) !== 'THB' ? detectCurrency(uplRaw) : assetCurrency;
+      }
+    }
+    assets.push({ name, value: val, currency: assetCurrency, unrealisedPL, unrealisedPLCurrency });
   }
   const total = assets.reduce((s,a) => s+a.value, 0);
   return assets.map(a => ({ ...a, pct: total>0 ? a.value/total*100 : 0 }));
@@ -665,8 +704,8 @@ function extractDonutAllMonths(rows, config) {
   const mvCols      = findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHdrIdx);
   const byMonth  = {};
   const months   = [];
-  for (const { col, monthLabel } of mvCols) {
-    const assets = extractAssetsForCol(rows, config, col, currency);
+  for (const { col, monthLabel, uplCol } of mvCols) {
+    const assets = extractAssetsForCol(rows, config, col, currency, uplCol);
     if (assets.length === 0) continue;
     byMonth[monthLabel] = assets;
     if (!months.includes(monthLabel)) months.push(monthLabel);
@@ -846,6 +885,17 @@ function fmtM(v) {
   if (a>=1e6) return '\u0e3f'+(v/1e6).toFixed(2)+'M';
   if (a>=1e3) return '\u0e3f'+(v/1e3).toFixed(0)+'K';
   return '\u0e3f'+Math.round(v).toLocaleString();
+}
+// Abbreviated currency-aware format (for USD or THB)
+function fmtAbbrev(v, currency) {
+  if (currency === 'USD') {
+    const a = Math.abs(v);
+    const sign = v < 0 ? '-' : '';
+    if (a >= 1e6) return sign + '$' + (Math.abs(v)/1e6).toFixed(2) + 'M';
+    if (a >= 1e3) return sign + '$' + (Math.abs(v)/1e3).toFixed(1) + 'K';
+    return sign + '$' + Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  return fmtM(v);
 }
 function fmtPct(a,b) {
   if (!b||b===0) return '\u2014';
@@ -1484,22 +1534,64 @@ function renderDonuts(tab) {
     return { title: d.title, assets, currency: d.currency };
   });
 
+  // Helper: compute portfolio-level unrealised P/L total and %
+  function getPortfolioUPL(assets, isCash) {
+    if (isCash) return { uplTotal: null, uplPct: null };
+    const totalMV = assets.reduce((s,a)=>s+a.value,0);
+    const uplAssets = assets.filter(a => a.unrealisedPL !== null && a.unrealisedPL !== undefined);
+    if (!uplAssets.length) return { uplTotal: null, uplPct: null };
+    const uplTotal = uplAssets.reduce((s,a)=>s+a.unrealisedPL,0);
+    const costBasis = totalMV - uplTotal;
+    const uplPct = costBasis !== 0 ? (uplTotal / Math.abs(costBasis) * 100) : 0;
+    return { uplTotal, uplPct, currency: assets[0]?.currency || 'THB' };
+  }
+
   grid.innerHTML = resolvedList.map((d,idx) => {
     if (!d.assets.length) return `<div class="donut-card"><p class="donut-card-title">${d.title}</p><p class="donut-empty">No data for this period</p></div>`;
 
+    const isCash = d.title.toLowerCase().includes('cash');
     const totalVal = d.assets.reduce((s,a)=>s+a.value,0);
-    const totalStr = fmtM(totalVal);
+    // Use the currency of the first asset for portfolio total display
+    const portCurrency = d.assets[0]?.currency || d.currency;
+    const totalStr = fmtAbbrev(totalVal, portCurrency);
 
-    const legItems = d.assets.map((a,ai)=>`
+    // Portfolio-level UPL for donut center
+    const { uplTotal, uplPct, currency: uplCurrency } = getPortfolioUPL(d.assets, isCash);
+    let centerLabelStr = '';
+    if (!isCash && uplTotal !== null) {
+      const uplPctStr = (uplPct >= 0 ? '+' : '') + uplPct.toFixed(1) + '%';
+      const uplValStr = fmtAbbrev(uplTotal, uplCurrency || portCurrency);
+      centerLabelStr = `${uplPctStr} (${uplValStr})`;
+    }
+    const centerUPLCls = uplTotal === null ? '' : uplTotal > 0 ? 'pos' : uplTotal < 0 ? 'neg' : 'flat';
+    const centerUPLColor = uplTotal === null ? 'var(--text3)' : uplTotal > 0 ? 'var(--green)' : uplTotal < 0 ? 'var(--red)' : 'var(--text3)';
+
+    const legItems = d.assets.map((a,ai) => {
+      const mvStr = mask(fmtAbbrev(a.value, a.currency));
+      let uplRow = '';
+      if (!isCash && a.unrealisedPL !== null && a.unrealisedPL !== undefined) {
+        const uplPctVal = a.value > 0 ? (a.unrealisedPL / Math.abs(a.value - a.unrealisedPL) * 100) : 0;
+        const uplPctStr = (uplPctVal >= 0 ? '+' : '') + uplPctVal.toFixed(1) + '%';
+        const uplValStr = mask(fmtAbbrev(a.unrealisedPL, a.unrealisedPLCurrency || a.currency));
+        const uplCls = a.unrealisedPL > 0 ? 'pos' : a.unrealisedPL < 0 ? 'neg' : 'flat';
+        uplRow = `<span class="donut-leg-upl ${uplCls}">${uplPctStr} (${uplValStr})</span>`;
+      }
+      return `
       <div class="donut-leg-item"
         data-idx="${ai}"
         onmouseenter="donutLegHover(this,'${tab}',${idx},${ai},true)"
         onmouseleave="donutLegHover(this,'${tab}',${idx},${ai},false)">
-        <span class="donut-leg-dot" style="background:${PALETTE[ai%PALETTE.length]}"></span>
-        <span class="donut-leg-name" title="${a.name}">${a.name}</span>
-        <span class="donut-leg-pct">${a.pct.toFixed(1)}%</span>
-        <span class="donut-leg-val">${mask(fmtM(a.value))}</span>
-      </div>`).join('');
+        <div class="donut-leg-row1">
+          <span class="donut-leg-dot" style="background:${PALETTE[ai%PALETTE.length]}"></span>
+          <span class="donut-leg-name" title="${a.name}">${a.name}</span>
+          <span class="donut-leg-pct">${a.pct.toFixed(1)}%</span>
+        </div>
+        <div class="donut-leg-row2">
+          <span class="donut-leg-mv">${mvStr}</span>
+          ${uplRow}
+        </div>
+      </div>`;
+    }).join('');
 
     return `
       <div class="donut-card">
@@ -1509,7 +1601,7 @@ function renderDonuts(tab) {
             <canvas id="dc-${tab}-${idx}"></canvas>
             <div class="donut-center" id="dctr-${tab}-${idx}">
               <span class="donut-center-total">${mask(totalStr)}</span>
-              <span class="donut-center-label">total</span>
+              ${!isCash && centerLabelStr ? `<span class="donut-center-label" style="color:${centerUPLColor};font-size:8px;line-height:1.3;max-width:100%;word-break:break-all;">${mask(centerLabelStr)}</span>` : `<span class="donut-center-label">total</span>`}
               <span class="donut-center-hover-pct"></span>
               <span class="donut-center-hover-val"></span>
               <span class="donut-center-hover-name"></span>
@@ -2380,7 +2472,7 @@ window.addEventListener('appinstalled', () => {
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'vsnp-v4.2';
+const CACHE = 'vsnp-v4.3';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
