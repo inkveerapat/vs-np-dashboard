@@ -327,7 +327,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v5.1</p>
+      <p class="gate-version">v5.2</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -348,7 +348,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v5.1</span>
+      <span class="version-badge">v5.2</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -427,8 +427,8 @@
             <span class="filter-label">Sort</span>
             <div style="display:flex;gap:6px;">
               <button class="filter-pill active" id="sort-value"  onclick="setDonutSort(currentTab,'value')">Holding Value</button>
-              <button class="filter-pill"        id="sort-uplPct" onclick="setDonutSort(currentTab,'uplPct')">UPL%</button>
-              <button class="filter-pill"        id="sort-uplVal" onclick="setDonutSort(currentTab,'uplVal')">UPL</button>
+              <button class="filter-pill"        id="sort-uplPct" onclick="setDonutSort(currentTab,'uplPct')">Return %</button>
+              <button class="filter-pill"        id="sort-uplVal" onclick="setDonutSort(currentTab,'uplVal')">Return</button>
             </div>
           </div>
           <div class="filter-bar" id="donut-filter-bar" style="margin:0;flex:0 1 auto;max-width:100%;">
@@ -451,7 +451,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v5.1';
+const VERSION  = 'v5.2';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1488,15 +1488,15 @@ function syncSortPills(tab) {
   });
 }
 
-function applyDonutSort(assets, mode) {
+function applyDonutSort(assets, mode, isCash) {
   const sorted = [...assets];
-  if (mode === 'uplPct') {
+  if (!isCash && mode === 'uplPct') {
     sorted.sort((a, b) => {
       const pctA = (a.upl != null && (a.value - a.upl) > 0) ? a.upl / (a.value - a.upl) : -Infinity;
       const pctB = (b.upl != null && (b.value - b.upl) > 0) ? b.upl / (b.value - b.upl) : -Infinity;
       return pctB - pctA;
     });
-  } else if (mode === 'uplVal') {
+  } else if (!isCash && mode === 'uplVal') {
     sorted.sort((a, b) => (b.upl ?? -Infinity) - (a.upl ?? -Infinity));
   } else {
     sorted.sort((a, b) => b.pct - a.pct); // default: holding value / allocation %
@@ -1550,7 +1550,7 @@ function renderDonuts(tab) {
       const fallback = available[available.length - 1];
       assets = fallback ? (d.byMonth[fallback] || []) : [];
     }
-    assets = applyDonutSort([...assets], donutSortState[tab] || 'value');
+    assets = applyDonutSort([...assets], donutSortState[tab] || 'value', d.title.toLowerCase().includes('cash'));
     return { title: d.title, assets, currency: d.currency };
   });
 
@@ -2045,7 +2045,7 @@ function buildSummaryCard(tab, maskVals) {
         assets = fallback ? (d.byMonth[fallback] || []) : [];
       }
       if (!assets.length) return '';
-      assets = applyDonutSort([...assets], donutSortState[tab] || 'value');
+      assets = applyDonutSort([...assets], donutSortState[tab] || 'value', d.title.toLowerCase().includes('cash'));
 
       const isCashExp  = d.title.toLowerCase().includes('cash');
       const totalVal   = assets.reduce((s, a) => s + a.value, 0);
@@ -2114,7 +2114,7 @@ function buildSummaryCard(tab, maskVals) {
     if (cards) {
       donutSection = `
         <div style="margin-bottom:24px;">
-          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">Asset Allocation · ${activeMonth} · Sorted by ${ {'value':'Holding Value','uplPct':'UPL%','uplVal':'UPL'}[donutSortState[tab]||'value'] }</p>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">Asset Allocation · ${activeMonth} · Sorted by ${ {'value':'Holding Value','uplPct':'Return %','uplVal':'Return'}[donutSortState[tab]||'value'] }</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;">${cards}</div>
         </div>`;
     }
@@ -2323,7 +2323,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v5.1</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v5.2</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2375,7 +2375,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v5.1${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v5.2${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
