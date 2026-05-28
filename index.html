@@ -324,7 +324,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v4.7</p>
+      <p class="gate-version">v4.8</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -345,7 +345,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v4.7</span>
+      <span class="version-badge">v4.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -438,7 +438,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v4.7';
+const VERSION  = 'v4.8';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1561,7 +1561,7 @@ function renderDonuts(tab) {
             <canvas id="dc-${tab}-${idx}"></canvas>
             <div class="donut-center" id="dctr-${tab}-${idx}">
               <span class="donut-center-total">${mask(fmtMC(totalMV, d.currency))}</span>
-              <span class="donut-center-label" id="dctr-upl-${tab}-${idx}" style="color:${centerUPLStr.startsWith('-') ? '#f06b6b' : '#5ce0a8'};font-size:9px;line-height:1.2;">${isCash ? '' : mask(centerUPLStr)}<br><span style="color:var(--text3);font-size:8px;">${isCash ? '' : mask(centerUPLVal)}</span></span>
+              <span class="donut-center-label" id="dctr-upl-${tab}-${idx}" style="color:${centerUPLStr.startsWith('-') ? '#f06b6b' : '#5ce0a8'};font-size:9px;line-height:1.2;">${isCash ? '' : mask(centerUPLStr)}<br><span style="color:${totalUPL >= 0 ? '#5ce0a8' : '#f06b6b'};font-size:8px;">${isCash ? '' : mask(centerUPLVal)}</span></span>
               <span class="donut-center-hover-pct"></span>
               <span class="donut-center-hover-val"></span>
               <span class="donut-center-hover-name"></span>
@@ -2010,7 +2010,13 @@ function buildSummaryCard(tab, maskVals) {
       const donutDataUrl = donutCanvas ? captureCanvas(donutCanvas) : null;
 
       const donutImg = donutDataUrl
-        ? `<img src="${donutDataUrl}" style="width:90px;height:90px;flex-shrink:0;" />`
+        ? `<div style="position:relative;width:90px;height:90px;flex-shrink:0;">
+            <img src="${donutDataUrl}" style="width:90px;height:90px;display:block;" />
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;width:60%;">
+              <div style="font-family:'DM Mono',monospace;font-size:10px;font-weight:500;color:#f0efe8;line-height:1.3;">${maskVals ? '••••' : fmtMC(totalVal, d.currency)}</div>
+              ${!isCashExp && totalUPLPctEx !== null ? `<div style="font-family:'DM Mono',monospace;font-size:8px;color:${totalUPLex >= 0 ? '#5ce0a8' : '#f06b6b'};line-height:1.2;">${maskVals ? '••••' : (totalUPLPctEx>=0?'+':'')+totalUPLPctEx.toFixed(1)+'%'}</div><div style="font-family:'DM Mono',monospace;font-size:7px;color:${totalUPLex >= 0 ? '#5ce0a8' : '#f06b6b'};line-height:1.2;">${maskVals ? '••••' : '('+(totalUPLex>=0?'+':'')+fmtMC(totalUPLex, d.currency)+')'}</div>` : ''}
+            </div>
+          </div>`
         : `<div style="width:90px;height:90px;flex-shrink:0;background:#1e1e1e;border-radius:50%;"></div>`;
 
       const legRows = assets.map((a, ai) => {
@@ -2269,7 +2275,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.7</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.8</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2321,7 +2327,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.7${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.8${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
