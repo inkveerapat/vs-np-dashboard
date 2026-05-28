@@ -324,7 +324,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v4.5</p>
+      <p class="gate-version">v4.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -345,7 +345,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v4.5</span>
+      <span class="version-badge">v4.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -438,7 +438,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v4.5';
+const VERSION  = 'v4.6';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -639,11 +639,12 @@ function findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHeaderRowIdx) {
         }
       }
       const label = year ? `${month} ${year}` : month;
-      // Find Unrealised P/L column — scan nearby columns in the header row
+      // Find Unrealised P/L (absolute) column — scan nearby columns in the header row.
+      // Skip "Unrealised PL%" column (contains '%') and pick the absolute value column.
       let uplCol = null;
       for (let sc = c + 1; sc <= Math.min(c + 6, headerRow.length - 1); sc++) {
         const sh = (headerRow[sc] || '').trim().toLowerCase();
-        if (sh.includes('unreali') && sh.includes('p')) { uplCol = sc; break; }
+        if (sh.includes('unreali') && sh.includes('p') && !sh.includes('%')) { uplCol = sc; break; }
       }
       result.push({ col: c, monthLabel: label, uplCol });
     }
@@ -2268,7 +2269,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.5</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.6</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2320,7 +2321,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.5${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.6${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
