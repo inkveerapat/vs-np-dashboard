@@ -324,7 +324,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v4.2</p>
+      <p class="gate-version">v4.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -345,7 +345,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v4.2</span>
+      <span class="version-badge">v4.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -438,7 +438,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v4.2';
+const VERSION  = 'v4.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -473,7 +473,7 @@ const csv  = gid => BASE + gid + '&single=true&output=csv';
 
 const INK_CSV_URL   = csv(0);
 const FANG_CSV_URL  = csv(576373003);
-const CONDO_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSU57IeIZ_tnLFAgZNYUf9dThcFaEm8suslumtMaOVdUPAksG1XicXIFcmVDHWqdPDt9PKP-TgY8-Is/pub?gid=1610069706&single=true&output=csv';
+const CONDO_CSV_URL = csv(1610069706);
 
 const INK_CONFIG = {
   monthLabelRow: 0,
@@ -807,14 +807,20 @@ async function loadData() {
   document.getElementById('chart-loading').style.display = 'flex';
   document.getElementById('error-box').classList.remove('show');
   try {
-    const [inkRows, fangRows, condoRows] = await Promise.all([
+    const [inkRows, fangRows] = await Promise.all([
       fetchCSV(INK_CSV_URL),
       fetchCSV(FANG_CSV_URL),
-      fetchCSV(CONDO_CSV_URL + '&_=' + Date.now()),
     ]);
-    inkData   = extractData(inkRows,  INK_CONFIG);
-    fangData  = extractData(fangRows, FANG_CONFIG);
-    condoData = extractCondoData(condoRows);
+    inkData  = extractData(inkRows,  INK_CONFIG);
+    fangData = extractData(fangRows, FANG_CONFIG);
+    // Condo is non-fatal — load separately so failure doesn't break the dashboard
+    try {
+      const condoRows = await fetchCSV(CONDO_CSV_URL);
+      condoData = extractCondoData(condoRows);
+    } catch(ce) {
+      console.warn('Condo data failed to load:', ce.message);
+      condoData = null;
+    }
     if (!inkData.months.length || !fangData.months.length)
       throw new Error('No data found \u2014 check sheet is published');
 
@@ -2271,7 +2277,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.2</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.3</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2323,7 +2329,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.2${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.3${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -2463,7 +2469,7 @@ window.addEventListener('appinstalled', () => {
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'vsnp-v4.2';
+const CACHE = 'vsnp-v4.3';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
