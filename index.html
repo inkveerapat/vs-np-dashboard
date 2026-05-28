@@ -148,12 +148,12 @@
     position: absolute;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 60%;
+    width: 58%;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    pointer-events: none; text-align: center;
+    pointer-events: none; text-align: center; gap: 0;
   }
-  .donut-center-total { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
-  .donut-center-label { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 2px; }
+  .donut-center-total { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.2; white-space: nowrap; }
+  .donut-center-label { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 1px; line-height: 1.3; white-space: nowrap; }
   .donut-center-hover-pct { font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.2; display: none; }
   .donut-center-hover-val { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 2px; word-break: break-all; display: none; }
   .donut-center-hover-name { font-family: var(--font-mono); font-size: 8px; color: var(--text3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: none; }
@@ -324,7 +324,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v4.8</p>
+      <p class="gate-version">v4.9</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -345,7 +345,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v4.8</span>
+      <span class="version-badge">v4.9</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -438,7 +438,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v4.8';
+const VERSION  = 'v4.9';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1561,7 +1561,10 @@ function renderDonuts(tab) {
             <canvas id="dc-${tab}-${idx}"></canvas>
             <div class="donut-center" id="dctr-${tab}-${idx}">
               <span class="donut-center-total">${mask(fmtMC(totalMV, d.currency))}</span>
-              <span class="donut-center-label" id="dctr-upl-${tab}-${idx}" style="color:${centerUPLStr.startsWith('-') ? '#f06b6b' : '#5ce0a8'};font-size:9px;line-height:1.2;">${isCash ? '' : mask(centerUPLStr)}<br><span style="color:${totalUPL >= 0 ? '#5ce0a8' : '#f06b6b'};font-size:8px;">${isCash ? '' : mask(centerUPLVal)}</span></span>
+              <span class="donut-center-label" id="dctr-upl-${tab}-${idx}">
+                <span style="display:block;color:${centerUPLStr.startsWith('-') ? '#f06b6b' : '#5ce0a8'};font-size:8px;line-height:1.3;white-space:nowrap;">${isCash ? '' : mask(centerUPLStr)}</span>
+                <span style="display:block;color:${totalUPL >= 0 ? '#5ce0a8' : '#f06b6b'};font-size:7px;line-height:1.3;white-space:nowrap;">${isCash ? '' : mask(centerUPLVal)}</span>
+              </span>
               <span class="donut-center-hover-pct"></span>
               <span class="donut-center-hover-val"></span>
               <span class="donut-center-hover-name"></span>
@@ -2275,7 +2278,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.8</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v4.9</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2327,7 +2330,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.8${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v4.9${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
