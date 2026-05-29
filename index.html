@@ -327,7 +327,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v5.3</p>
+      <p class="gate-version">v5.4</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -348,7 +348,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v5.3</span>
+      <span class="version-badge">v5.4</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -422,8 +422,8 @@
     <div class="donut-section" id="donut-section" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
         <p class="donut-section-title" style="margin:0;padding:0;border:none;">Asset Allocation Breakdown</p>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div class="filter-bar" id="donut-sort-bar" style="margin:0;flex:0 1 auto;">
+        <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;flex:1 1 auto;min-width:0;">
+          <div class="filter-bar" id="donut-sort-bar" style="margin:0;flex:0 0 auto;">
             <span class="filter-label">Sort</span>
             <div style="display:flex;gap:6px;">
               <button class="filter-pill active" id="sort-value"  onclick="setDonutSort(currentTab,'value')">Holding Value</button>
@@ -431,8 +431,8 @@
               <button class="filter-pill"        id="sort-uplVal" onclick="setDonutSort(currentTab,'uplVal')">Unrealised P/L</button>
             </div>
           </div>
-          <div class="filter-bar" id="donut-filter-bar" style="margin:0;flex:0 1 auto;max-width:100%;">
-            <span class="filter-label">Viewing</span>
+          <div class="filter-bar" id="donut-filter-bar" style="margin:0;flex:1 1 100%;min-width:0;max-width:100%;">
+            <span class="filter-label" style="white-space:nowrap;">Viewing</span>
             <div class="filter-scroll" id="donut-filter-scroll"></div>
           </div>
         </div>
@@ -451,7 +451,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v5.3';
+const VERSION  = 'v5.4';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2024,7 +2024,7 @@ function buildSummaryCard(tab, maskVals) {
           </div>
           <div style="text-align:right;font-size:10px;color:#555450;font-family:'DM Mono',monospace;margin-top:4px;">Target: ${maskVals ? '••••••' : fmtM(c.fullCost)}</div>
         </div>
-      </div>`;
+         </div>`;
   }
   let donutSection = '';
   if (tab !== 'household') {
@@ -2323,7 +2323,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v5.3</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v5.4</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2375,7 +2375,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v5.3${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v5.4${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
