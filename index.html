@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -327,7 +327,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v5.4</p>
+      <p class="gate-version">v5.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -348,7 +348,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v5.4</span>
+      <span class="version-badge">v5.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -451,7 +451,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v5.4';
+const VERSION  = 'v5.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1424,8 +1424,10 @@ function extTooltip(ctx) {
   const hhPt  = t.dataPoints.find(p => p.dataset.label === 'Household total');
 
   let html = `<div class="tt-month">${t.title[0] || ''}</div>`;
+  const total = totPt ? totPt.raw : vis.reduce((s, p) => s + (p.raw || 0), 0);
   vis.forEach(p => {
-    html += `<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${mask(fmtM(p.raw))}</span></div>`;
+    const pct = total > 0 ? (p.raw / total * 100).toFixed(1) + '%' : '';
+    html += `<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${mask(fmtM(p.raw))}<span style="color:var(--text3);font-size:10px;margin-left:6px;">${pct}</span></span></div>`;
   });
   if (totPt) html += `<div class="tt-row tt-total"><span>Total</span><span class="tt-val">${mask(fmtM(totPt.raw))}</span></div>`;
   else if (hhPt && hhPt.raw !== null) html += `<div class="tt-row tt-total"><span>Household</span><span class="tt-val">${mask(fmtM(hhPt.raw))}</span></div>`;
@@ -2024,7 +2026,7 @@ function buildSummaryCard(tab, maskVals) {
           </div>
           <div style="text-align:right;font-size:10px;color:#555450;font-family:'DM Mono',monospace;margin-top:4px;">Target: ${maskVals ? '••••••' : fmtM(c.fullCost)}</div>
         </div>
-         </div>`;
+      </div>`;
   }
   let donutSection = '';
   if (tab !== 'household') {
@@ -2323,7 +2325,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v5.4</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v5.5</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2375,7 +2377,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v5.4${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v5.5${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
