@@ -1,4 +1,4 @@
-const CACHE = 'vsnp-v4.4';
+const CACHE = 'vsnp-v5.4';
 const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap',
