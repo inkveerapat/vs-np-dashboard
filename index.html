@@ -349,7 +349,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v6.2</p>
+      <p class="gate-version">v6.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -370,7 +370,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v6.2</span>
+      <span class="version-badge">v6.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -486,7 +486,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v6.2';
+const VERSION  = 'v6.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1636,7 +1636,7 @@ function renderDonuts(tab) {
     const totalUPL  = isCash ? null : d.assets.reduce((s,a) => s+(a.upl ?? 0), 0);
     const totalUPLPct = (!isCash && totalMV > 0) ? (totalUPL / (totalMV - totalUPL) * 100) : null;
 
-      const isGrowth = (tab === 'ink' && idx === 0);
+      const isGrowth = (tab === 'ink' && (idx === 0 || idx === 1));
       const legItems = d.assets.map((a,ai) => {
       const hasUPL = !isCash && a.upl !== null && a.upl !== undefined;
       const uplPct  = hasUPL && (a.value - a.upl) > 0 ? (a.upl / (a.value - a.upl) * 100) : null;
@@ -2534,7 +2534,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v6.2</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v6.3</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2586,7 +2586,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v6.2${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v6.3${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
