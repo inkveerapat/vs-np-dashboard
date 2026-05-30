@@ -211,7 +211,7 @@
   .num-mask { display: inline-block; background: var(--surface2); color: transparent; border-radius: 4px; user-select: none; min-width: 4em; height: 1em; vertical-align: middle; filter: blur(0); position: relative; }
   .num-mask::after { content: '••••••'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: .75em; letter-spacing: .1em; filter: blur(0); }
 
-  body.privacy .y-axis-blur { filter: blur(6px); pointer-events: none; }
+
 
   @media (max-width: 480px) {
     .topbar { padding: 0 14px; height: auto; min-height: 52px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; gap: 6px; }
@@ -349,7 +349,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v7.5</p>
+      <p class="gate-version">v7.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -370,7 +370,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v7.5</span>
+      <span class="version-badge">v7.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -435,7 +435,7 @@
         <canvas id="main-chart"></canvas>
         <div class="chart-crosshair" id="chart-crosshair"></div>
         <div class="chart-loading" id="chart-loading">Loading&hellip;</div>
-        <div id="yaxis-blur" style="position:absolute;top:0;left:0;width:64px;height:100%;pointer-events:none;background:transparent;transition:background .2s;" aria-hidden="true"></div>
+
       </div>
       <div class="chart-tooltip" id="chart-tooltip"></div>
     </div>
@@ -506,7 +506,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v7.5';
+const VERSION  = 'v7.6';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -521,17 +521,14 @@ const EYE_CLOSED = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="1
 
 function applyPrivacyMode() {
   const btn   = document.getElementById('privacy-btn');
-  const yBlur = document.getElementById('yaxis-blur');
   if (privacyMode) {
     btn.innerHTML = EYE_CLOSED + '<span>Show</span>';
     btn.classList.add('active');
     document.body.classList.add('privacy');
-    if (yBlur) yBlur.style.background = 'var(--bg)';
   } else {
     btn.innerHTML = EYE_OPEN + '<span>Hide</span>';
     btn.classList.remove('active');
     document.body.classList.remove('privacy');
-    if (yBlur) yBlur.style.background = 'transparent';
   }
   if (inkData && fangData) renderAll(currentTab);
 }
@@ -3208,7 +3205,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v7.5</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v7.6</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3260,7 +3257,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v7.5${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v7.6${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
