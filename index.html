@@ -349,7 +349,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v7.4</p>
+      <p class="gate-version">v7.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -370,7 +370,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v7.4</span>
+      <span class="version-badge">v7.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -506,7 +506,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v7.4';
+const VERSION  = 'v7.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2089,15 +2089,15 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
     const isAct = h.month === activeM;
     return `<tr class="${isAct?'drill-active-row':''}">
       <td>${h.month}</td>
-      <td>${mask(fmtMC1(h.value, currency))}</td>
       ${!isCash ? `<td>${mask(fmtMC1(h.cost, currency))}</td>` : ''}
+      <td>${mask(fmtMC1(h.value, currency))}</td>
       ${!isCash ? `<td>${hUplPct !== null ? `<span style="color:${hUplC}">${h.upl>=0?'+':''}${hUplPct.toFixed(1)}%</span>` : '—'}</td>` : ''}
     </tr>`;
   }).join('');
 
   const histHeader = isCash
     ? `<th>Month</th><th>Mkt Val</th>`
-    : `<th>Month</th><th>Mkt Val</th><th>Cost</th><th>UPL%</th>`;
+    : `<th>Month</th><th>Cost</th><th>Mkt Val</th><th>UPL%</th>`;
 
   document.getElementById('drill-port-content').innerHTML = `
     <div style="margin-bottom:16px;">
@@ -2119,7 +2119,13 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
     </div>
 
     <div style="margin-bottom:20px;">
-      <div class="drill-chart-title" style="margin-bottom:10px;">Holdings</div>
+      <div class="drill-chart-title" style="margin-bottom:6px;">Holdings</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:4px 0 6px;border-bottom:1px solid var(--border);">
+        <span style="width:8px;flex-shrink:0;display:inline-block;margin-left:2px;"></span>
+        <span style="flex:1;min-width:0;"></span>
+        <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);flex-shrink:0;">Alloc%</span>
+        <div style="text-align:right;flex-shrink:0;min-width:80px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);">Mkt Val / UPL%</div>
+      </div>
       ${assetRows}
     </div>
 
@@ -3202,7 +3208,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v7.4</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v7.5</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3254,7 +3260,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v7.4${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v7.5${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
