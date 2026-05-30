@@ -349,7 +349,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v7.2</p>
+      <p class="gate-version">v7.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -370,7 +370,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v7.2</span>
+      <span class="version-badge">v7.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -464,17 +464,34 @@
 
     </div><!-- /page-content -->
 
-    <!-- ASSET DRILL-DOWN PANEL -->
-    <div id="drill-overlay" onclick="closeDrill()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:90;"></div>
+    <!-- DRILL-DOWN PANELS -->
+    <div id="drill-overlay" onclick="closeDrillAll()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:90;"></div>
+
+    <!-- Layer 1: Portfolio drill-down -->
     <div id="drill-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:91;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);">
       <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <button onclick="closeDrill()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
+          <button onclick="closeDrillAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
+          <span id="drill-port-title" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button id="drill-port-export-btn" onclick="openPortfolioDrillExportModal()" class="export-btn">&#8681; Export</button>
+          <button onclick="closeDrillAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
+        </div>
+      </div>
+      <div id="drill-port-content" style="overflow-y:auto;flex:1;padding:20px;"></div>
+    </div>
+
+    <!-- Layer 2: Asset drill-down (slides over layer 1) -->
+    <div id="drill-panel-2" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:92;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);">
+      <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button onclick="closeAssetDrill()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
           <span id="drill-portfolio-name" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;"></span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <button id="drill-export-btn" onclick="openDrillExportModal()" class="export-btn">&#8681; Export</button>
-          <button onclick="closeDrill()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
+          <button onclick="closeDrillAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
         </div>
       </div>
       <div id="drill-content" style="overflow-y:auto;flex:1;padding:20px;"></div>
@@ -489,7 +506,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v7.2';
+const VERSION  = 'v7.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1695,7 +1712,7 @@ function renderDonuts(tab) {
 
     return `
       <div class="donut-card">
-        <p class="donut-card-title">${d.title}</p>
+        <p class="donut-card-title" onclick="openPortfolioDrill('${tab}',${idx})" style="cursor:pointer;display:flex;align-items:center;gap:6px;">${d.title} <span style="font-size:9px;color:var(--text3);font-family:var(--font-mono);">↗</span></p>
         <div class="donut-card-body">
           <div class="donut-canvas-wrap">
             <canvas id="dc-${tab}-${idx}"></canvas>
@@ -1959,22 +1976,26 @@ function donutLegHover(el, tab, cardIdx, assetIdx, entering) {
   }
 }
 
-// ── ASSET DRILL-DOWN ──────────────────────────────────────────────────────────
+// ── DRILL-DOWN NAVIGATION ─────────────────────────────────────────────────────
 let drillChartInst = null;
-// State tracked for export
-let _drillD = null, _drillAssetName = null, _drillTab = null, _drillAssetIdx = null, _drillIsCashState = false, _drillIsDetailedState = false;
+let portChartInst  = null;
 
-function openDrill(tab, cardIdx, assetName, assetIdx) {
+// State for asset drill (layer 2)
+let _drillD = null, _drillAssetName = null, _drillTab = null, _drillAssetIdx = null;
+let _drillIsCashState = false, _drillIsDetailedState = false;
+// State for portfolio drill (layer 1)
+let _portD = null, _portTab = null, _portCardIdx = null;
+
+// ── Layer 1: Portfolio drill ───────────────────────────────────────────────────
+function openPortfolioDrill(tab, cardIdx) {
   const list = tab === 'ink' ? inkDonutData : fangDonutData;
   const d = list[cardIdx];
   if (!d) return;
-  const isCash     = d.title.toLowerCase().includes('cash');
-  const isDetailed = (tab === 'ink' && (cardIdx === 0 || cardIdx === 1));
-  // Store state for export
-  _drillD = d; _drillAssetName = assetName; _drillTab = tab;
-  _drillAssetIdx = assetIdx; _drillIsCashState = isCash; _drillIsDetailedState = isDetailed;
-  document.getElementById('drill-portfolio-name').textContent = d.title;
-  renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed);
+  _portD = d; _portTab = tab; _portCardIdx = cardIdx;
+
+  document.getElementById('drill-port-title').textContent = d.title;
+  renderPortfolioDrillContent(d, tab, cardIdx);
+
   const overlay = document.getElementById('drill-overlay');
   const panel   = document.getElementById('drill-panel');
   overlay.style.display = 'block';
@@ -1983,17 +2004,261 @@ function openDrill(tab, cardIdx, assetName, assetIdx) {
   document.body.style.overflow = 'hidden';
 }
 
-function closeDrill() {
-  const panel   = document.getElementById('drill-panel');
+function renderPortfolioDrillContent(d, tab, cardIdx) {
+  const allM    = getDonutMonths(tab);
+  const latestM = allM[allM.length - 1];
+  const activeM = donutFilterState[tab] || latestM;
+  const isCash  = d.title.toLowerCase().includes('cash');
+  const currency = d.currency;
+
+  // Resolve assets for active month (same fallback as renderDonuts)
+  let assets = d.byMonth[activeM];
+  if (!assets || !assets.length) {
+    const available = d.months.filter(m => allM.indexOf(m) <= allM.indexOf(activeM));
+    const fallback = available[available.length - 1];
+    assets = fallback ? (d.byMonth[fallback] || []) : [];
+  }
+  assets = [...assets].sort((a,b) => b.value - a.value); // sort by value for portfolio view
+
+  const totalMV  = assets.reduce((s,a) => s+a.value, 0);
+  const totalCost = assets.reduce((s,a) => s+(a.cost ?? 0), 0);
+  const totalUPL  = isCash ? null : assets.reduce((s,a) => s+(a.upl ?? 0), 0);
+  const totalUPLPct = (!isCash && totalMV > 0 && totalUPL !== null && (totalMV - totalUPL) > 0)
+    ? (totalUPL / (totalMV - totalUPL) * 100) : null;
+
+  // ── Summary metric cards ──
+  const uplColor = totalUPL >= 0 ? '#5ce0a8' : '#f06b6b';
+  const uplPctStr = totalUPLPct !== null ? `${totalUPL>=0?'+':''}${totalUPLPct.toFixed(1)}%` : null;
+  const uplAbsStr = totalUPL !== null ? `${totalUPL>=0?'+':''}${fmtMC(totalUPL, currency)}` : null;
+
+  const metricCards = [
+    { label: 'Market Value', val: mask(fmtMC(totalMV, currency)), col: 'var(--text)' },
+    ...(totalCost > 0 ? [{ label: 'Cost Basis', val: mask(fmtMC(totalCost, currency)), col: 'var(--text2)' }] : []),
+    ...(uplPctStr ? [{ label: 'Unrealised P/L', val: uplPctStr, sub: mask(uplAbsStr), col: uplColor }] : []),
+    { label: 'Holdings', val: assets.length, col: 'var(--text2)' },
+  ].map(c => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;min-width:0;">
+      <p style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">${c.label}</p>
+      <p style="font-family:var(--font-mono);font-size:16px;font-weight:500;color:${c.col};letter-spacing:-.02em;">${c.val}</p>
+      ${c.sub ? `<p style="font-family:var(--font-mono);font-size:10px;color:${c.col};opacity:.8;">${c.sub}</p>` : ''}
+    </div>`).join('');
+
+  // ── Portfolio MV history for chart ──
+  const portHistory = d.months.map(m => {
+    const mas = d.byMonth[m] || [];
+    const mv  = mas.reduce((s,a) => s+a.value, 0);
+    const upl = isCash ? null : mas.reduce((s,a) => s+(a.upl ?? 0), 0);
+    const cost = mas.reduce((s,a) => s+(a.cost ?? 0), 0);
+    return mv > 0 ? { month: m, value: mv, upl, cost } : null;
+  }).filter(Boolean);
+
+  // ── Asset rows (clickable → asset drill) ──
+  const assetRows = assets.map((a, ai) => {
+    // find original sorted index in d.byMonth[activeM] for palette colour
+    const origAssets = d.byMonth[activeM] || assets;
+    const origIdx = origAssets.findIndex(x => x.name === a.name);
+    const color = PALETTE[(origIdx >= 0 ? origIdx : ai) % PALETTE.length];
+    const hasUPL = !isCash && a.upl != null;
+    const uplPct  = hasUPL && (a.value - a.upl) > 0 ? (a.upl / (a.value - a.upl) * 100) : null;
+    const uplC    = hasUPL ? (a.upl >= 0 ? '#5ce0a8' : '#f06b6b') : 'var(--text3)';
+    const uplStr  = uplPct !== null
+      ? `<span style="color:${uplC};font-size:10px;">${a.upl>=0?'+':''}${uplPct.toFixed(1)}%</span>
+         <span style="color:${uplC};font-size:9px;opacity:.8;"> ${mask('('+fmtMC1(a.upl,currency)+')')}</span>`
+      : '';
+    // find assetIdx in value-sorted list for openDrill — use original card order
+    const assetIdxForDrill = origIdx >= 0 ? origIdx : ai;
+    return `
+      <div onclick="openAssetFromPortfolio('${tab}',${cardIdx},'${a.name.replace(/'/g,"\\'")}',${assetIdxForDrill})"
+        style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;border-radius:6px;"
+        onmouseenter="this.style.background='rgba(255,255,255,0.03)'" onmouseleave="this.style.background=''">
+        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block;margin-left:2px;"></span>
+        <span style="flex:1;font-size:12px;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name} <span style="font-size:9px;color:var(--text3);">↗</span></span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text2);flex-shrink:0;">${a.pct.toFixed(1)}%</span>
+        <div style="text-align:right;flex-shrink:0;min-width:80px;">
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--text2);">${mask(fmtMC1(a.value, currency))}</div>
+          <div>${uplStr}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // ── Monthly history table ──
+  const histRows = [...portHistory].reverse().map(h => {
+    const hUplPct = (!isCash && h.upl != null && h.value > 0 && (h.value - h.upl) > 0)
+      ? (h.upl / (h.value - h.upl) * 100) : null;
+    const hUplC = h.upl >= 0 ? '#5ce0a8' : '#f06b6b';
+    const isAct = h.month === activeM;
+    return `<tr class="${isAct?'drill-active-row':''}">
+      <td>${h.month}</td>
+      <td>${mask(fmtMC1(h.value, currency))}</td>
+      ${!isCash ? `<td>${mask(fmtMC1(h.cost, currency))}</td>` : ''}
+      ${!isCash ? `<td>${hUplPct !== null ? `<span style="color:${hUplC}">${h.upl>=0?'+':''}${hUplPct.toFixed(1)}%</span>` : '—'}</td>` : ''}
+    </tr>`;
+  }).join('');
+
+  const histHeader = isCash
+    ? `<th>Month</th><th>Mkt Val</th>`
+    : `<th>Month</th><th>Mkt Val</th><th>Cost</th><th>UPL%</th>`;
+
+  document.getElementById('drill-port-content').innerHTML = `
+    <div style="margin-bottom:16px;">
+      <p style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">${activeM} · ${assets.length} holdings</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:20px;">${metricCards}</div>
+    </div>
+
+    <div class="drill-chart-wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <div class="drill-chart-title" style="margin:0;">Portfolio Value</div>
+        ${!isCash ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="filter-pill active" id="pchart-mktval" onclick="switchPortChart('mktval')">Mkt Val</button>
+          <button class="filter-pill" id="pchart-cost"   onclick="switchPortChart('cost')">Cost</button>
+          <button class="filter-pill" id="pchart-uplpct" onclick="switchPortChart('uplpct')">UPL%</button>
+          <button class="filter-pill" id="pchart-uplval" onclick="switchPortChart('uplval')">UPL</button>
+        </div>` : ''}
+      </div>
+      <canvas id="port-drill-chart" height="120"></canvas>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div class="drill-chart-title" style="margin-bottom:10px;">Holdings</div>
+      ${assetRows}
+    </div>
+
+    <div>
+      <div class="drill-chart-title" style="margin-bottom:10px;">Monthly History</div>
+      <table class="drill-history-table">
+        <thead><tr>${histHeader}</tr></thead>
+        <tbody>${histRows}</tbody>
+      </table>
+    </div>`;
+
+  // Build the portfolio chart
+  buildPortChart(portHistory, activeM, isCash, 'mktval', currency);
+}
+
+let _portHistory = null, _portActiveM = null, _portIsCash = false, _portCurrency = 'THB';
+
+function buildPortChart(history, activeM, isCash, mode, currency) {
+  _portHistory = history; _portActiveM = activeM; _portIsCash = isCash; _portCurrency = currency;
+  if (portChartInst) { portChartInst.destroy(); portChartInst = null; }
+
+  let data, chartColor, labelCb, yAxisCb;
+  if (mode === 'cost') {
+    data = history.map(h => h.cost); chartColor = '#f0b429';
+    labelCb = v => fmtMC1(v, currency); yAxisCb = v => fmtMC1(v, currency);
+  } else if (mode === 'uplpct') {
+    data = history.map(h => h.upl != null && (h.value - h.upl) > 0 ? parseFloat((h.upl/(h.value-h.upl)*100).toFixed(2)) : null);
+    chartColor = '#a78bfa'; labelCb = v => (v>=0?'+':'')+v+'%'; yAxisCb = v => v+'%';
+  } else if (mode === 'uplval') {
+    data = history.map(h => h.upl); chartColor = '#f472b6';
+    labelCb = v => (v>=0?'+':'')+fmtMC1(v, currency); yAxisCb = v => fmtMC1(v, currency);
+  } else {
+    data = history.map(h => h.value); chartColor = '#c8f542';
+    labelCb = v => fmtMC1(v, currency); yAxisCb = v => fmtMC1(v, currency);
+  }
+
+  const ctx = document.getElementById('port-drill-chart').getContext('2d');
+  portChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: history.map(h => h.month),
+      datasets: [{
+        data, borderColor: chartColor, backgroundColor: chartColor + '18',
+        borderWidth: 2, fill: true, tension: 0.3, spanGaps: true,
+        pointRadius: history.map(h => h.month === activeM ? 5 : 2),
+        pointBackgroundColor: history.map(h => h.month === activeM ? chartColor : chartColor + '99'),
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => privacyMode ? '••••' : labelCb(c.raw) } } },
+      scales: {
+        x: { ticks: { color: '#888', font: { size: 9 }, maxRotation: 45 }, grid: { color: '#ffffff0a' } },
+        y: { ticks: { color: '#888', font: { size: 9 }, callback: v => privacyMode ? '••' : yAxisCb(v) }, grid: { color: '#ffffff0a' } }
+      }
+    }
+  });
+}
+
+function switchPortChart(mode) {
+  ['mktval','cost','uplpct','uplval'].forEach(m => {
+    const el = document.getElementById('pchart-' + m);
+    if (el) el.classList.toggle('active', m === mode);
+  });
+  if (_portHistory) buildPortChart(_portHistory, _portActiveM, _portIsCash, mode, _portCurrency);
+}
+
+// ── Layer 2: Asset drill (pushed over portfolio drill) ─────────────────────────
+function openAssetFromPortfolio(tab, cardIdx, assetName, assetIdx) {
+  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  const d = list[cardIdx];
+  if (!d) return;
+  const isCash     = d.title.toLowerCase().includes('cash');
+  const isDetailed = (tab === 'ink' && (cardIdx === 0 || cardIdx === 1));
+
+  _drillD = d; _drillAssetName = assetName; _drillTab = tab;
+  _drillAssetIdx = assetIdx; _drillIsCashState = isCash; _drillIsDetailedState = isDetailed;
+
+  document.getElementById('drill-portfolio-name').textContent = d.title;
+  renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed);
+
+  const panel2 = document.getElementById('drill-panel-2');
+  panel2.style.display = 'flex';
+  requestAnimationFrame(() => { panel2.style.transform = 'translateY(0)'; });
+}
+
+// Called from donut card directly (no portfolio layer beneath)
+function openDrill(tab, cardIdx, assetName, assetIdx) {
+  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  const d = list[cardIdx];
+  if (!d) return;
+  const isCash     = d.title.toLowerCase().includes('cash');
+  const isDetailed = (tab === 'ink' && (cardIdx === 0 || cardIdx === 1));
+
+  _drillD = d; _drillAssetName = assetName; _drillTab = tab;
+  _drillAssetIdx = assetIdx; _drillIsCashState = isCash; _drillIsDetailedState = isDetailed;
+
+  document.getElementById('drill-portfolio-name').textContent = d.title;
+  renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed);
+
   const overlay = document.getElementById('drill-overlay');
-  panel.style.transform = 'translateY(100%)';
+  const panel2  = document.getElementById('drill-panel-2');
+  overlay.style.display = 'block';
+  panel2.style.display  = 'flex';
+  requestAnimationFrame(() => { panel2.style.transform = 'translateY(0)'; });
+  document.body.style.overflow = 'hidden';
+}
+
+function closeAssetDrill() {
+  // If portfolio panel is open beneath, just slide asset panel down
+  const panel2  = document.getElementById('drill-panel-2');
+  const panel1  = document.getElementById('drill-panel');
+  panel2.style.transform = 'translateY(100%)';
+  setTimeout(() => { panel2.style.display = 'none'; }, 320);
+  if (drillChartInst) { drillChartInst.destroy(); drillChartInst = null; }
+  // If panel1 isn't open (direct asset open), close everything
+  if (panel1.style.display === 'none' || panel1.style.transform === 'translateY(100%)') {
+    closeDrillAll();
+  }
+}
+
+function closeDrillAll() {
+  const overlay = document.getElementById('drill-overlay');
+  const panel1  = document.getElementById('drill-panel');
+  const panel2  = document.getElementById('drill-panel-2');
+  panel1.style.transform = 'translateY(100%)';
+  panel2.style.transform = 'translateY(100%)';
   setTimeout(() => {
-    panel.style.display   = 'none';
+    panel1.style.display  = 'none';
+    panel2.style.display  = 'none';
     overlay.style.display = 'none';
   }, 320);
   document.body.style.overflow = '';
   if (drillChartInst) { drillChartInst.destroy(); drillChartInst = null; }
+  if (portChartInst)  { portChartInst.destroy();  portChartInst  = null; }
 }
+
+// Keep old closeDrill alias so any existing references still work
+function closeDrill() { closeDrillAll(); }
 
 function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
   const allM    = getDonutMonths(tab);
@@ -2167,7 +2432,7 @@ function buildDrillChart(history, activeM, color, currency, mode, isCash) {
 }
 
 function switchDrillChart(mode) {
-  if (_drillIsCash) return; // cash has no toggles
+  if (_drillIsCash) return;
   ['mktval','cost','uplpct','uplval'].forEach(m => {
     const el = document.getElementById('dchart-' + m);
     if (el) el.classList.toggle('active', m === mode);
@@ -2175,76 +2440,52 @@ function switchDrillChart(mode) {
   if (_drillHistory) buildDrillChart(_drillHistory, _drillActiveM, _drillColor, _drillCurrency, mode, _drillIsCash);
 }
 
-// ── DRILL-DOWN EXPORT ─────────────────────────────────────────────────────────
+// ── ASSET DRILL EXPORT ────────────────────────────────────────────────────────
 function openDrillExportModal() {
   if (document.getElementById('export-modal')) return;
   if (!_drillD) return;
   exportMaskValues = privacyMode;
-
-  const overlay = document.createElement('div');
-  overlay.className = 'export-modal-overlay';
-  overlay.id = 'export-modal';
-
-  const allM   = getDonutMonths(_drillTab);
+  const allM = getDonutMonths(_drillTab);
   const activeM = donutFilterState[_drillTab] || allM[allM.length - 1];
-
+  const overlay = document.createElement('div');
+  overlay.className = 'export-modal-overlay'; overlay.id = 'export-modal';
   overlay.innerHTML = `
     <div class="export-modal">
-      <div>
-        <p class="export-modal-title">Export Asset Detail</p>
-        <p class="export-modal-sub">${_drillAssetName} · ${_drillD.title} · ${activeM}</p>
-      </div>
-      <div>
-        <p style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Format</p>
+      <div><p class="export-modal-title">Export Asset Detail</p>
+        <p class="export-modal-sub">${_drillAssetName} · ${_drillD.title} · ${activeM}</p></div>
+      <div><p style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Format</p>
         <div class="export-format-row">
           <button class="export-fmt-btn selected" id="fmt-jpg" onclick="setExportFmt('jpg')">JPG / JPEG</button>
           <button class="export-fmt-btn" id="fmt-pdf" onclick="setExportFmt('pdf')">PDF</button>
-        </div>
-      </div>
+        </div></div>
       <label class="export-privacy-row">
         <input type="checkbox" id="export-mask-cb" ${exportMaskValues ? 'checked' : ''} onchange="exportMaskValues=this.checked">
-        <span class="export-privacy-label">Hide financial values (privacy mode)</span>
-      </label>
+        <span class="export-privacy-label">Hide financial values (privacy mode)</span></label>
       <p class="export-progress" id="export-progress"></p>
       <div class="export-actions">
         <button class="export-cancel-btn" onclick="closeExportModal()">Cancel</button>
         <button class="export-go-btn" id="export-go-btn" onclick="runDrillExport()">Download</button>
-      </div>
-    </div>`;
+      </div></div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) closeExportModal(); });
 }
 
 function buildDrillExportCard(maskVals) {
-  const d          = _drillD;
-  const assetName  = _drillAssetName;
-  const tab        = _drillTab;
-  const assetIdx   = _drillAssetIdx;
-  const isCash     = _drillIsCashState;
-  const isDetailed = _drillIsDetailedState;
-  const currency   = d.currency;
-  const color      = PALETTE[assetIdx % PALETTE.length];
-
-  const allM    = getDonutMonths(tab);
+  const d = _drillD, assetName = _drillAssetName, tab = _drillTab;
+  const assetIdx = _drillAssetIdx, isCash = _drillIsCashState, isDetailed = _drillIsDetailedState;
+  const currency = d.currency, color = PALETTE[assetIdx % PALETTE.length];
+  const allM = getDonutMonths(tab);
   const activeM = donutFilterState[tab] || allM[allM.length - 1];
-
-  // Rebuild history (same as renderDrillContent)
   const history = d.months.map(m => {
-    const assets = d.byMonth[m] || [];
-    const a = assets.find(x => x.name === assetName);
+    const a = (d.byMonth[m] || []).find(x => x.name === assetName);
     return a ? { month: m, ...a } : null;
   }).filter(Boolean);
-
   const snap = history.find(h => h.month === activeM) || history[history.length - 1];
 
-  function mv(v)  { return maskVals ? '••••••' : fmtCurr(v, currency); }
-  function mmc(v) { return maskVals ? '••••••' : fmtMC1(v, currency); }
-
-  // ── Snapshot rows ──
   const snapRows = [];
   if (isDetailed) {
     if (snap.shares   != null) snapRows.push(['No. of Shares',   maskVals ? '••••••' : snap.shares.toLocaleString()]);
-    if (snap.avgCost  != null) snapRows.push(['Avg Share Cost',  fmtShare(snap.avgCost,  currency)]);
+    if (snap.avgCost  != null) snapRows.push(['Avg Share Cost',  fmtShare(snap.avgCost, currency)]);
     if (snap.avgPrice != null) snapRows.push(['Avg Share Price', fmtShare(snap.avgPrice, currency)]);
     if (snap.cost     != null) snapRows.push(['Cost',            maskVals ? '••••••' : fmtCurr(snap.cost, currency)]);
   } else if (!isCash && snap.cost != null) {
@@ -2252,183 +2493,247 @@ function buildDrillExportCard(maskVals) {
   }
   snapRows.push(['Market Value', maskVals ? '••••••' : fmtCurr(snap.value, currency)]);
   if (!isCash && snap.upl != null) {
-    const uplPct = (snap.value - snap.upl) > 0 ? ((snap.upl / (snap.value - snap.upl)) * 100).toFixed(1) : null;
-    const uplPctStr = uplPct !== null ? ` (+${uplPct}%)` : '';
-    snapRows.push(['Unrealised P/L',
-      `<span style="color:${snap.upl>=0?'#5ce0a8':'#f06b6b'}">${snap.upl>=0?'+':''}${maskVals ? '••••••' : fmtCurr(snap.upl, currency)}${maskVals ? '' : uplPctStr}</span>`
-    ]);
+    const uplPct = (snap.value - snap.upl) > 0 ? ((snap.upl/(snap.value-snap.upl))*100).toFixed(1) : null;
+    snapRows.push(['Unrealised P/L', `<span style="color:${snap.upl>=0?'#5ce0a8':'#f06b6b'}">${snap.upl>=0?'+':''}${maskVals?'••••••':fmtCurr(snap.upl,currency)}${uplPct&&!maskVals?` (+${uplPct}%)`:'('+uplPct+'%)'}</span>`]);
   }
   snapRows.push(['Allocation', snap.pct.toFixed(1) + '% of portfolio']);
+  const snapHtml = snapRows.map(([l,v]) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="font-size:12px;color:#888780;">${l}</span><span style="font-family:'DM Mono',monospace;font-size:12px;color:#f0efe8;">${v}</span></div>`).join('');
 
-  const snapHtml = snapRows.map(([label, val]) => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
-      <span style="font-size:12px;color:#888780;">${label}</span>
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:#f0efe8;">${val}</span>
-    </div>`).join('');
+  const drillChartUrl = captureCanvas(document.getElementById('drill-chart'));
+  const chartSec = drillChartUrl ? `<div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Chart</p><div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;"><img src="${drillChartUrl}" style="width:100%;display:block;border-radius:6px;"/></div></div>` : '';
 
-  // ── Capture live drill chart canvas ──
-  const drillCanvasEl = document.getElementById('drill-chart');
-  const drillChartUrl = drillCanvasEl ? captureCanvas(drillCanvasEl) : null;
-  const chartSection = drillChartUrl ? `
-    <div style="margin-bottom:24px;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Chart</p>
-      <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;">
-        <img src="${drillChartUrl}" style="width:100%;display:block;border-radius:6px;" />
-      </div>
-    </div>` : '';
-
-  // ── Full history table ──
-  const histReversed = [...history].reverse();
+  const thStyle = `font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.07);`;
+  const tdStyle = `font-family:'DM Mono',monospace;font-size:11px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);color:#888780;`;
   const thCols = isCash
-    ? `<th style="text-align:left;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Month</th>
-       <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Mkt Val</th>
-       <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Alloc%</th>`
+    ? `<th style="${thStyle}text-align:left;">Month</th><th style="${thStyle}text-align:right;">Mkt Val</th><th style="${thStyle}text-align:right;">Alloc%</th>`
     : isDetailed
-      ? `<th style="text-align:left;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Month</th>
-         <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Avg Cost</th>
-         <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Cost</th>
-         <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Mkt Val</th>
-         <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">UPL% / UPL</th>
-         <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Alloc%</th>`
-      : `<th style="text-align:left;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Month</th>
-         <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Cost</th>
-         <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Mkt Val</th>
-         <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">UPL% / UPL</th>
-         <th style="text-align:right;padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;border-bottom:1px solid rgba(255,255,255,0.07);">Alloc%</th>`;
+      ? `<th style="${thStyle}text-align:left;">Month</th><th style="${thStyle}text-align:right;">Avg Cost</th><th style="${thStyle}text-align:right;">Cost</th><th style="${thStyle}text-align:right;">Mkt Val</th><th style="${thStyle}text-align:right;">UPL%/UPL</th><th style="${thStyle}text-align:right;">Alloc%</th>`
+      : `<th style="${thStyle}text-align:left;">Month</th><th style="${thStyle}text-align:right;">Cost</th><th style="${thStyle}text-align:right;">Mkt Val</th><th style="${thStyle}text-align:right;">UPL%/UPL</th><th style="${thStyle}text-align:right;">Alloc%</th>`;
 
-  const tdBase = `font-family:'DM Mono',monospace;font-size:11px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);color:#888780;`;
-  const tableRows = histReversed.map(h => {
-    const uplPct    = !isCash && h.upl != null && (h.value - h.upl) > 0 ? (h.upl / (h.value - h.upl) * 100) : null;
-    const uplColor  = h.upl >= 0 ? '#5ce0a8' : '#f06b6b';
-    const uplPctStr = uplPct !== null ? `${h.upl>=0?'+':''}${uplPct.toFixed(1)}%` : null;
-    const uplAbsStr = h.upl != null ? `(${h.upl>=0?'+':''}${fmtMC1(h.upl, currency)})` : '';
-    const uplStr    = uplPctStr !== null
-      ? `<span style="color:${uplColor}">${uplPctStr}${maskVals ? '' : `<br><span style="font-size:10px;opacity:.8;">${uplAbsStr}</span>`}</span>`
-      : '—';
-    const isActive  = h.month === activeM;
-    const rowStyle  = isActive ? 'background:rgba(255,255,255,0.05);' : '';
-
-    let tds = `<td style="${tdBase}text-align:left;color:${isActive?'#f0efe8':'#555450'};${rowStyle}font-weight:${isActive?'500':'400'};">${h.month}</td>`;
-    if (isDetailed) tds += `<td style="${tdBase}text-align:right;${rowStyle}">${fmtShare(h.avgCost, currency)}</td>`;
-    if (!isCash)    tds += `<td style="${tdBase}text-align:right;${rowStyle}">${maskVals ? '••••' : fmtMC1(h.cost, currency)}</td>`;
-    tds += `<td style="${tdBase}text-align:right;${rowStyle}">${maskVals ? '••••' : fmtMC1(h.value, currency)}</td>`;
-    if (!isCash)    tds += `<td style="${tdBase}text-align:right;${rowStyle}">${uplStr}</td>`;
-    tds += `<td style="${tdBase}text-align:right;${rowStyle}">${h.pct.toFixed(1)}%</td>`;
+  const tableRows = [...history].reverse().map(h => {
+    const uplPct = !isCash && h.upl != null && (h.value-h.upl)>0 ? (h.upl/(h.value-h.upl)*100) : null;
+    const uplC = h.upl>=0 ? '#5ce0a8' : '#f06b6b';
+    const uplStr = uplPct !== null
+      ? `<span style="color:${uplC}">${h.upl>=0?'+':''}${uplPct.toFixed(1)}%${maskVals?'':'<br><span style="font-size:9px;opacity:.8;">('+fmtMC1(h.upl,currency)+')</span>'}</span>` : '—';
+    const rowBg = h.month===activeM ? 'background:rgba(255,255,255,0.05);' : '';
+    let tds = `<td style="${tdStyle}text-align:left;${rowBg}color:${h.month===activeM?'#f0efe8':'#555450'};">${h.month}</td>`;
+    if (isDetailed) tds += `<td style="${tdStyle}text-align:right;${rowBg}">${fmtShare(h.avgCost,currency)}</td>`;
+    if (!isCash)    tds += `<td style="${tdStyle}text-align:right;${rowBg}">${maskVals?'••••':fmtMC1(h.cost,currency)}</td>`;
+    tds += `<td style="${tdStyle}text-align:right;${rowBg}">${maskVals?'••••':fmtMC1(h.value,currency)}</td>`;
+    if (!isCash)    tds += `<td style="${tdStyle}text-align:right;${rowBg}">${uplStr}</td>`;
+    tds += `<td style="${tdStyle}text-align:right;${rowBg}">${h.pct.toFixed(1)}%</td>`;
     return `<tr>${tds}</tr>`;
   }).join('');
 
-  // ── Assemble card ──
-  const now = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+  const now = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   const card = document.createElement('div');
   card.style.cssText = `width:800px;background:#0d0d0d;color:#f0efe8;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6;padding:36px;box-sizing:border-box;`;
-
   card.innerHTML = `
-    <!-- Header -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,0.07);">
-      <div>
-        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:#555450;text-transform:uppercase;margin-bottom:4px;">VS NP · ${d.title}</p>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
-          <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>
-          <h1 style="font-size:22px;font-weight:500;letter-spacing:-.02em;margin:0;">${assetName}</h1>
-        </div>
-        <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Snapshot: ${snap.month}${maskVals ? ' · Values hidden' : ''}</p>
-      </div>
-      <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">${VERSION}</span>
-        <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
-      </div>
-    </div>
-
-    <!-- Snapshot -->
-    <div style="margin-bottom:24px;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">${snap.month} Snapshot</p>
-      <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
-        ${snapHtml}
-      </div>
-    </div>
-
-    <!-- Chart -->
-    ${chartSection}
-
-    <!-- Full History -->
-    <div style="margin-bottom:16px;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Full History</p>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead><tr>${thCols}</tr></thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    </div>
-
-    <!-- Footer -->
-    <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · ${VERSION}${maskVals ? ' · Values hidden' : ''}</p>
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
-    </div>`;
-
+      <div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:#555450;text-transform:uppercase;margin-bottom:4px;">VS NP · ${d.title}</p>
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;"></span><h1 style="font-size:22px;font-weight:500;margin:0;">${assetName}</h1></div>
+        <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Snapshot: ${snap.month}${maskVals?' · Values hidden':''}</p></div>
+      <div style="text-align:right;"><span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">${VERSION}</span>
+        <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p></div></div>
+    <div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">${snap.month} Snapshot</p>
+      <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">${snapHtml}</div></div>
+    ${chartSec}
+    <div style="margin-bottom:16px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Full History</p>
+      <table style="width:100%;border-collapse:collapse;"><thead><tr>${thCols}</tr></thead><tbody>${tableRows}</tbody></table></div>
+    <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;">
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP · ${VERSION}${maskVals?' · Values hidden':''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p></div>`;
   return card;
 }
 
 async function runDrillExport() {
   const goBtn = document.getElementById('export-go-btn');
   const prog  = document.getElementById('export-progress');
-  if (!goBtn || !prog) return;
-
-  goBtn.disabled = true;
-  goBtn.textContent = 'Preparing…';
-  prog.textContent = 'Loading export library…';
-
+  if (!goBtn||!prog) return;
+  goBtn.disabled = true; goBtn.textContent = 'Preparing…'; prog.textContent = 'Loading library…';
   try {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
     prog.textContent = 'Capturing…';
-
     const maskVals = document.getElementById('export-mask-cb')?.checked ?? privacyMode;
     const card = buildDrillExportCard(maskVals);
-
-    card.style.position = 'fixed';
-    card.style.top  = '-9999px';
-    card.style.left = '-9999px';
+    card.style.cssText += 'position:fixed;top:-9999px;left:-9999px;';
     document.body.appendChild(card);
-
-    prog.textContent = 'Rendering…';
     await new Promise(r => requestAnimationFrame(() => setTimeout(r, 80)));
-
-    const scale = exportFmt === 'pdf' ? 2 : 2.5;
-    const canvas = await html2canvas(card, {
-      backgroundColor: '#0d0d0d', scale, useCORS: true, allowTaint: true, logging: false, imageTimeout: 0,
-    });
+    const canvas = await html2canvas(card, { backgroundColor:'#0d0d0d', scale: exportFmt==='pdf'?2:2.5, useCORS:true, allowTaint:true, logging:false, imageTimeout:0 });
     document.body.removeChild(card);
+    const allM = getDonutMonths(_drillTab);
+    const activeM = donutFilterState[_drillTab] || allM[allM.length-1];
+    const slug = (_drillAssetName+'-'+activeM).replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+    await _saveExportCanvas(canvas, `vsnp-asset-${slug}`, goBtn, prog);
+  } catch(err) { prog.textContent='⚠ '+err.message; goBtn.disabled=false; goBtn.textContent='Retry'; }
+}
 
-    const allM    = getDonutMonths(_drillTab);
-    const activeM = donutFilterState[_drillTab] || allM[allM.length - 1];
-    const slug = (_drillAssetName + '-' + activeM).replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-    const filename = `vsnp-drill-${slug}`;
+// ── PORTFOLIO DRILL EXPORT ────────────────────────────────────────────────────
+function openPortfolioDrillExportModal() {
+  if (document.getElementById('export-modal')) return;
+  if (!_portD) return;
+  exportMaskValues = privacyMode;
+  const allM = getDonutMonths(_portTab);
+  const activeM = donutFilterState[_portTab] || allM[allM.length - 1];
+  const overlay = document.createElement('div');
+  overlay.className = 'export-modal-overlay'; overlay.id = 'export-modal';
+  overlay.innerHTML = `
+    <div class="export-modal">
+      <div><p class="export-modal-title">Export Portfolio</p>
+        <p class="export-modal-sub">${_portD.title} · ${activeM}</p></div>
+      <div><p style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Format</p>
+        <div class="export-format-row">
+          <button class="export-fmt-btn selected" id="fmt-jpg" onclick="setExportFmt('jpg')">JPG / JPEG</button>
+          <button class="export-fmt-btn" id="fmt-pdf" onclick="setExportFmt('pdf')">PDF</button>
+        </div></div>
+      <label class="export-privacy-row">
+        <input type="checkbox" id="export-mask-cb" ${exportMaskValues?'checked':''} onchange="exportMaskValues=this.checked">
+        <span class="export-privacy-label">Hide financial values (privacy mode)</span></label>
+      <p class="export-progress" id="export-progress"></p>
+      <div class="export-actions">
+        <button class="export-cancel-btn" onclick="closeExportModal()">Cancel</button>
+        <button class="export-go-btn" id="export-go-btn" onclick="runPortfolioDrillExport()">Download</button>
+      </div></div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target===overlay) closeExportModal(); });
+}
 
-    if (exportFmt === 'jpg') {
-      prog.textContent = 'Saving JPG…';
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
-      const a = document.createElement('a'); a.href = dataUrl; a.download = filename + '.jpg'; a.click();
-      prog.textContent = '✓ Downloaded!';
-    } else {
-      prog.textContent = 'Loading PDF library…';
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-      prog.textContent = 'Saving PDF…';
-      const { jsPDF } = window.jspdf;
-      const pdfW = 794;
-      const pdfH = Math.round(canvas.height / canvas.width * pdfW);
-      const pdf = new jsPDF({ orientation: pdfH > pdfW ? 'p' : 'l', unit: 'px', format: [pdfW, pdfH] });
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, pdfH);
-      pdf.save(filename + '.pdf');
-      prog.textContent = '✓ Downloaded!';
-    }
+function buildPortfolioDrillExportCard(maskVals) {
+  const d = _portD, tab = _portTab, cardIdx = _portCardIdx;
+  const currency = d.currency, isCash = d.title.toLowerCase().includes('cash');
+  const allM = getDonutMonths(tab);
+  const activeM = donutFilterState[tab] || allM[allM.length-1];
 
-    goBtn.textContent = 'Done ✓';
-    setTimeout(closeExportModal, 1200);
-  } catch(err) {
-    prog.textContent = '⚠ Export failed: ' + err.message;
-    goBtn.disabled = false;
-    goBtn.textContent = 'Retry';
-    console.error('Drill export error:', err);
+  let assets = d.byMonth[activeM];
+  if (!assets || !assets.length) {
+    const available = d.months.filter(m => allM.indexOf(m) <= allM.indexOf(activeM));
+    assets = (d.byMonth[available[available.length-1]] || []);
   }
+  assets = [...assets].sort((a,b) => b.value-a.value);
+
+  const totalMV  = assets.reduce((s,a) => s+a.value, 0);
+  const totalCost = assets.reduce((s,a) => s+(a.cost??0), 0);
+  const totalUPL  = isCash ? null : assets.reduce((s,a) => s+(a.upl??0), 0);
+  const totalUPLPct = (!isCash && totalMV>0 && totalUPL!=null && (totalMV-totalUPL)>0) ? (totalUPL/(totalMV-totalUPL)*100) : null;
+  const uplColor = totalUPL>=0 ? '#5ce0a8' : '#f06b6b';
+
+  const portHistory = d.months.map(m => {
+    const mas = d.byMonth[m]||[];
+    const mv = mas.reduce((s,a)=>s+a.value,0);
+    return mv>0 ? { month:m, value:mv, upl: isCash?null:mas.reduce((s,a)=>s+(a.upl??0),0), cost:mas.reduce((s,a)=>s+(a.cost??0),0) } : null;
+  }).filter(Boolean);
+
+  const portChartUrl = captureCanvas(document.getElementById('port-drill-chart'));
+  const chartSec = portChartUrl ? `<div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Portfolio Value Over Time</p><div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;"><img src="${portChartUrl}" style="width:100%;display:block;border-radius:6px;"/></div></div>` : '';
+
+  const assetRows = assets.map((a,ai) => {
+    const origIdx = (d.byMonth[activeM]||assets).findIndex(x=>x.name===a.name);
+    const color = PALETTE[(origIdx>=0?origIdx:ai)%PALETTE.length];
+    const hasUPL = !isCash && a.upl!=null;
+    const uplPct = hasUPL&&(a.value-a.upl)>0 ? (a.upl/(a.value-a.upl)*100) : null;
+    const uplC = hasUPL ? (a.upl>=0?'#5ce0a8':'#f06b6b') : '#555450';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+      <span style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block;"></span>
+      <span style="flex:1;font-size:12px;color:#f0efe8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;flex-shrink:0;">${a.pct.toFixed(1)}%</span>
+      <div style="text-align:right;flex-shrink:0;min-width:90px;">
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;">${maskVals?'••••':fmtMC1(a.value,currency)}</div>
+        ${uplPct!=null?`<div style="font-family:'DM Mono',monospace;font-size:10px;color:${uplC};">${a.upl>=0?'+':''}${uplPct.toFixed(1)}% ${maskVals?'':'<span style="opacity:.7;">('+fmtMC1(a.upl,currency)+')</span>'}</div>`:''}
+      </div></div>`;
+  }).join('');
+
+  const thS = `font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.07);`;
+  const tdS = `font-family:'DM Mono',monospace;font-size:11px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);color:#888780;`;
+  const histHeader = isCash
+    ? `<th style="${thS}text-align:left;">Month</th><th style="${thS}text-align:right;">Mkt Val</th>`
+    : `<th style="${thS}text-align:left;">Month</th><th style="${thS}text-align:right;">Mkt Val</th><th style="${thS}text-align:right;">Cost</th><th style="${thS}text-align:right;">UPL%</th>`;
+  const histRows = [...portHistory].reverse().map(h => {
+    const hUplPct = (!isCash&&h.upl!=null&&h.value>0&&(h.value-h.upl)>0) ? (h.upl/(h.value-h.upl)*100) : null;
+    const hC = h.upl>=0?'#5ce0a8':'#f06b6b';
+    const isAct = h.month===activeM;
+    const rowBg = isAct?'background:rgba(255,255,255,0.05);':'';
+    return `<tr>
+      <td style="${tdS}text-align:left;${rowBg}color:${isAct?'#f0efe8':'#555450'};">${h.month}</td>
+      <td style="${tdS}text-align:right;${rowBg}">${maskVals?'••••':fmtMC1(h.value,currency)}</td>
+      ${!isCash?`<td style="${tdS}text-align:right;${rowBg}">${maskVals?'••••':fmtMC1(h.cost,currency)}</td>`:''}
+      ${!isCash?`<td style="${tdS}text-align:right;${rowBg}">${hUplPct!=null?`<span style="color:${hC}">${h.upl>=0?'+':''}${hUplPct.toFixed(1)}%</span>`:'—'}</td>`:''}
+    </tr>`;
+  }).join('');
+
+  const now = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const card = document.createElement('div');
+  card.style.cssText = `width:800px;background:#0d0d0d;color:#f0efe8;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6;padding:36px;box-sizing:border-box;`;
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,0.07);">
+      <div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:#555450;text-transform:uppercase;margin-bottom:4px;">VS NP · Asset Allocation</p>
+        <h1 style="font-size:22px;font-weight:500;margin:0;">${d.title}</h1>
+        <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">${activeM} · ${assets.length} holdings${maskVals?' · Values hidden':''}</p></div>
+      <div style="text-align:right;"><span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">${VERSION}</span>
+        <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:24px;">
+      <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;">
+        <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:4px;">Market Value</p>
+        <p style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:#f0efe8;">${maskVals?'••••••':fmtMC(totalMV,currency)}</p></div>
+      ${totalCost>0?`<div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;">
+        <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:4px;">Cost Basis</p>
+        <p style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:#888780;">${maskVals?'••••••':fmtMC(totalCost,currency)}</p></div>`:''}
+      ${totalUPLPct!=null?`<div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;">
+        <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:4px;">Unrealised P/L</p>
+        <p style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:${uplColor};">${totalUPL>=0?'+':''}${totalUPLPct.toFixed(1)}%</p>
+        <p style="font-family:'DM Mono',monospace;font-size:11px;color:${uplColor};opacity:.8;">${maskVals?'••••••':(totalUPL>=0?'+':'')+fmtMC(totalUPL,currency)}</p></div>`:''}
+    </div>
+    ${chartSec}
+    <div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Holdings · ${activeM}</p>
+      ${assetRows}</div>
+    <div style="margin-bottom:16px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Monthly History</p>
+      <table style="width:100%;border-collapse:collapse;"><thead><tr>${histHeader}</tr></thead><tbody>${histRows}</tbody></table></div>
+    <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;">
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP · ${VERSION}${maskVals?' · Values hidden':''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p></div>`;
+  return card;
+}
+
+async function runPortfolioDrillExport() {
+  const goBtn = document.getElementById('export-go-btn');
+  const prog  = document.getElementById('export-progress');
+  if (!goBtn||!prog) return;
+  goBtn.disabled = true; goBtn.textContent = 'Preparing…'; prog.textContent = 'Loading library…';
+  try {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    prog.textContent = 'Capturing…';
+    const maskVals = document.getElementById('export-mask-cb')?.checked ?? privacyMode;
+    const card = buildPortfolioDrillExportCard(maskVals);
+    card.style.cssText += 'position:fixed;top:-9999px;left:-9999px;';
+    document.body.appendChild(card);
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 80)));
+    const canvas = await html2canvas(card, { backgroundColor:'#0d0d0d', scale: exportFmt==='pdf'?2:2.5, useCORS:true, allowTaint:true, logging:false, imageTimeout:0 });
+    document.body.removeChild(card);
+    const allM = getDonutMonths(_portTab);
+    const activeM = donutFilterState[_portTab]||allM[allM.length-1];
+    const slug = (_portD.title+'-'+activeM).replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+    await _saveExportCanvas(canvas, `vsnp-portfolio-${slug}`, goBtn, prog);
+  } catch(err) { prog.textContent='⚠ '+err.message; goBtn.disabled=false; goBtn.textContent='Retry'; }
+}
+
+// Shared canvas save helper
+async function _saveExportCanvas(canvas, filename, goBtn, prog) {
+  if (exportFmt === 'jpg') {
+    prog.textContent = 'Saving JPG…';
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/jpeg', 0.93); a.download = filename+'.jpg'; a.click();
+  } else {
+    prog.textContent = 'Loading PDF library…';
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    prog.textContent = 'Saving PDF…';
+    const { jsPDF } = window.jspdf;
+    const pdfW = 794, pdfH = Math.round(canvas.height/canvas.width*pdfW);
+    const pdf = new jsPDF({ orientation: pdfH>pdfW?'p':'l', unit:'px', format:[pdfW,pdfH] });
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,pdfW,pdfH);
+    pdf.save(filename+'.pdf');
+  }
+  prog.textContent = '✓ Downloaded!';
+  goBtn.textContent = 'Done ✓';
+  setTimeout(closeExportModal, 1200);
 }
 
 function fmtCurr(val, currency) {
@@ -2897,7 +3202,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v7.2</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v7.3</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2949,7 +3254,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v7.2${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v7.3${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
