@@ -155,6 +155,8 @@
   .drill-history-table td { font-family:var(--font-mono);text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text2); }
   .drill-history-table td:first-child { text-align:left;color:var(--text3); }
   .drill-history-table tr.drill-active-row td { color:var(--text);background:rgba(255,255,255,0.04); }
+  .drill-upl-abs { font-size:10px;opacity:.8;display:inline; }
+  @media (max-width: 768px) { .drill-upl-abs { display:block; } }
   .drill-leg-item-clickable { cursor:pointer;transition:opacity .15s; }
   .drill-leg-item-clickable:hover { opacity:.75; }
 
@@ -349,7 +351,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v7.0</p>
+      <p class="gate-version">v7.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -370,7 +372,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v7.0</span>
+      <span class="version-badge">v7.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -486,7 +488,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v7.0';
+const VERSION  = 'v7.1';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1663,7 +1665,7 @@ function renderDonuts(tab) {
       const subRow = hasUPL ? `
         <div class="donut-leg-sub">
           <span class="donut-leg-mv">${mask(fmtMC1(a.value, a.currency))}</span>
-          <span class="donut-leg-upl" style="color:${uplCol};">${uplPctStr} <span class="donut-leg-upl-val">${mask(uplValStr)}</span></span>
+          <span class="donut-leg-upl" style="color:${uplCol};">${mask(uplPctStr)} <span class="donut-leg-upl-val">${mask(uplValStr)}</span></span>
         </div>` : `
         <div class="donut-leg-sub">
           <span class="donut-leg-mv">${mask(fmtMC1(a.value, a.currency))}</span>
@@ -1699,7 +1701,7 @@ function renderDonuts(tab) {
             <div class="donut-center" id="dctr-${tab}-${idx}">
               <span class="donut-center-total">${mask(fmtMC(totalMV, d.currency))}</span>
               <span class="donut-center-label" id="dctr-upl-${tab}-${idx}">
-                <span style="display:block;color:${centerUPLStr.startsWith('-') ? '#f06b6b' : '#5ce0a8'};font-size:8px;line-height:1.3;white-space:nowrap;">${isCash ? '' : centerUPLStr}</span>
+                <span style="display:block;color:${centerUPLStr.startsWith('-') ? '#f06b6b' : '#5ce0a8'};font-size:8px;line-height:1.3;white-space:nowrap;">${isCash ? '' : mask(centerUPLStr)}</span>
                 <span style="display:block;color:${totalUPL >= 0 ? '#5ce0a8' : '#f06b6b'};font-size:7px;line-height:1.3;white-space:nowrap;">${isCash ? '' : mask(centerUPLVal)}</span>
               </span>
               <span class="donut-center-hover-pct"></span>
@@ -2050,7 +2052,7 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
     const uplPctStr = uplPct !== null ? `${h.upl>=0?'+':''}${uplPct.toFixed(1)}%` : null;
     const uplAbsStr = h.upl != null ? ` (${h.upl>=0?'+':''}${fmtMC1(h.upl, currency)})` : '';
     const uplStr = uplPctStr !== null
-      ? `<span style="color:${uplColor}">${uplPctStr}${privacyMode ? '' : `<span style="font-size:10px;opacity:.8;">${uplAbsStr}</span>`}</span>`
+      ? `<span style="color:${uplColor}">${uplPctStr}${privacyMode ? '' : `<span class="drill-upl-abs">${uplAbsStr}</span>`}</span>`
       : '—';
     const isActive = h.month === activeM;
 
@@ -2633,7 +2635,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v7.0</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v7.1</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2685,7 +2687,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v7.0${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v7.1${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
