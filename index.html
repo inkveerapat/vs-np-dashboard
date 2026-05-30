@@ -328,7 +328,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v5.9</p>
+      <p class="gate-version">v6.0</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -349,7 +349,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v5.9</span>
+      <span class="version-badge">v6.0</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -452,7 +452,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v5.9';
+const VERSION  = 'v6.0';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1440,8 +1440,20 @@ function extTooltip(ctx) {
     }
     html += `<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${mask(fmtM(p.raw))}${pct ? `<span style="color:var(--text3);font-size:10px;margin-left:6px;">${pct}</span>` : ''}</span></div>${privacyMode ? '' : deltaHtml}`;
   });
-  if (totPt) html += `<div class="tt-row tt-total"><span class="tt-row-label"><span class="tt-dot" style="background:${totPt.dataset.borderColor}"></span>Total</span><span class="tt-val">${mask(fmtM(totPt.raw))}</span></div>`;
-  else if (hhPt && hhPt.raw !== null) html += `<div class="tt-row tt-total"><span class="tt-row-label"><span class="tt-dot" style="background:${hhPt.dataset.borderColor}"></span>Household Total</span><span class="tt-val">${mask(fmtM(hhPt.raw))}</span></div>`;
+
+  function totalDeltaHtml(pt) {
+    if (!pt || pt.dataIndex <= 0 || privacyMode) return '';
+    const prevVal   = pt.dataset.data[pt.dataIndex - 1];
+    const prevLabel = labels[pt.dataIndex - 1];
+    if (prevVal == null || pt.raw == null) return '';
+    const diff = pt.raw - prevVal;
+    const sign = diff >= 0 ? '+' : '';
+    const col  = diff >= 0 ? '#5ce0a8' : '#f06b6b';
+    return `<div class="tt-delta"><span style="color:${col};">${sign}${fmtM(diff)}</span><span style="color:var(--text3);"> vs ${prevLabel}</span></div>`;
+  }
+
+  if (totPt) html += `<div class="tt-row tt-total"><span class="tt-row-label"><span class="tt-dot" style="background:${totPt.dataset.borderColor}"></span>Total</span><span class="tt-val">${mask(fmtM(totPt.raw))}</span></div>${totalDeltaHtml(totPt)}`;
+  else if (hhPt && hhPt.raw !== null) html += `<div class="tt-row tt-total"><span class="tt-row-label"><span class="tt-dot" style="background:${hhPt.dataset.borderColor}"></span>Household Total</span><span class="tt-val">${mask(fmtM(hhPt.raw))}</span></div>${totalDeltaHtml(hhPt)}`;
 
   tt.innerHTML = html;
   tt.style.display = 'block';
@@ -2336,7 +2348,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v5.9</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v6.0</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -2388,7 +2400,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v5.9${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v6.0${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
