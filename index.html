@@ -349,7 +349,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v8.0</p>
+      <p class="gate-version">v8.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -370,7 +370,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v8.0</span>
+      <span class="version-badge">v8.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -506,7 +506,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v8.0';
+const VERSION  = 'v8.1';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2059,19 +2059,19 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
     const uplPct  = hasUPL && (a.value - a.upl) > 0 ? (a.upl / (a.value - a.upl) * 100) : null;
     const uplC    = hasUPL ? (a.upl >= 0 ? '#5ce0a8' : '#f06b6b') : 'var(--text3)';
     const uplStr  = uplPct !== null
-      ? `<span style="color:${uplC};font-size:10px;white-space:nowrap;">${a.upl>=0?'+':''}${uplPct.toFixed(1)}% <span style="font-size:9px;opacity:.8;">${mask('('+fmtMC1(a.upl,currency)+')')}</span></span>`
+      ? `<span style="color:${uplC};font-size:12px;white-space:nowrap;">${a.upl>=0?'+':''}${uplPct.toFixed(1)}% <span style="font-size:10px;opacity:.8;">${mask('('+fmtMC1(a.upl,currency)+')')}</span></span>`
       : '';
     // find assetIdx in value-sorted list for openDrill — use original card order
     const assetIdxForDrill = origIdx >= 0 ? origIdx : ai;
     return `
       <div onclick="openAssetFromPortfolio('${tab}',${cardIdx},'${a.name.replace(/'/g,"\\'")}',${assetIdxForDrill})"
-        style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;border-radius:6px;"
+        style="display:flex;align-items:center;gap:12px;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;border-radius:6px;"
         onmouseenter="this.style.background='rgba(255,255,255,0.03)'" onmouseleave="this.style.background=''">
-        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block;margin-left:2px;margin-top:2px;"></span>
-        <span style="flex:1;font-size:12px;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name} <span style="font-size:9px;color:var(--text3);">↗</span></span>
-        <div style="text-align:right;flex-shrink:0;min-width:72px;font-family:var(--font-mono);font-size:11px;color:var(--text2);">${mask(fmtMC1(a.value, currency))}</div>
-        <div style="text-align:right;flex-shrink:0;min-width:110px;">${uplStr || '<span style="color:var(--text3);font-size:10px;">—</span>'}</div>
-        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text2);flex-shrink:0;min-width:42px;text-align:right;">${a.pct.toFixed(1)}%</span>
+        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block;margin-left:2px;"></span>
+        <span style="flex:1;font-size:13px;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name} <span style="font-size:9px;color:var(--text3);">↗</span></span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--text);flex-shrink:0;min-width:64px;text-align:right;">${mask(fmtMC1(a.value, currency))}</span>
+        <span style="flex-shrink:0;min-width:120px;text-align:right;">${uplStr || '<span style="color:var(--text3);font-size:11px;">—</span>'}</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--text2);flex-shrink:0;min-width:48px;text-align:right;">${a.pct.toFixed(1)}%</span>
       </div>`;
   }).join('');
 
@@ -2117,12 +2117,12 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
 
     <div style="margin-bottom:20px;">
       <div class="drill-chart-title" style="margin-bottom:6px;">Holdings</div>
-      <div style="display:flex;align-items:center;gap:10px;padding:4px 0 6px;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:12px;padding:4px 0 6px;border-bottom:1px solid var(--border);">
         <span style="width:8px;flex-shrink:0;display:inline-block;margin-left:2px;"></span>
         <span style="flex:1;min-width:0;"></span>
-        <div style="text-align:right;flex-shrink:0;min-width:72px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);">Mkt Val</div>
-        <div style="text-align:right;flex-shrink:0;min-width:110px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);">UPL% / UPL</div>
-        <div style="text-align:right;flex-shrink:0;min-width:42px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);">Alloc%</div>
+        <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);flex-shrink:0;min-width:64px;text-align:right;">Mkt Val</span>
+        <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);flex-shrink:0;min-width:120px;text-align:right;">UPL% / UPL</span>
+        <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);flex-shrink:0;min-width:48px;text-align:right;">Alloc%</span>
       </div>
       ${assetRows}
     </div>
@@ -3209,7 +3209,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.0</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.1</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3261,7 +3261,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.0${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.1${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
