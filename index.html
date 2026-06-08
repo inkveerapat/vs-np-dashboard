@@ -185,7 +185,7 @@
   .donut-leg-item { display: flex; flex-direction: column; font-size: 11px; color: var(--text3); cursor: default; transition: color .15s; border-radius: 4px; padding: 2px 2px; margin: 0 -2px; min-width: 0; }
   .donut-leg-item:hover { color: var(--text2); background: rgba(255,255,255,0.04); }
   .donut-leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-  .donut-leg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+  .donut-leg-name { flex: 1; min-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; max-width: 90px; }
   .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; min-width: 32px; text-align: right; }
   .donut-leg-main { display: flex; align-items: center; gap: 5px; width: 100%; min-width: 0; }
   .donut-leg-sub { display: flex; justify-content: space-between; align-items: center; padding-left: 12px; margin-top: 1px; min-width: 0; gap: 4px; }
@@ -506,7 +506,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v8.3';
+const VERSION  = 'v8.4';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2068,7 +2068,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
         style="display:flex;align-items:center;gap:12px;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;border-radius:6px;"
         onmouseenter="this.style.background='rgba(255,255,255,0.03)'" onmouseleave="this.style.background=''">
         <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block;margin-left:2px;"></span>
-        <span style="flex:1;font-size:13px;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name} <span style="font-size:9px;color:var(--text3);">↗</span></span>
+        <span style="flex:1;font-size:13px;color:var(--text);min-width:48px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name} <span style="font-size:9px;color:var(--text3);">↗</span></span>
         <span style="font-family:var(--font-mono);font-size:12px;color:var(--text2);flex-shrink:0;min-width:56px;text-align:right;">${a.cost != null ? mask(fmtMC1(a.cost, currency)) : '<span style="color:var(--text3);">—</span>'}</span>
         <span style="font-family:var(--font-mono);font-size:12px;color:var(--text);flex-shrink:0;min-width:56px;text-align:right;">${mask(fmtMC1(a.value, currency))}</span>
         <span style="flex-shrink:0;min-width:120px;text-align:right;">${uplStr || '<span style="color:var(--text3);font-size:11px;">—</span>'}</span>
@@ -2120,7 +2120,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
       <div class="drill-chart-title" style="margin-bottom:6px;">Holdings</div>
       <div style="display:flex;align-items:center;gap:12px;padding:4px 0 6px;border-bottom:1px solid var(--border);">
         <span style="width:8px;flex-shrink:0;display:inline-block;margin-left:2px;"></span>
-        <span style="flex:1;min-width:0;"></span>
+        <span style="flex:1;min-width:48px;max-width:80px;"></span>
         <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);flex-shrink:0;min-width:56px;text-align:right;">Cost</span>
         <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);flex-shrink:0;min-width:56px;text-align:right;">Mkt Val</span>
         <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);flex-shrink:0;min-width:120px;text-align:right;">UPL% / UPL</span>
