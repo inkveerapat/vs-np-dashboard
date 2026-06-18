@@ -284,6 +284,59 @@
     .filter-pill { font-size: 10px; padding: 3px 10px; }
   }
 
+  /* ── Allocation bar (main tab + portfolio drill) ── */
+  .alloc-bar-section { margin-bottom: 16px; }
+  .alloc-bar-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+  .alloc-bar-track { display: flex; height: 18px; border-radius: 6px; overflow: hidden; gap: 1px; }
+  .alloc-bar-seg { height: 100%; transition: opacity .15s; cursor: default; }
+  .alloc-bar-seg:hover { opacity: .8; }
+  .alloc-bar-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 8px; }
+  .alloc-bar-leg-item { display: inline-flex; align-items: center; gap: 5px; }
+  .alloc-bar-leg-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+  .alloc-bar-leg-name { font-family: var(--font-mono); font-size: 9px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+  .alloc-bar-leg-pct { font-family: var(--font-mono); font-size: 9px; color: var(--text); margin-left: 2px; }
+
+  /* ── Heatmap ── */
+  .heatmap-section { margin-bottom: 14px; }
+  .heatmap-row { display: flex; gap: 4px; margin-bottom: 4px; }
+  .heatmap-tile { border-radius: 6px; padding: 8px 8px 6px; display: flex; flex-direction: column; gap: 2px; min-width: 0; cursor: pointer; transition: opacity .15s; }
+  .heatmap-tile:hover { opacity: .82; }
+  .heatmap-tile-name { font-family: var(--font-mono); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .heatmap-tile-pct { font-family: var(--font-mono); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .heatmap-tile-abs { font-family: var(--font-mono); font-size: 9px; opacity: .75; white-space: nowrap; }
+  .heatmap-scale { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .heatmap-scale-bar { flex: 1; height: 3px; border-radius: 2px; }
+  .heatmap-scale-lbl { font-family: var(--font-mono); font-size: 8px; color: var(--text3); }
+
+  /* ── Ring + sparkline (asset drill) ── */
+  .ring-spark-row { display: flex; align-items: center; gap: 14px; padding: 12px 0 10px; }
+  .ring-wrap { flex-shrink: 0; position: relative; }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+  .ring-center-val { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text); }
+  .ring-center-lbl { font-family: var(--font-mono); font-size: 7px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-top: 1px; }
+  .spark-wrap { flex: 1; min-width: 0; }
+  .spark-header { font-family: var(--font-mono); font-size: 8px; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-bottom: 3px; }
+  .spark-val { font-family: var(--font-mono); font-size: 13px; font-weight: 600; margin-bottom: 1px; }
+  .spark-sub { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-bottom: 5px; }
+
+  /* ── Cost vs value bar ── */
+  .cv-bar-section { margin-bottom: 28px; }
+  .cv-bar-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+  .cv-bar-track { position: relative; height: 36px; background: var(--surface2); border-radius: 8px; }
+  .cv-bar-ghost { position: absolute; top: 0; left: 0; height: 100%; border-radius: 8px; }
+  .cv-bar-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 8px; display: flex; align-items: center; padding: 0 10px; z-index: 2; }
+  .cv-bar-overflow { position: absolute; top: 0; height: 100%; border-radius: 0 8px 8px 0; z-index: 3; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; }
+  .cv-bar-cost-line { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--text3); border-radius: 1px; z-index: 10; }
+  .cv-bar-cost-tag { position: absolute; bottom: -19px; font-family: var(--font-mono); font-size: 8px; color: var(--text3); transform: translateX(-50%); white-space: nowrap; }
+  .cv-bar-gap { position: absolute; top: 8px; height: calc(100% - 16px); border-top: 1px dashed; border-bottom: 1px dashed; z-index: 2; }
+  .cv-bar-delta { display: flex; align-items: center; justify-content: space-between; margin-top: 22px; }
+  .cv-bar-delta-labels { display: flex; gap: 14px; }
+  .cv-bar-delta-item { display: flex; flex-direction: column; }
+  .cv-bar-delta-lbl { font-family: var(--font-mono); font-size: 8px; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); }
+  .cv-bar-delta-val { font-family: var(--font-mono); font-size: 11px; }
+  .cv-bar-badge { font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+
+
   /* PWA STANDALONE */
   @media (display-mode: standalone) {
     .topbar { padding-top: max(env(safe-area-inset-top), 12px); }
@@ -349,7 +402,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v8.3</p>
+      <p class="gate-version">v8.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -370,7 +423,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v8.3</span>
+      <span class="version-badge">v8.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -423,6 +476,8 @@
       <p class="goal-section-title">Goal Progress</p>
       <div class="goal-grid" id="goal-grid"></div>
     </div>
+
+    <div id="main-alloc-bar-section" style="display:none;" class="alloc-bar-section"></div>
 
     <div style="position:relative;">
       <div class="range-bar" id="range-bar">
@@ -506,7 +561,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v8.4';
+const VERSION  = 'v8.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1630,6 +1685,7 @@ function renderDonutFilter(tab) {
 function selectDonutFilter(tab, month) {
   donutFilterState[tab] = month;
   renderDonuts(tab);
+  renderMainAllocBar(tab);
 }
 
 function renderDonuts(tab) {
@@ -2102,11 +2158,35 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
     ? `<th>Month</th><th>Mkt Val</th>`
     : `<th>Month</th><th>Cost</th><th>Mkt Val</th><th>UPL% / UPL</th>`;
 
+  // ── Allocation bar ──
+  const allocAssets = assets.map((a, ai) => {
+    const origAssets2 = d.byMonth[activeM] || assets;
+    const origIdx2 = origAssets2.findIndex(x => x.name === a.name);
+    const color2 = PALETTE[(origIdx2 >= 0 ? origIdx2 : ai) % PALETTE.length];
+    return { name: a.name, pct: a.pct, color: color2 };
+  });
+  const allocBarHTML = buildAllocBarHTML(allocAssets, 'Allocation · ' + activeM);
+
+  // ── Heatmap ──
+  const heatmapAssets = assets.map((a, ai) => {
+    const origAssets3 = d.byMonth[activeM] || assets;
+    const origIdx3 = origAssets3.findIndex(x => x.name === a.name);
+    return { ...a, _origIdx: origIdx3 >= 0 ? origIdx3 : ai };
+  });
+  const heatmapHTML = buildHeatmapHTML(heatmapAssets, isCash, currency);
+
+  // ── Cost vs value bar (portfolio total) ──
+  const cvBarHTML = (!isCash && totalCost > 0) ? buildCVBarHTML(totalCost, totalMV, currency) : '';
+
   document.getElementById('drill-port-content').innerHTML = `
     <div style="margin-bottom:16px;">
       <p style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">${activeM} · ${assets.length} holdings</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:20px;">${metricCards}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:16px;">${metricCards}</div>
     </div>
+
+    ${cvBarHTML}
+    ${allocBarHTML}
+    ${heatmapHTML}
 
     <div class="drill-chart-wrap">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
@@ -2349,6 +2429,12 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
     return `<tr class="${isActive?'drill-active-row':''}">${tds}</tr>`;
   }).join('');
 
+  // ── Ring + sparkline ──
+  const ringSparkHTML = buildRingSparkHTML(snap, history, color, currency, isCash);
+
+  // ── Cost vs value bar (asset level) ──
+  const assetCVBarHTML = (!isCash && snap.cost > 0) ? buildCVBarHTML(snap.cost, snap.value, currency) : '';
+
   // ── Render ─────────────────────────────────────────────────────────────────
   document.getElementById('drill-content').innerHTML = `
     <div class="drill-asset-header">
@@ -2359,6 +2445,8 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
       <div class="drill-snapshot-title">${snap.month} Snapshot</div>
       ${snapHtml}
     </div>
+    ${ringSparkHTML}
+    ${assetCVBarHTML}
     <div class="drill-chart-wrap">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
         <div class="drill-chart-title" style="margin:0;">Chart</div>
@@ -2517,6 +2605,94 @@ function buildDrillExportCard(maskVals) {
   const drillChartLabel = chartModeLabels[_drillChartMode] || 'Chart';
   const chartSec = drillChartUrl ? `<div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Chart · ${drillChartLabel}</p><div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;"><img src="${drillChartUrl}" style="width:100%;display:block;border-radius:6px;"/></div></div>` : '';
 
+  // ── Ring + sparkline export ──
+  const ringSparkExport = (() => {
+    const pct = snap.pct || 0;
+    const R = 34, CX = 45, CY = 45, SIZE = 90;
+    const circ = 2 * Math.PI * R;
+    const filled = (circ * pct / 100).toFixed(1);
+    const ringSvg = `<svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#1e1e1e" stroke-width="9"/>
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${color}" stroke-width="9"
+        stroke-dasharray="${filled} ${circ.toFixed(1)}" stroke-linecap="round"
+        style="transform:rotate(-90deg);transform-origin:${CX}px ${CY}px;"/>
+    </svg>`;
+    const ringDiv = `<div style="position:relative;flex-shrink:0;width:${SIZE}px;height:${SIZE}px;">
+      ${ringSvg}
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:#f0efe8;">${pct.toFixed(1)}%</span>
+        <span style="font-family:'DM Mono',monospace;font-size:7px;color:#555450;letter-spacing:.06em;text-transform:uppercase;margin-top:1px;">of port</span>
+      </div></div>`;
+
+    if (isCash || !snap.upl) return `<div style="display:flex;align-items:center;gap:14px;padding:12px 0 10px;">${ringDiv}</div>`;
+
+    const uplSeries = history.filter(h => h.upl != null).map(h =>
+      (h.value - h.upl) > 0 ? (h.upl / (h.value - h.upl) * 100) : 0
+    );
+    const uplColor2 = snap.upl >= 0 ? '#5ce0a8' : '#f06b6b';
+    const uplPct2 = (snap.value - snap.upl) > 0 ? (snap.upl / (snap.value - snap.upl) * 100) : 0;
+    const uplStr2 = `${uplPct2 >= 0 ? '+' : ''}${uplPct2.toFixed(1)}%`;
+    const uplAbsStr2 = `${snap.upl >= 0 ? '+' : ''}${fmtMC1(snap.upl, currency)}`;
+
+    let sparkInner = '';
+    if (uplSeries.length > 1) {
+      const minV = Math.min(...uplSeries), maxV = Math.max(...uplSeries), range = maxV - minV || 1;
+      const W = 200, H = 44;
+      const pts = uplSeries.map((v, i) => [(i / (uplSeries.length - 1) * W).toFixed(1), (H - ((v - minV) / range) * (H - 6) - 3).toFixed(1)]);
+      const zeroY = minV < 0 && maxV > 0 ? (H - ((0 - minV) / range) * (H - 6) - 3).toFixed(1) : null;
+      sparkInner = `${zeroY ? `<line x1="0" y1="${zeroY}" x2="${W}" y2="${zeroY}" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="3 2"/>` : ''}
+        <polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${uplColor2}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="3" fill="${uplColor2}"/>`;
+    }
+
+    const sparkDiv = `<div style="flex:1;min-width:0;">
+      <p style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#555450;margin-bottom:3px;">UPL over time</p>
+      <p style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${uplColor2};margin-bottom:1px;">${maskVals ? '••••' : uplAbsStr2}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:9px;color:#555450;margin-bottom:5px;">${maskVals ? '••' : uplStr2} · ${snap.month}</p>
+      <svg width="100%" height="44" viewBox="0 0 200 44" preserveAspectRatio="none">${sparkInner}</svg>
+    </div>`;
+
+    return `<div style="display:flex;align-items:center;gap:14px;padding:12px 0 16px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:16px;">${ringDiv}${sparkDiv}</div>`;
+  })();
+
+  // ── Cost vs value bar export ──
+  const cvBarExport = (() => {
+    if (isCash || !snap.cost || snap.cost <= 0) return '';
+    const cost = snap.cost, value = snap.value;
+    const gain = value - cost, gainPct = (gain / cost) * 100;
+    const isGain = gain >= 0;
+    const col = isGain ? '#5ce0a8' : '#f06b6b';
+    const gainStr = `${gain >= 0 ? '+' : ''}${maskVals ? '••••' : fmtMC1(gain, currency)}`;
+    const gainPctStr = `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(1)}%`;
+    const maxV = Math.max(cost, value);
+    const costW = Math.min((cost / maxV) * 88, 88);
+    const valueW = Math.min((value / maxV) * 88, 92);
+    const barInner = isGain
+      ? `<div style="position:absolute;top:0;left:0;width:${costW}%;height:100%;background:${col}22;border-radius:8px 0 0 8px;"></div>
+         <div style="position:absolute;top:0;left:${costW}%;width:${valueW-costW}%;height:100%;background:linear-gradient(to right,${col}30,${col}55);border:1px solid ${col}60;border-left:none;border-radius:0 8px 8px 0;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;">
+           <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:${col};">${maskVals ? '••••' : fmtMC1(value, currency)}</span></div>`
+      : `<div style="position:absolute;top:0;left:0;width:${costW}%;height:100%;background:${col}10;border-radius:8px;"></div>
+         <div style="position:absolute;top:0;left:0;width:${valueW}%;height:100%;background:linear-gradient(to right,${col}22,${col}32);border:1px solid ${col}40;border-radius:8px;display:flex;align-items:center;padding-left:8px;">
+           <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:${col};">${maskVals ? '••••' : fmtMC1(value, currency)}</span></div>
+         <div style="position:absolute;top:8px;left:${valueW}%;width:${costW-valueW}%;height:calc(100% - 16px);border-top:1px dashed ${col}25;border-bottom:1px dashed ${col}25;"></div>`;
+
+    return `<div style="margin-bottom:28px;">
+      <p style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#555450;margin-bottom:6px;">Cost vs Market Value</p>
+      <div style="position:relative;height:36px;background:#1a1a1a;border-radius:8px;margin-bottom:20px;">
+        ${barInner}
+        <div style="position:absolute;top:-5px;bottom:-5px;left:${costW}%;width:2px;background:#555450;border-radius:1px;">
+          <span style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:8px;color:#555450;white-space:nowrap;">cost ${maskVals ? '••••' : fmtMC1(cost, currency)}</span></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+        <div style="display:flex;gap:14px;">
+          <div><p style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:#555450;">Cost</p><p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;">${maskVals ? '••••' : fmtMC1(cost, currency)}</p></div>
+          <div><p style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:#555450;">Mkt Val</p><p style="font-family:'DM Mono',monospace;font-size:11px;color:${col};">${maskVals ? '••••' : fmtMC1(value, currency)}</p></div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:${col};">${gainStr} &nbsp;${gainPctStr}</span>
+      </div>
+    </div>`;
+  })();
+
   const thStyle = `font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.07);`;
   const tdStyle = `font-family:'DM Mono',monospace;font-size:11px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);color:#888780;`;
   const thCols = isCash
@@ -2552,6 +2728,8 @@ function buildDrillExportCard(maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p></div></div>
     <div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">${snap.month} Snapshot</p>
       <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">${snapHtml}</div></div>
+    ${ringSparkExport}
+    ${cvBarExport}
     ${chartSec}
     <div style="margin-bottom:16px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Full History</p>
       <table style="width:100%;border-collapse:collapse;"><thead><tr>${thCols}</tr></thead><tbody>${tableRows}</tbody></table></div>
@@ -2643,6 +2821,120 @@ function buildPortfolioDrillExportCard(maskVals) {
   const portChartLabel = portChartModeLabels[_portChartMode] || 'Portfolio Value';
   const chartSec = portChartUrl ? `<div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Portfolio Value · ${portChartLabel}</p><div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;"><img src="${portChartUrl}" style="width:100%;display:block;border-radius:6px;"/></div></div>` : '';
 
+  // ── CV bar export (portfolio level) ──
+  const portCVBarExport = (() => {
+    if (isCash || totalCost <= 0) return '';
+    const gain = totalMV - totalCost, gainPct = (gain / totalCost) * 100;
+    const isGain = gain >= 0;
+    const col = isGain ? '#5ce0a8' : '#f06b6b';
+    const gainStr = `${gain >= 0 ? '+' : ''}${maskVals ? '••••' : fmtMC1(gain, currency)}`;
+    const gainPctStr = `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(1)}%`;
+    const maxV = Math.max(totalCost, totalMV);
+    const costW = Math.min((totalCost / maxV) * 88, 88);
+    const valueW = Math.min((totalMV / maxV) * 88, 92);
+    const barInner = isGain
+      ? `<div style="position:absolute;top:0;left:0;width:${costW}%;height:100%;background:${col}22;border-radius:8px 0 0 8px;"></div>
+         <div style="position:absolute;top:0;left:${costW}%;width:${valueW-costW}%;height:100%;background:linear-gradient(to right,${col}30,${col}55);border:1px solid ${col}60;border-left:none;border-radius:0 8px 8px 0;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;">
+           <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:${col};">${maskVals ? '••••' : fmtMC1(totalMV, currency)}</span></div>`
+      : `<div style="position:absolute;top:0;left:0;width:${costW}%;height:100%;background:${col}10;border-radius:8px;"></div>
+         <div style="position:absolute;top:0;left:0;width:${valueW}%;height:100%;background:linear-gradient(to right,${col}22,${col}32);border:1px solid ${col}40;border-radius:8px;display:flex;align-items:center;padding-left:8px;">
+           <span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:${col};">${maskVals ? '••••' : fmtMC1(totalMV, currency)}</span></div>
+         <div style="position:absolute;top:8px;left:${valueW}%;width:${costW-valueW}%;height:calc(100% - 16px);border-top:1px dashed ${col}25;border-bottom:1px dashed ${col}25;"></div>`;
+    return `<div style="margin-bottom:28px;">
+      <p style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:#555450;margin-bottom:6px;">Cost vs Market Value</p>
+      <div style="position:relative;height:36px;background:#1a1a1a;border-radius:8px;margin-bottom:20px;">
+        ${barInner}
+        <div style="position:absolute;top:-5px;bottom:-5px;left:${costW}%;width:2px;background:#555450;border-radius:1px;">
+          <span style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:8px;color:#555450;white-space:nowrap;">cost ${maskVals ? '••••' : fmtMC1(totalCost, currency)}</span></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+        <div style="display:flex;gap:14px;">
+          <div><p style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:#555450;">Cost</p><p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;">${maskVals ? '••••' : fmtMC1(totalCost, currency)}</p></div>
+          <div><p style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:#555450;">Mkt Val</p><p style="font-family:'DM Mono',monospace;font-size:11px;color:${col};">${maskVals ? '••••' : fmtMC1(totalMV, currency)}</p></div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:${col};">${gainStr} &nbsp;${gainPctStr}</span>
+      </div>
+    </div>`;
+  })();
+
+  // ── Alloc bar export ──
+  const portAllocBarExport = (() => {
+    const segs = assets.map((a, ai) => {
+      const origIdx = (d.byMonth[activeM]||assets).findIndex(x=>x.name===a.name);
+      const col2 = PALETTE[(origIdx>=0?origIdx:ai)%PALETTE.length];
+      return { name: a.name, pct: a.pct, color: col2 };
+    });
+    const segHTML = segs.map(s =>
+      `<div style="height:100%;width:${s.pct.toFixed(2)}%;background:${s.color};flex-shrink:0;" title="${s.name}"></div>`
+    ).join('');
+    const legHTML = segs.map(s =>
+      `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;margin-bottom:4px;">
+        <span style="width:7px;height:7px;border-radius:2px;background:${s.color};display:inline-block;flex-shrink:0;"></span>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:#888780;">${s.name}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:#f0efe8;">${s.pct.toFixed(1)}%</span>
+      </span>`
+    ).join('');
+    return `<div style="margin-bottom:16px;">
+      <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:6px;">Allocation · ${activeM}</p>
+      <div style="display:flex;height:18px;border-radius:6px;overflow:hidden;gap:1px;margin-bottom:8px;">${segHTML}</div>
+      <div style="display:flex;flex-wrap:wrap;">${legHTML}</div>
+    </div>`;
+  })();
+
+  // ── Heatmap export ──
+  const portHeatmapExport = (() => {
+    if (isCash) return '';
+    const withUpl = assets.map((a, ai) => {
+      const origIdx = (d.byMonth[activeM]||assets).findIndex(x=>x.name===a.name);
+      const uplPct2 = (a.upl != null && (a.value - a.upl) > 0) ? (a.upl / (a.value - a.upl) * 100) : null;
+      return { ...a, uplPct: uplPct2, color: PALETTE[(origIdx>=0?origIdx:ai)%PALETTE.length] };
+    });
+    const uplVals = withUpl.map(a => a.uplPct).filter(v => v != null);
+    if (!uplVals.length) return '';
+    const minUpl = Math.min(...uplVals, 0), maxUpl = Math.max(...uplVals, 0);
+
+    function tileStyle2(uplPct2) {
+      if (uplPct2 === null) return { bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.08)', textCol: '#888780', nameCol: '#555450' };
+      if (uplPct2 >= 0) {
+        const intensity = maxUpl > 0 ? Math.min(uplPct2 / maxUpl, 1) : 0;
+        return { bg: `rgba(92,224,168,${(0.12 + intensity * 0.45).toFixed(2)})`, border: `rgba(92,224,168,${(0.25 + intensity * 0.5).toFixed(2)})`, textCol: '#5ce0a8', nameCol: intensity > 0.5 ? '#f0efe8' : '#888780' };
+      } else {
+        const intensity = minUpl < 0 ? Math.min(uplPct2 / minUpl, 1) : 0;
+        return { bg: `rgba(240,107,107,${(0.12 + intensity * 0.5).toFixed(2)})`, border: `rgba(240,107,107,${(0.25 + intensity * 0.55).toFixed(2)})`, textCol: '#f06b6b', nameCol: intensity > 0.55 ? '#f0efe8' : '#888780' };
+      }
+    }
+
+    const sorted2 = [...withUpl].sort((a,b) => b.pct - a.pct);
+    const rows = [sorted2.slice(0, Math.min(2, sorted2.length)), sorted2.slice(2)].filter(r => r.length);
+    const rowsHTML = rows.map(row => {
+      const tilesHTML = row.map(a => {
+        const s = tileStyle2(a.uplPct);
+        const nameShort = a.name.length > 10 ? a.name.slice(0,9) + '…' : a.name;
+        const uplStr2 = a.uplPct !== null ? `${a.uplPct >= 0 ? '+' : ''}${a.uplPct.toFixed(1)}%` : '—';
+        const absStr2 = a.upl != null ? `${a.upl >= 0 ? '+' : ''}${fmtMC1(a.upl, currency)}` : '';
+        return `<div style="flex:${a.pct.toFixed(1)};background:${s.bg};border:1px solid ${s.border};border-radius:6px;padding:8px 8px 6px;min-width:0;">
+          <p style="font-family:'DM Mono',monospace;font-size:9px;color:${s.nameCol};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">${nameShort}</p>
+          <p style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:${s.textCol};margin-bottom:1px;">${maskVals ? '••' : uplStr2}</p>
+          ${absStr2 ? `<p style="font-family:'DM Mono',monospace;font-size:9px;color:${s.textCol};opacity:.75;">${maskVals ? '(••••)' : absStr2}</p>` : ''}
+        </div>`;
+      }).join('');
+      return `<div style="display:flex;gap:4px;margin-bottom:4px;">${tilesHTML}</div>`;
+    }).join('');
+
+    const allRed2 = uplVals.every(v => v < 0), allGreen2 = uplVals.every(v => v >= 0);
+    const gradColors2 = allRed2 ? 'rgba(240,107,107,0.15),rgba(240,107,107,0.7)' : allGreen2 ? 'rgba(92,224,168,0.15),rgba(92,224,168,0.7)' : 'rgba(240,107,107,0.5),rgba(92,224,168,0.5)';
+    const scaleLabel2 = allRed2 ? 'mild → severe loss' : allGreen2 ? 'small → large gain' : 'loss → gain';
+
+    return `<div style="margin-bottom:16px;">
+      <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:6px;">UPL Heatmap · tile size = weight</p>
+      ${rowsHTML}
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+        <div style="flex:1;height:3px;border-radius:2px;background:linear-gradient(to right,${gradColors2});"></div>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:#555450;">${scaleLabel2}</span>
+      </div>
+    </div>`;
+  })();
+
   const thS = `font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555450;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.07);`;
   const tdS = `font-family:'DM Mono',monospace;font-size:11px;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,0.05);color:#888780;`;
   const assetTableHeader = isCash
@@ -2709,6 +3001,9 @@ function buildPortfolioDrillExportCard(maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:${uplColor};">${totalUPL>=0?'+':''}${totalUPLPct.toFixed(1)}%</p>
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:${uplColor};opacity:.8;">${maskVals?'••••••':(totalUPL>=0?'+':'')+fmtMC(totalUPL,currency)}</p></div>`:''}
     </div>
+    ${portCVBarExport}
+    ${portAllocBarExport}
+    ${portHeatmapExport}
     ${chartSec}
     <div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Holdings · ${activeM}</p>
       <table style="width:100%;border-collapse:collapse;"><thead><tr>${assetTableHeader}</tr></thead><tbody>${assetRows}</tbody></table></div>
@@ -2769,6 +3064,222 @@ function fmtCurr(val, currency) {
   return '฿' + Math.round(val).toLocaleString('th-TH');
 }
 
+// ── VIZ HELPERS ───────────────────────────────────────────────────────────────
+
+// Build a stacked horizontal allocation bar HTML string
+// assets: [{name, color, pct}]
+function buildAllocBarHTML(assets, label) {
+  if (!assets || !assets.length) return '';
+  const segs = assets.map(a =>
+    `<div class="alloc-bar-seg" style="width:${a.pct.toFixed(2)}%;background:${a.color};" title="${a.name} ${a.pct.toFixed(1)}%"></div>`
+  ).join('');
+  const legend = assets.map(a => {
+    const nameShort = a.name.length > 14 ? a.name.slice(0, 13) + '\u2026' : a.name;
+    return `<span class="alloc-bar-leg-item"><span class="alloc-bar-leg-dot" style="background:${a.color};"></span><span class="alloc-bar-leg-name" title="${a.name}">${nameShort}</span><span class="alloc-bar-leg-pct">${a.pct.toFixed(1)}%</span></span>`;
+  }).join('');
+  return `<div class="alloc-bar-section">
+    <div class="alloc-bar-label">${label || 'Allocation'}</div>
+    <div class="alloc-bar-track">${segs}</div>
+    <div class="alloc-bar-legend">${legend}</div>
+  </div>`;
+}
+
+// Build a heatmap HTML string — tiles sized by pct, colored by UPL severity
+// assets: [{name, pct, upl, value, cost, currency}], isCash flag
+function buildHeatmapHTML(assets, isCash, currency) {
+  if (!assets || !assets.length || isCash) return '';
+
+  // Compute UPL% for each asset
+  const withUpl = assets.map((a, ai) => {
+    const uplPct = (a.upl != null && (a.value - a.upl) > 0) ? (a.upl / (a.value - a.upl) * 100) : null;
+    const color = PALETTE[ai % PALETTE.length];
+    return { ...a, uplPct, color };
+  });
+
+  // Determine UPL intensity range for color scaling
+  const uplVals = withUpl.map(a => a.uplPct).filter(v => v != null);
+  const minUpl = Math.min(...uplVals, 0);
+  const maxUpl = Math.max(...uplVals, 0);
+
+  function tileStyle(uplPct) {
+    if (uplPct === null) return { bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.08)', textCol: 'var(--text2)', nameCol: 'var(--text3)' };
+    if (uplPct >= 0) {
+      // Green — scale from faint to bright
+      const intensity = maxUpl > 0 ? Math.min(uplPct / maxUpl, 1) : 0;
+      const alpha = 0.12 + intensity * 0.45;
+      const borderAlpha = 0.25 + intensity * 0.5;
+      return { bg: `rgba(92,224,168,${alpha.toFixed(2)})`, border: `rgba(92,224,168,${borderAlpha.toFixed(2)})`, textCol: '#5ce0a8', nameCol: intensity > 0.5 ? '#f0efe8' : 'var(--text2)' };
+    } else {
+      // Red — scale from faint to deep
+      const intensity = minUpl < 0 ? Math.min(uplPct / minUpl, 1) : 0;
+      const alpha = 0.12 + intensity * 0.5;
+      const borderAlpha = 0.25 + intensity * 0.55;
+      return { bg: `rgba(240,107,107,${alpha.toFixed(2)})`, border: `rgba(240,107,107,${borderAlpha.toFixed(2)})`, textCol: '#f06b6b', nameCol: intensity > 0.55 ? '#f0efe8' : 'var(--text2)' };
+    }
+  }
+
+  // Layout: row 1 = top 2 by pct (or 1 if only 1 left), row 2 = remainder
+  const sorted = [...withUpl].sort((a, b) => b.pct - a.pct);
+  const row1 = sorted.slice(0, Math.min(2, sorted.length));
+  const row2 = sorted.slice(2);
+
+  function renderTile(a, cardIdx) {
+    const s = tileStyle(a.uplPct);
+    const nameShort = a.name.length > 10 ? a.name.slice(0, 9) + '\u2026' : a.name;
+    const uplStr = a.uplPct !== null ? `${a.uplPct >= 0 ? '+' : ''}${a.uplPct.toFixed(1)}%` : '—';
+    const absStr = a.upl != null ? `${a.upl >= 0 ? '+' : ''}${fmtMC1(a.upl, currency)}` : '';
+    return `<div class="heatmap-tile" style="flex:${a.pct.toFixed(1)};background:${s.bg};border:1px solid ${s.border};"
+      onclick="openAssetFromPortfolio(_portTab, _portCardIdx, '${a.name.replace(/'/g,"\\'")}', ${withUpl.indexOf(a)})" title="${a.name}">
+      <span class="heatmap-tile-name" style="color:${s.nameCol};">${nameShort}</span>
+      <span class="heatmap-tile-pct" style="color:${s.textCol};">${mask(uplStr)}</span>
+      ${absStr ? `<span class="heatmap-tile-abs" style="color:${s.textCol};">${mask(absStr)}</span>` : ''}
+    </div>`;
+  }
+
+  const row1HTML = row1.length ? `<div class="heatmap-row">${row1.map(a => renderTile(a)).join('')}</div>` : '';
+  const row2HTML = row2.length ? `<div class="heatmap-row">${row2.map(a => renderTile(a)).join('')}</div>` : '';
+
+  const allRed  = uplVals.every(v => v < 0);
+  const allGreen = uplVals.every(v => v >= 0);
+  const gradColors = allRed
+    ? 'rgba(240,107,107,0.15), rgba(240,107,107,0.7)'
+    : allGreen
+      ? 'rgba(92,224,168,0.15), rgba(92,224,168,0.7)'
+      : 'rgba(240,107,107,0.5), rgba(92,224,168,0.5)';
+  const scaleLabel = allRed ? 'mild \u2192 severe loss' : allGreen ? 'small \u2192 large gain' : 'loss \u2192 gain';
+
+  return `<div class="heatmap-section">
+    <div class="alloc-bar-label">UPL Heatmap · tile size = weight</div>
+    ${row1HTML}${row2HTML}
+    <div class="heatmap-scale">
+      <div class="heatmap-scale-bar" style="background:linear-gradient(to right,${gradColors});"></div>
+      <span class="heatmap-scale-lbl">${scaleLabel}</span>
+    </div>
+  </div>`;
+}
+
+// Build ring + UPL sparkline HTML for asset drill
+function buildRingSparkHTML(snap, history, color, currency, isCash) {
+  if (!snap) return '';
+
+  // Ring: allocation %
+  const pct = snap.pct || 0;
+  const R = 34, CX = 45, CY = 45, SIZE = 90;
+  const circumference = 2 * Math.PI * R;
+  const filled = circumference * (pct / 100);
+  const ringHTML = `
+    <div class="ring-wrap">
+      <svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+        <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--surface2)" stroke-width="9"/>
+        <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${color}" stroke-width="9"
+          stroke-dasharray="${filled.toFixed(1)} ${circumference.toFixed(1)}"
+          stroke-dashoffset="${(circumference * 0.25).toFixed(1)}"
+          stroke-linecap="round" transform="rotate(0 ${CX} ${CY})"
+          style="transform:rotate(-90deg);transform-origin:${CX}px ${CY}px;"/>
+      </svg>
+      <div class="ring-center">
+        <span class="ring-center-val">${pct.toFixed(1)}%</span>
+        <span class="ring-center-lbl">of port</span>
+      </div>
+    </div>`;
+
+  if (isCash || !snap.upl) return `<div class="ring-spark-row">${ringHTML}</div>`;
+
+  // Sparkline: UPL over time
+  const uplSeries = history.filter(h => h.upl != null).map(h => {
+    const uplPct = (h.value - h.upl) > 0 ? (h.upl / (h.value - h.upl) * 100) : 0;
+    return uplPct;
+  });
+  const uplColor = snap.upl >= 0 ? '#5ce0a8' : '#f06b6b';
+  const uplPct = (snap.value - snap.upl) > 0 ? (snap.upl / (snap.value - snap.upl) * 100) : 0;
+  const uplStr = `${uplPct >= 0 ? '+' : ''}${uplPct.toFixed(1)}%`;
+  const uplAbsStr = `${snap.upl >= 0 ? '+' : ''}${fmtMC1(snap.upl, currency)}`;
+
+  let sparkPath = '', sparkDots = '';
+  if (uplSeries.length > 1) {
+    const minV = Math.min(...uplSeries), maxV = Math.max(...uplSeries);
+    const range = maxV - minV || 1;
+    const W = 160, H = 44;
+    const pts = uplSeries.map((v, i) => {
+      const x = (i / (uplSeries.length - 1)) * W;
+      const y = H - ((v - minV) / range) * (H - 6) - 3;
+      return [x.toFixed(1), y.toFixed(1)];
+    });
+    sparkPath = `<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${uplColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const last = pts[pts.length - 1];
+    sparkDots = `<circle cx="${last[0]}" cy="${last[1]}" r="3" fill="${uplColor}"/>`;
+    // Zero line
+    const zeroY = minV < 0 && maxV > 0 ? (H - ((0 - minV) / range) * (H - 6) - 3).toFixed(1) : null;
+    const zeroLine = zeroY ? `<line x1="0" y1="${zeroY}" x2="${W}" y2="${zeroY}" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="3 2"/>` : '';
+    sparkPath = zeroLine + sparkPath;
+  }
+
+  const sparkHTML = `
+    <div class="spark-wrap">
+      <div class="spark-header">UPL over time</div>
+      <div class="spark-val" style="color:${uplColor};">${mask(uplAbsStr)}</div>
+      <div class="spark-sub">${mask(uplStr)} · ${snap.month}</div>
+      <svg width="100%" height="44" viewBox="0 0 160 44" preserveAspectRatio="none">${sparkPath}${sparkDots}</svg>
+    </div>`;
+
+  return `<div class="ring-spark-row">${ringHTML}${sparkHTML}</div>`;
+}
+
+// Build cost vs value bar HTML
+// cost, value, currency — works for both portfolio-level and asset-level
+function buildCVBarHTML(cost, value, currency) {
+  if (!cost || !value || cost <= 0) return '';
+  const gain = value - cost;
+  const gainPct = (gain / cost) * 100;
+  const isGain = gain >= 0;
+  const col = isGain ? '#5ce0a8' : '#f06b6b';
+  const gainStr = `${gain >= 0 ? '+' : ''}${fmtMC1(gain, currency)}`;
+  const gainPctStr = `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(1)}%`;
+
+  // Scale: cost = 80% of track when losing; value overflows when gaining
+  // Normalize so the larger of cost/value = 90% track width
+  const maxVal = Math.max(cost, value);
+  const costW  = Math.min((cost  / maxVal) * 88, 88);
+  const valueW = Math.min((value / maxVal) * 88, 92);
+  const costLineLeft = costW;
+
+  let barHTML = '';
+  if (isGain) {
+    // Value overflows past cost line
+    barHTML = `
+      <div class="cv-bar-ghost" style="width:${costW}%;background:${col}15;"></div>
+      <div class="cv-bar-fill" style="width:${costW}%;background:${col}22;border-radius:8px 0 0 8px;"></div>
+      <div class="cv-bar-overflow" style="left:${costW}%;width:${valueW - costW}%;background:linear-gradient(to right,${col}30,${col}55);border:1px solid ${col}60;border-left:none;border-radius:0 8px 8px 0;">
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:${col};">${mask(fmtMC1(value, currency))}</span>
+      </div>`;
+  } else {
+    // Value falls short of cost line — show gap
+    barHTML = `
+      <div class="cv-bar-ghost" style="width:${costW}%;background:${col}10;border-radius:8px;"></div>
+      <div class="cv-bar-fill" style="width:${valueW}%;background:linear-gradient(to right,${col}22,${col}32);border:1px solid ${col}40;border-radius:8px;">
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:${col};">${mask(fmtMC1(value, currency))}</span>
+      </div>
+      <div class="cv-bar-gap" style="left:${valueW}%;width:${costW - valueW}%;border-color:${col}25;"></div>`;
+  }
+
+  return `<div class="cv-bar-section">
+    <div class="cv-bar-label">Cost vs Market Value</div>
+    <div class="cv-bar-track">
+      ${barHTML}
+      <div class="cv-bar-cost-line" style="left:${costLineLeft}%;">
+        <span class="cv-bar-cost-tag">cost ${mask(fmtMC1(cost, currency))}</span>
+      </div>
+    </div>
+    <div class="cv-bar-delta">
+      <div class="cv-bar-delta-labels">
+        <div class="cv-bar-delta-item"><span class="cv-bar-delta-lbl">Cost</span><span class="cv-bar-delta-val" style="color:var(--text2);">${mask(fmtMC1(cost, currency))}</span></div>
+        <div class="cv-bar-delta-item"><span class="cv-bar-delta-lbl">Mkt Val</span><span class="cv-bar-delta-val" style="color:${col};">${mask(fmtMC1(value, currency))}</span></div>
+      </div>
+      <span class="cv-bar-badge" style="color:${col};">${mask(gainStr)} &nbsp;${mask(gainPctStr)}</span>
+    </div>
+  </div>`;
+}
+
 function renderAll(tab) {
   renderFilter(tab);
   renderMetrics(tab);
@@ -2777,6 +3288,37 @@ function renderAll(tab) {
   renderLegend(tab);
   renderChart(tab);
   renderDonuts(tab);
+  renderMainAllocBar(tab);
+}
+
+function renderMainAllocBar(tab) {
+  const el = document.getElementById('main-alloc-bar-section');
+  if (!el) return;
+  if (tab === 'household') { el.style.display = 'none'; return; }
+
+  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  if (!list || !list.length) { el.style.display = 'none'; return; }
+
+  const allMonths = getDonutMonths(tab);
+  const activeMonth = donutFilterState[tab] || allMonths[allMonths.length - 1];
+
+  // Aggregate across all portfolios to get total value per portfolio
+  const portfolios = list.map((d, idx) => {
+    let assets = d.byMonth[activeMonth];
+    if (!assets || !assets.length) {
+      const avail = d.months.filter(m => allMonths.indexOf(m) <= allMonths.indexOf(activeMonth));
+      assets = avail.length ? (d.byMonth[avail[avail.length - 1]] || []) : [];
+    }
+    const total = assets.reduce((s, a) => s + a.value, 0);
+    return { name: d.title, total, color: (tab === 'ink' ? INK_CONFIG : FANG_CONFIG).colors[idx] || PALETTE[idx % PALETTE.length] };
+  }).filter(p => p.total > 0);
+
+  const grandTotal = portfolios.reduce((s, p) => s + p.total, 0);
+  if (!grandTotal) { el.style.display = 'none'; return; }
+
+  const assets = portfolios.map(p => ({ name: p.name, pct: (p.total / grandTotal * 100), color: p.color }));
+  el.innerHTML = buildAllocBarHTML(assets, 'Portfolio Allocation · ' + activeMonth);
+  el.style.display = 'block';
 }
 
 document.getElementById('refresh-btn').addEventListener('click', async () => {
@@ -3229,7 +3771,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.3</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.5</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3276,12 +3818,35 @@ function buildSummaryCard(tab, maskVals) {
     <!-- Chart -->
     ${chartSection}
 
+    <!-- Allocation bar (ink/fang only) -->
+    ${tab !== 'household' ? (() => {
+      const list2 = tab === 'ink' ? inkDonutData : fangDonutData;
+      const allM2 = getDonutMonths(tab);
+      const activeM2 = donutFilterState[tab] || allM2[allM2.length - 1];
+      const portfolios2 = (list2 || []).map((d2, idx2) => {
+        let assets2 = d2.byMonth[activeM2];
+        if (!assets2 || !assets2.length) {
+          const avail2 = d2.months.filter(m => allM2.indexOf(m) <= allM2.indexOf(activeM2));
+          assets2 = avail2.length ? (d2.byMonth[avail2[avail2.length-1]] || []) : [];
+        }
+        const total2 = assets2.reduce((s,a) => s+a.value, 0);
+        const col2 = (tab === 'ink' ? INK_CONFIG : FANG_CONFIG).colors[idx2] || PALETTE[idx2 % PALETTE.length];
+        return { name: d2.title, total: total2, color: col2 };
+      }).filter(p => p.total > 0);
+      const grand2 = portfolios2.reduce((s,p) => s+p.total, 0);
+      if (!grand2) return '';
+      const segs2 = portfolios2.map(p => ({ name: p.name, pct: p.total/grand2*100, color: p.color }));
+      const segHTML2 = segs2.map(s => `<div style="height:100%;width:${s.pct.toFixed(2)}%;background:${s.color};flex-shrink:0;" title="${s.name}"></div>`).join('');
+      const legHTML2 = segs2.map(s => `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;margin-bottom:4px;"><span style="width:7px;height:7px;border-radius:2px;background:${s.color};display:inline-block;flex-shrink:0;"></span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#888780;">${s.name}</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#f0efe8;">${s.pct.toFixed(1)}%</span></span>`).join('');
+      return `<div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:8px;">Portfolio Allocation · ${activeM2}</p><div style="display:flex;height:18px;border-radius:6px;overflow:hidden;gap:1px;margin-bottom:8px;">${segHTML2}</div><div style="display:flex;flex-wrap:wrap;">${legHTML2}</div></div>`;
+    })() : ''}
+
     <!-- Donuts -->
     ${donutSection}
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.3${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.5${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
