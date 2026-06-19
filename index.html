@@ -150,9 +150,9 @@
   .drill-chart-wrap { margin-bottom:20px; }
   .drill-chart-title { font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px; }
   .drill-history-table { width:100%;border-collapse:collapse;font-size:11px; }
-  .drill-history-table th { font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);text-align:right;padding:6px 4px;border-bottom:1px solid var(--border); }
+  .drill-history-table th { font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);text-align:right;padding:6px 8px;border-bottom:1px solid var(--border); }
   .drill-history-table th:first-child { text-align:left; }
-  .drill-history-table td { font-family:var(--font-mono);text-align:right;padding:6px 4px;border-bottom:1px solid var(--border);color:var(--text2); }
+  .drill-history-table td { font-family:var(--font-mono);text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text2); }
   .drill-history-table td:first-child { text-align:left;color:var(--text3); }
   .drill-history-table tr.drill-active-row td { color:var(--text);background:rgba(255,255,255,0.04); }
   .drill-leg-item-clickable { cursor:pointer;transition:opacity .15s; }
@@ -365,7 +365,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v9.4</p>
+      <p class="gate-version">v8.9</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -386,7 +386,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v9.4</span>
+      <span class="version-badge">v8.9</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -488,7 +488,7 @@
     <div id="drill-overlay" onclick="closeDrillAll()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:90;"></div>
 
     <!-- Layer 1: Portfolio drill-down -->
-    <div id="drill-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:91;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);touch-action:pan-y;-webkit-overflow-scrolling:touch;">
+    <div id="drill-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:91;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);">
       <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:10px;">
           <button onclick="closeDrillAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
@@ -499,11 +499,11 @@
           <button onclick="closeDrillAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
         </div>
       </div>
-      <div id="drill-port-content" style="overflow-y:auto;overflow-x:hidden;flex:1;padding:20px;touch-action:pan-y;overscroll-behavior:contain;"></div>
+      <div id="drill-port-content" style="overflow-y:auto;flex:1;padding:20px;"></div>
     </div>
 
     <!-- Layer 2: Asset drill-down (slides over layer 1) -->
-    <div id="drill-panel-2" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:92;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);touch-action:pan-y;-webkit-overflow-scrolling:touch;">
+    <div id="drill-panel-2" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:92;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);">
       <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:10px;">
           <button onclick="closeAssetDrill()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
@@ -514,7 +514,7 @@
           <button onclick="closeDrillAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
         </div>
       </div>
-      <div id="drill-content" style="overflow-y:auto;overflow-x:hidden;flex:1;padding:20px;touch-action:pan-y;overscroll-behavior:contain;"></div>
+      <div id="drill-content" style="overflow-y:auto;flex:1;padding:20px;"></div>
     </div>
 
     <div class="status-bar">
@@ -526,7 +526,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v9.4';
+const VERSION  = 'v8.9';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2233,9 +2233,9 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
         </td>
         ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);text-align:right;">${a.cost != null ? mask(fmtMC1(a.cost, currency)) : '<span style="color:var(--text3);">&#8212;</span>'}</td>` : ''}
         <td style="font-family:var(--font-mono);font-size:11px;color:var(--text);text-align:right;">${mask(fmtMC1(a.value, currency))}</td>
-        ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;text-align:center;padding:2px;height:24px;"><div style="display:flex;align-items:center;justify-content:center;">${generateUPLSparkline(d.months.map(m=>{const ast=(d.byMonth[m]||[]).find(x=>x.name===a.name);return ast?{month:m,upl:ast.upl}:null;}).filter(Boolean),false,activeM)}</div></td>` : ''}
-        ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;text-align:right;line-height:1.5;padding:6px 2px;">${uplStr}</td>` : ''}
-        <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);text-align:right;padding-right:4px;white-space:nowrap;">${a.pct.toFixed(2)}%</td>
+        ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;text-align:center;padding:2px 4px;height:24px;"><div style="display:flex;align-items:center;justify-content:center;">${generateUPLSparkline(d.months.map(m=>{const ast=(d.byMonth[m]||[]).find(x=>x.name===a.name);return ast?{month:m,upl:ast.upl}:null;}).filter(Boolean),false,activeM)}</div></td>` : ''}
+        ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;text-align:right;line-height:1.5;">${uplStr}</td>` : ''}
+        <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);text-align:right;">${a.pct.toFixed(1)}%</td>
       </tr>`;
   }).join('');
 
@@ -2281,29 +2281,25 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
 
     <div style="margin-bottom:20px;">
       <div class="drill-chart-title" style="margin-bottom:6px;">Holdings</div>
-      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -20px;padding:0 20px;">
-      <table class="drill-history-table" style="min-width:100%;">
+      <table class="drill-history-table">
         <thead><tr>
           <th style="text-align:left;">Asset</th>
           ${!isCash ? '<th>Cost</th>' : ''}
           <th>Mkt Val</th>
-          ${!isCash ? '<th style="text-align:center;padding:6px 2px;">UPL Trend</th>' : ''}
-          ${!isCash ? '<th style="padding:6px 2px;">UPL% / UPL</th>' : ''}
+          ${!isCash ? '<th style="text-align:center;">UPL Trend</th>' : ''}
+          ${!isCash ? '<th>UPL% / UPL</th>' : ''}
           <th>Alloc%</th>
         </tr></thead>
         <tbody>${assetRows}</tbody>
       </table>
-      </div>
     </div>
 
     <div>
       <div class="drill-chart-title" style="margin-bottom:10px;">Monthly History</div>
-      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -20px;padding:0 20px;">
-      <table class="drill-history-table" style="min-width:100%;">
+      <table class="drill-history-table">
         <thead><tr>${histHeader}</tr></thead>
         <tbody>${histRows}</tbody>
       </table>
-      </div>
     </div>`;
 
   // Build the portfolio chart
@@ -2368,7 +2364,7 @@ function openAssetFromPortfolio(tab, cardIdx, assetName, assetIdx) {
   const d = list[cardIdx];
   if (!d) return;
   const isCash     = d.title.toLowerCase().includes('cash');
-  const isDetailed = (tab === 'ink' && (cardIdx === 0 || cardIdx === 1)) || (tab === 'fang' && cardIdx === 1);
+  const isDetailed = (tab === 'ink' && (cardIdx === 0 || cardIdx === 1));
 
   _drillD = d; _drillAssetName = assetName; _drillTab = tab;
   _drillAssetIdx = assetIdx; _drillIsCashState = isCash; _drillIsDetailedState = isDetailed;
@@ -2387,7 +2383,7 @@ function openDrill(tab, cardIdx, assetName, assetIdx) {
   const d = list[cardIdx];
   if (!d) return;
   const isCash     = d.title.toLowerCase().includes('cash');
-  const isDetailed = (tab === 'ink' && (cardIdx === 0 || cardIdx === 1)) || (tab === 'fang' && cardIdx === 1);
+  const isDetailed = (tab === 'ink' && (cardIdx === 0 || cardIdx === 1));
 
   _drillD = d; _drillAssetName = assetName; _drillTab = tab;
   _drillAssetIdx = assetIdx; _drillIsCashState = isCash; _drillIsDetailedState = isDetailed;
@@ -2446,10 +2442,7 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
   const history = d.months.map(m => {
     const assets = d.byMonth[m] || [];
     const a = assets.find(x => x.name === assetName);
-    if (!a) return null;
-    const totalMV = assets.reduce((s, x) => s + x.value, 0);
-    const pct = totalMV > 0 ? (a.value / totalMV * 100) : 0;
-    return { month: m, ...a, pct };
+    return a ? { month: m, ...a } : null;
   }).filter(Boolean);
 
   const snap = history.find(h => h.month === activeM) || history[history.length - 1];
@@ -2491,7 +2484,9 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
 
   const thCols = isCash
     ? `<th>Month</th><th>Mkt Val</th><th>Alloc%</th>`
-    : `<th>Month</th><th>Cost</th><th>Mkt Val</th><th>UPL% / UPL</th><th>Alloc%</th>`;
+    : isDetailed
+      ? `<th>Month</th><th>Avg Cost</th><th>Cost</th><th>Mkt Val</th><th>UPL% / UPL</th><th>Alloc%</th>`
+      : `<th>Month</th><th>Cost</th><th>Mkt Val</th><th>UPL% / UPL</th><th>Alloc%</th>`;
 
   const tableRows = histReversed.map(h => {
     const uplPct   = !isCash && h.upl != null && (h.value - h.upl) > 0 ? (h.upl/(h.value-h.upl)*100) : null;
@@ -2504,10 +2499,11 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
     const isActive = h.month === activeM;
 
     let tds = `<td>${h.month}</td>`;
-    if (!isCash)     tds += `<td>${privacyMode ? '••••' : fmtMC1(h.cost, currency)}</td>`;
+    if (isDetailed) tds += `<td>${fmtShare(h.avgCost, currency)}</td>`;
+    if (!isCash)    tds += `<td>${privacyMode ? '••••' : fmtMC1(h.cost, currency)}</td>`;
     tds += `<td>${privacyMode ? '••••' : fmtMC1(h.value, currency)}</td>`;
-    if (!isCash)     tds += `<td>${uplStr}</td>`;
-    tds += `<td style="white-space:nowrap;">${h.pct.toFixed(2)}%</td>`;
+    if (!isCash)    tds += `<td>${uplStr}</td>`;
+    tds += `<td>${h.pct.toFixed(1)}%</td>`;
 
     return `<tr class="${isActive?'drill-active-row':''}">${tds}</tr>`;
   }).join('');
@@ -2531,12 +2527,10 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
     </div>
     <div>
       <div class="drill-chart-title" style="margin-bottom:10px;">Full History</div>
-      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -20px;padding:0 20px;">
-      <table class="drill-history-table" style="min-width:100%;">
+      <table class="drill-history-table">
         <thead><tr>${thCols}</tr></thead>
         <tbody>${tableRows}</tbody>
       </table>
-      </div>
     </div>
   `;
 
@@ -3427,7 +3421,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.4</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.9</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3482,7 +3476,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.4${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.9${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
