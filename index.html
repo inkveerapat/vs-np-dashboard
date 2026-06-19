@@ -194,6 +194,22 @@
   .donut-leg-upl-val { font-size: 8px; opacity: .75; }
   .donut-empty { font-family: var(--font-mono); font-size: 11px; color: var(--text3); text-align: center; padding: 32px 0; }
 
+  /* ALLOCATION BAR (compact) */
+  .alloc-bar-track { display: flex; height: 6px; border-radius: 99px; overflow: hidden; background: var(--surface2); margin-bottom: 10px; }
+  .alloc-bar-seg { height: 100%; transition: opacity .15s, transform .15s; transform-origin: center; cursor: pointer; }
+  .alloc-bar-seg.dim { opacity: .35; }
+  .alloc-bar-seg.hl { opacity: 1; transform: scaleY(1.6); }
+  .alloc-legend { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 5px; }
+  @media (max-width: 480px) { .alloc-legend { grid-template-columns: 1fr; } }
+  .alloc-leg-item { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px; margin: 0 -4px; border-radius: 4px; cursor: pointer; transition: background .15s, color .15s; }
+  .alloc-leg-item:hover, .alloc-leg-item.hl { background: rgba(255,255,255,0.04); }
+  .alloc-leg-name-wrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .alloc-leg-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; transition: transform .15s; }
+  .alloc-leg-item.hl .alloc-leg-dot { transform: scale(1.3); }
+  .alloc-leg-name { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .alloc-leg-item.hl .alloc-leg-name { color: var(--text); }
+  .alloc-leg-pct { font-family: var(--font-mono); font-size: 11px; color: var(--text); flex-shrink: 0; margin-left: 8px; }
+
   /* STATUS */
   .status-bar { margin-top: 32px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
   .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
@@ -349,7 +365,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v8.5</p>
+      <p class="gate-version">v8.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -370,7 +386,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v8.5</span>
+      <span class="version-badge">v8.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -1636,73 +1652,83 @@ function selectDonutFilter(tab, month) {
   renderDonuts(tab);
 }
 
-function renderAllocationBar(tab) {
+function renderAllocationBar(tab, resolvedList) {
   const barSection = document.getElementById('allocation-bar-section');
   const barContainer = document.getElementById('allocation-bar-container');
   if (!barSection || !barContainer) return;
-  
+
   // Only show for ink and fang, not household
   if (tab === 'household') {
     barSection.style.display = 'none';
     return;
   }
-  
-  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+
   const config = tab === 'ink' ? INK_CONFIG : FANG_CONFIG;
-  const allMonths = getDonutMonths(tab);
-  const latest = allMonths[allMonths.length - 1];
-  const activeMonth = donutFilterState[tab] || latest;
-  
-  // Get all portfolios and their total values at active month, with colors from config
-  const portfolios = list.map((d, idx) => {
-    let assets = d.byMonth[activeMonth];
-    if (!assets || !assets.length) {
-      const available = d.months.filter(m => {
-        const ai = allMonths.indexOf(m), ac = allMonths.indexOf(activeMonth);
-        return ai <= ac;
-      });
-      const fallback = available[available.length - 1];
-      assets = fallback ? (d.byMonth[fallback] || []) : [];
-    }
-    const totalValue = assets.reduce((s, a) => s + a.value, 0);
-    // Use color from config matching component order
-    const color = config.colors[idx] || '#888';
-    return { title: d.title, value: totalValue, color };
-  }).filter(p => p.value > 0);
-  
+  // Color is looked up by matching portfolio title to the config's component name,
+  // not by array position — donut order and config order aren't guaranteed to match.
+  const colorFor = (title) => {
+    const t = title.toLowerCase();
+    const idx = config.componentNames.findIndex(n => n.toLowerCase() === t || n.toLowerCase().includes(t) || t.includes(n.toLowerCase()));
+    return idx >= 0 ? config.colors[idx] : '#888';
+  };
+
+  // Use the exact same resolved (month-fallback-applied) totals as the donut grid below,
+  // so the bar can never disagree with the graphs.
+  const portfolios = resolvedList.map(d => ({
+    title: d.title,
+    value: d.assets.reduce((s, a) => s + a.value, 0),
+    color: colorFor(d.title),
+  })).filter(p => p.value > 0);
+
   if (portfolios.length === 0) {
     barSection.style.display = 'none';
     return;
   }
-  
+
+  // Biggest to smallest
+  portfolios.sort((a, b) => b.value - a.value);
+
   barSection.style.display = 'block';
-  
+
   const total = portfolios.reduce((s, p) => s + p.value, 0);
-  const barWidth = 100;
-  let html = `<svg viewBox="0 0 ${barWidth * 10} 40" style="width:100%;height:auto;margin-bottom:14px;">`;
-  
-  let offset = 0;
-  portfolios.forEach(p => {
+
+  let trackHtml = '';
+  portfolios.forEach((p, i) => {
     const pct = (p.value / total) * 100;
-    const segmentWidth = (pct / 100) * (barWidth * 10);
-    html += `<rect x="${offset}" y="10" width="${segmentWidth}" height="20" fill="${p.color}" rx="2"/>
-      <text x="${offset + segmentWidth / 2}" y="27" text-anchor="middle" font-size="10" font-family="var(--font-mono)" fill="white" font-weight="500">${pct.toFixed(0)}%</text>`;
-    offset += segmentWidth;
+    trackHtml += `<div class="alloc-bar-seg" data-alloc-idx="${i}" style="width:${pct}%;background:${p.color};"
+      onmouseenter="allocHover('${tab}',${i},true)" onmouseleave="allocHover('${tab}',${i},false)"></div>`;
   });
-  
-  html += `</svg>`;
-  html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;font-size:11px;">`;
-  
-  portfolios.forEach(p => {
+
+  let legendHtml = '';
+  portfolios.forEach((p, i) => {
     const pct = (p.value / total) * 100;
-    html += `<div style="display:flex;align-items:center;gap:6px;">
-      <span style="width:10px;height:10px;border-radius:2px;background:${p.color};flex-shrink:0;"></span>
-      <span style="color:var(--text2);">${p.title}</span>
+    legendHtml += `<div class="alloc-leg-item" data-alloc-idx="${i}"
+        onmouseenter="allocHover('${tab}',${i},true)" onmouseleave="allocHover('${tab}',${i},false)">
+      <div class="alloc-leg-name-wrap">
+        <span class="alloc-leg-dot" style="background:${p.color};"></span>
+        <span class="alloc-leg-name" title="${p.title}">${p.title}</span>
+      </div>
+      <span class="alloc-leg-pct">${pct.toFixed(1)}%</span>
     </div>`;
   });
-  
-  html += `</div>`;
-  barContainer.innerHTML = html;
+
+  barContainer.innerHTML = `<div class="alloc-bar-track">${trackHtml}</div><div class="alloc-legend">${legendHtml}</div>`;
+}
+
+function allocHover(tab, i, entering) {
+  const container = document.getElementById('allocation-bar-container');
+  if (!container) return;
+  const seg = container.querySelector(`.alloc-bar-seg[data-alloc-idx="${i}"]`);
+  const leg = container.querySelector(`.alloc-leg-item[data-alloc-idx="${i}"]`);
+  const allSegs = container.querySelectorAll('.alloc-bar-seg');
+  if (entering) {
+    allSegs.forEach(s => { if (s !== seg) s.classList.add('dim'); });
+    if (seg) seg.classList.add('hl');
+    if (leg) leg.classList.add('hl');
+  } else {
+    allSegs.forEach(s => s.classList.remove('dim', 'hl'));
+    if (leg) leg.classList.remove('hl');
+  }
 }
 
 function renderDonuts(tab) {
@@ -1720,7 +1746,6 @@ function renderDonuts(tab) {
 
   renderDonutFilter(tab);
   syncSortPills(tab);
-  renderAllocationBar(tab); // Add allocation bar rendering
 
   const resolvedList = list.map(d => {
     let assets = d.byMonth[activeMonth];
@@ -1735,6 +1760,9 @@ function renderDonuts(tab) {
     assets = applyDonutSort([...assets], donutSortState[tab] || 'value', d.title.toLowerCase().includes('cash'));
     return { title: d.title, assets, currency: d.currency };
   });
+
+  // Allocation bar always mirrors the exact totals shown in the donut grid below
+  renderAllocationBar(tab, resolvedList);
 
   grid.innerHTML = resolvedList.map((d,idx) => {
     if (!d.assets.length) return `<div class="donut-card"><p class="donut-card-title">${d.title}</p><p class="donut-empty">No data for this period</p></div>`;
@@ -3063,12 +3091,52 @@ function buildSummaryCard(tab, maskVals) {
         </div>
       </div>`;
   }
+  let allocBarSection = '';
   let donutSection = '';
   if (tab !== 'household') {
     const list = tab === 'ink' ? inkDonutData : fangDonutData;
+    const config = tab === 'ink' ? INK_CONFIG : FANG_CONFIG;
     const allM = getDonutMonths(tab);
     const latest = allM[allM.length - 1];
     const activeMonth = donutFilterState[tab] || latest;
+
+    const colorForExp = (title) => {
+      const t = title.toLowerCase();
+      const idx = config.componentNames.findIndex(n => n.toLowerCase() === t || n.toLowerCase().includes(t) || t.includes(n.toLowerCase()));
+      return idx >= 0 ? config.colors[idx] : '#888';
+    };
+
+    const allocPortfolios = list.map(d => {
+      let a = d.byMonth[activeMonth];
+      if (!a || !a.length) {
+        const available = d.months.filter(m => {
+          const ai = allM.indexOf(m), ac = allM.indexOf(activeMonth);
+          return ai <= ac;
+        });
+        const fallback = available[available.length - 1];
+        a = fallback ? (d.byMonth[fallback] || []) : [];
+      }
+      return { title: d.title, value: a.reduce((s, x) => s + x.value, 0), color: colorForExp(d.title) };
+    }).filter(p => p.value > 0).sort((a, b) => b.value - a.value);
+
+    if (allocPortfolios.length) {
+      const allocTotal = allocPortfolios.reduce((s, p) => s + p.value, 0);
+      const trackEx = allocPortfolios.map(p => `<div style="height:100%;width:${(p.value/allocTotal*100)}%;background:${p.color};"></div>`).join('');
+      const legendEx = allocPortfolios.map(p => `
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+            <span style="width:7px;height:7px;border-radius:2px;background:${p.color};flex-shrink:0;"></span>
+            <span style="font-size:11px;color:#888780;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.title}</span>
+          </div>
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:#f0efe8;flex-shrink:0;margin-left:8px;">${(p.value/allocTotal*100).toFixed(1)}%</span>
+        </div>`).join('');
+      allocBarSection = `
+        <div style="margin-bottom:24px;">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">Current Allocation</p>
+          <div style="display:flex;height:6px;border-radius:99px;overflow:hidden;background:#1e1e1e;margin-bottom:10px;">${trackEx}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:18px;row-gap:5px;">${legendEx}</div>
+        </div>`;
+    }
 
     const cards = list.map((d, idx) => {
       // Get assets for this card (same fallback logic as renderDonuts)
@@ -3360,7 +3428,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.5</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.6</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3407,12 +3475,15 @@ function buildSummaryCard(tab, maskVals) {
     <!-- Chart -->
     ${chartSection}
 
+    <!-- Allocation -->
+    ${allocBarSection}
+
     <!-- Donuts -->
     ${donutSection}
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.5${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.6${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
