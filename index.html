@@ -150,9 +150,9 @@
   .drill-chart-wrap { margin-bottom:20px; }
   .drill-chart-title { font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px; }
   .drill-history-table { width:100%;border-collapse:collapse;font-size:11px; }
-  .drill-history-table th { font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);text-align:right;padding:6px 8px;border-bottom:1px solid var(--border); }
+  .drill-history-table th { font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);text-align:right;padding:6px 4px;border-bottom:1px solid var(--border); }
   .drill-history-table th:first-child { text-align:left; }
-  .drill-history-table td { font-family:var(--font-mono);text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text2); }
+  .drill-history-table td { font-family:var(--font-mono);text-align:right;padding:6px 4px;border-bottom:1px solid var(--border);color:var(--text2); }
   .drill-history-table td:first-child { text-align:left;color:var(--text3); }
   .drill-history-table tr.drill-active-row td { color:var(--text);background:rgba(255,255,255,0.04); }
   .drill-leg-item-clickable { cursor:pointer;transition:opacity .15s; }
@@ -365,7 +365,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v9.3</p>
+      <p class="gate-version">v9.4</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -386,7 +386,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v9.3</span>
+      <span class="version-badge">v9.4</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -526,7 +526,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v9.3';
+const VERSION  = 'v9.4';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2281,7 +2281,8 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
 
     <div style="margin-bottom:20px;">
       <div class="drill-chart-title" style="margin-bottom:6px;">Holdings</div>
-      <table class="drill-history-table" style="width:100%;">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -20px;padding:0 20px;">
+      <table class="drill-history-table" style="min-width:100%;">
         <thead><tr>
           <th style="text-align:left;">Asset</th>
           ${!isCash ? '<th>Cost</th>' : ''}
@@ -2292,6 +2293,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
         </tr></thead>
         <tbody>${assetRows}</tbody>
       </table>
+      </div>
     </div>
 
     <div>
@@ -2444,7 +2446,10 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
   const history = d.months.map(m => {
     const assets = d.byMonth[m] || [];
     const a = assets.find(x => x.name === assetName);
-    return a ? { month: m, ...a } : null;
+    if (!a) return null;
+    const totalMV = assets.reduce((s, x) => s + x.value, 0);
+    const pct = totalMV > 0 ? (a.value / totalMV * 100) : 0;
+    return { month: m, ...a, pct };
   }).filter(Boolean);
 
   const snap = history.find(h => h.month === activeM) || history[history.length - 1];
@@ -2486,9 +2491,7 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
 
   const thCols = isCash
     ? `<th>Month</th><th>Mkt Val</th><th>Alloc%</th>`
-    : isDetailed
-      ? `<th>Month</th><th>Avg Cost</th><th>Cost</th><th>Mkt Val</th><th>UPL% / UPL</th><th>Alloc%</th>`
-      : `<th>Month</th><th>Cost</th><th>Mkt Val</th><th>UPL% / UPL</th><th>Alloc%</th>`;
+    : `<th>Month</th><th>Cost</th><th>Mkt Val</th><th>UPL% / UPL</th><th>Alloc%</th>`;
 
   const tableRows = histReversed.map(h => {
     const uplPct   = !isCash && h.upl != null && (h.value - h.upl) > 0 ? (h.upl/(h.value-h.upl)*100) : null;
@@ -2501,11 +2504,10 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
     const isActive = h.month === activeM;
 
     let tds = `<td>${h.month}</td>`;
-    if (isDetailed) tds += `<td>${fmtShare(h.avgCost, currency)}</td>`;
-    if (!isCash)    tds += `<td>${privacyMode ? '••••' : fmtMC1(h.cost, currency)}</td>`;
+    if (!isCash)     tds += `<td>${privacyMode ? '••••' : fmtMC1(h.cost, currency)}</td>`;
     tds += `<td>${privacyMode ? '••••' : fmtMC1(h.value, currency)}</td>`;
-    if (!isCash)    tds += `<td>${uplStr}</td>`;
-    tds += `<td>${h.pct.toFixed(1)}%</td>`;
+    if (!isCash)     tds += `<td>${uplStr}</td>`;
+    tds += `<td style="white-space:nowrap;">${h.pct.toFixed(2)}%</td>`;
 
     return `<tr class="${isActive?'drill-active-row':''}">${tds}</tr>`;
   }).join('');
@@ -3425,7 +3427,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.3</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.4</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3480,7 +3482,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.3${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.4${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
