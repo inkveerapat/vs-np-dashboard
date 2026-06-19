@@ -365,7 +365,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v8.8</p>
+      <p class="gate-version">v8.9</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -386,7 +386,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v8.8</span>
+      <span class="version-badge">v8.9</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -2286,7 +2286,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
           <th style="text-align:left;">Asset</th>
           ${!isCash ? '<th>Cost</th>' : ''}
           <th>Mkt Val</th>
-          ${!isCash ? '<th style="text-align:center;">UPL Trend<br><span style="font-size:9px;color:var(--text3);">(All-time)</span></th>' : ''}
+          ${!isCash ? '<th style="text-align:center;">UPL Trend</th>' : ''}
           ${!isCash ? '<th>UPL% / UPL</th>' : ''}
           <th>Alloc%</th>
         </tr></thead>
@@ -2806,7 +2806,7 @@ function buildPortfolioDrillExportCard(maskVals) {
   const tdS = `font-family:'DM Mono',monospace;font-size:11px;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,0.05);color:#888780;`;
   const assetTableHeader = isCash
     ? `<th style="${thS}text-align:left;">Asset</th><th style="${thS}text-align:right;">Mkt Val</th><th style="${thS}text-align:right;">Alloc%</th>`
-    : `<th style="${thS}text-align:left;">Asset</th><th style="${thS}text-align:right;">Cost</th><th style="${thS}text-align:right;">Mkt Val</th><th style="${thS}text-align:center;">UPL Trend<br><span style="font-size:8px;">(All-time)</span></th><th style="${thS}text-align:right;">UPL% / UPL</th><th style="${thS}text-align:right;">Alloc%</th>`;
+    : `<th style="${thS}text-align:left;">Asset</th><th style="${thS}text-align:right;">Cost</th><th style="${thS}text-align:right;">Mkt Val</th><th style="${thS}text-align:center;">UPL Trend</th><th style="${thS}text-align:right;">UPL% / UPL</th><th style="${thS}text-align:right;">Alloc%</th>`;
   const assetRows = assets.map((a,ai) => {
     const origIdx = (d.byMonth[activeM]||assets).findIndex(x=>x.name===a.name);
     const color = PALETTE[(origIdx>=0?origIdx:ai)%PALETTE.length];
@@ -3421,7 +3421,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.8</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.9</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3476,7 +3476,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.8${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.9${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
