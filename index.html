@@ -349,7 +349,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v8.3</p>
+      <p class="gate-version">v8.4</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -370,7 +370,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v8.3</span>
+      <span class="version-badge">v8.4</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -442,6 +442,10 @@
     <div class="legend" id="legend"></div>
 
     <div class="donut-section" id="donut-section" style="display:none;">
+      <div id="allocation-bar-section" style="margin-bottom:36px;display:none;">
+        <p class="donut-section-title">Current Allocation</p>
+        <div id="allocation-bar-container"></div>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
         <p class="donut-section-title" style="margin:0;padding:0;border:none;">Asset Allocation Breakdown</p>
         <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;flex:1 1 auto;min-width:0;">
@@ -1632,6 +1636,72 @@ function selectDonutFilter(tab, month) {
   renderDonuts(tab);
 }
 
+function renderAllocationBar(tab) {
+  const barSection = document.getElementById('allocation-bar-section');
+  const barContainer = document.getElementById('allocation-bar-container');
+  if (!barSection || !barContainer) return;
+  
+  // Only show for ink and fang, not household
+  if (tab === 'household') {
+    barSection.style.display = 'none';
+    return;
+  }
+  
+  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  const allMonths = getDonutMonths(tab);
+  const latest = allMonths[allMonths.length - 1];
+  const activeMonth = donutFilterState[tab] || latest;
+  
+  // Get all portfolios and their total values at active month
+  const portfolios = list.map(d => {
+    let assets = d.byMonth[activeMonth];
+    if (!assets || !assets.length) {
+      const available = d.months.filter(m => {
+        const ai = allMonths.indexOf(m), ac = allMonths.indexOf(activeMonth);
+        return ai <= ac;
+      });
+      const fallback = available[available.length - 1];
+      assets = fallback ? (d.byMonth[fallback] || []) : [];
+    }
+    const totalValue = assets.reduce((s, a) => s + a.value, 0);
+    return { title: d.title, value: totalValue, color: d.color || '#888' };
+  }).filter(p => p.value > 0);
+  
+  if (portfolios.length === 0) {
+    barSection.style.display = 'none';
+    return;
+  }
+  
+  barSection.style.display = 'block';
+  
+  const total = portfolios.reduce((s, p) => s + p.value, 0);
+  const barWidth = 100;
+  let html = `<svg viewBox="0 0 ${barWidth * 10} 40" style="width:100%;height:auto;margin-bottom:14px;">`;
+  
+  let offset = 0;
+  portfolios.forEach(p => {
+    const pct = (p.value / total) * 100;
+    const segmentWidth = (pct / 100) * (barWidth * 10);
+    html += `<rect x="${offset}" y="10" width="${segmentWidth}" height="20" fill="${p.color}" rx="2"/>
+      <text x="${offset + segmentWidth / 2}" y="27" text-anchor="middle" font-size="10" font-family="var(--font-mono)" fill="white" font-weight="500">${pct.toFixed(0)}%</text>`;
+    offset += segmentWidth;
+  });
+  
+  html += `</svg>`;
+  html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;font-size:11px;">`;
+  
+  portfolios.forEach(p => {
+    const pct = (p.value / total) * 100;
+    html += `<div style="display:flex;align-items:center;gap:6px;">
+      <span style="width:10px;height:10px;border-radius:2px;background:${p.color};flex-shrink:0;"></span>
+      <span style="color:var(--text2);">${p.title.split(' ').slice(-1)[0]}</span>
+    </div>`;
+  });
+  
+  html += `</div>`;
+  barContainer.innerHTML = html;
+}
+
 function renderDonuts(tab) {
   const section=document.getElementById('donut-section');
   const grid=document.getElementById('donut-grid');
@@ -1647,6 +1717,7 @@ function renderDonuts(tab) {
 
   renderDonutFilter(tab);
   syncSortPills(tab);
+  renderAllocationBar(tab); // Add allocation bar rendering
 
   const resolvedList = list.map(d => {
     let assets = d.byMonth[activeMonth];
@@ -1973,6 +2044,50 @@ function donutLegHover(el, tab, cardIdx, assetIdx, entering) {
   }
 }
 
+// ─── SPARKLINE GENERATOR ──────────────────────────────────────────────────────
+function generateUPLSparkline(history, isMobile = false) {
+  if (!history || history.length < 2) return '';
+  
+  const validPoints = history.filter(h => h.upl != null);
+  if (validPoints.length === 0) return '';
+  
+  // Normalize UPL values to sparkline coordinates (0-60px wide, 8-20px tall)
+  const minUPL = Math.min(...validPoints.map(h => h.upl));
+  const maxUPL = Math.max(...validPoints.map(h => h.upl));
+  const range = maxUPL - minUPL || 1;
+  
+  const width = isMobile ? 50 : 60;
+  const height = 20;
+  const padding = 2;
+  
+  const points = validPoints.map((h, i) => {
+    const x = padding + (i / (validPoints.length - 1 || 1)) * (width - padding * 2);
+    const normalized = (h.upl - minUPL) / range;
+    const y = height - normalized * (height - padding * 2) - padding;
+    return `${x},${y}`;
+  }).join(' ');
+  
+  const polyPoints = validPoints.map((h, i) => {
+    const x = padding + (i / (validPoints.length - 1 || 1)) * (width - padding * 2);
+    const normalized = (h.upl - minUPL) / range;
+    const y = height - normalized * (height - padding * 2) - padding;
+    return {x, y};
+  });
+  
+  // Determine color based on trend (upward = green, flat/down = gray/red)
+  const isPositive = validPoints[validPoints.length - 1].upl >= 0;
+  const lineColor = isPositive ? '#5ce0a8' : '#f06b6b';
+  const fillColor = isPositive ? '#5ce0a833' : '#f06b6b33';
+  
+  // Build polygon path for fill
+  const polygonPoints = points + ` ${width - padding},${height} ${padding},${height}`;
+  
+  return `<svg viewBox="0 0 ${width} ${height}" style="width:${width}px;height:${height}px;display:inline-block;vertical-align:middle;">
+    <polygon points="${polygonPoints}" fill="${fillColor}" />
+    <polyline points="${points}" stroke="${lineColor}" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>`;
+}
+
 // ── DRILL-DOWN NAVIGATION ─────────────────────────────────────────────────────
 let drillChartInst = null;
 let portChartInst  = null;
@@ -2076,6 +2191,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
         </td>
         ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);text-align:right;">${a.cost != null ? mask(fmtMC1(a.cost, currency)) : '<span style="color:var(--text3);">&#8212;</span>'}</td>` : ''}
         <td style="font-family:var(--font-mono);font-size:11px;color:var(--text);text-align:right;">${mask(fmtMC1(a.value, currency))}</td>
+        ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;text-align:center;padding:2px 4px;height:24px;display:flex;align-items:center;justify-content:center;">${generateUPLSparkline(d.months.map(m=>{const ast=(d.byMonth[m]||[]).find(x=>x.name===a.name);return ast?{month:m,upl:ast.upl}:null;}).filter(Boolean),false)}</td>` : ''}
         ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;text-align:right;line-height:1.5;">${uplStr}</td>` : ''}
         <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);text-align:right;">${a.pct.toFixed(1)}%</td>
       </tr>`;
@@ -2128,6 +2244,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
           <th style="text-align:left;">Asset</th>
           ${!isCash ? '<th>Cost</th>' : ''}
           <th>Mkt Val</th>
+          ${!isCash ? '<th style="text-align:center;">UPL Trend</th>' : ''}
           ${!isCash ? '<th>UPL% / UPL</th>' : ''}
           <th>Alloc%</th>
         </tr></thead>
@@ -2647,7 +2764,7 @@ function buildPortfolioDrillExportCard(maskVals) {
   const tdS = `font-family:'DM Mono',monospace;font-size:11px;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,0.05);color:#888780;`;
   const assetTableHeader = isCash
     ? `<th style="${thS}text-align:left;">Asset</th><th style="${thS}text-align:right;">Mkt Val</th><th style="${thS}text-align:right;">Alloc%</th>`
-    : `<th style="${thS}text-align:left;">Asset</th><th style="${thS}text-align:right;">Cost</th><th style="${thS}text-align:right;">Mkt Val</th><th style="${thS}text-align:right;">UPL% / UPL</th><th style="${thS}text-align:right;">Alloc%</th>`;
+    : `<th style="${thS}text-align:left;">Asset</th><th style="${thS}text-align:right;">Cost</th><th style="${thS}text-align:right;">Mkt Val</th><th style="${thS}text-align:center;">UPL Trend</th><th style="${thS}text-align:right;">UPL% / UPL</th><th style="${thS}text-align:right;">Alloc%</th>`;
   const assetRows = assets.map((a,ai) => {
     const origIdx = (d.byMonth[activeM]||assets).findIndex(x=>x.name===a.name);
     const color = PALETTE[(origIdx>=0?origIdx:ai)%PALETTE.length];
@@ -2664,6 +2781,7 @@ function buildPortfolioDrillExportCard(maskVals) {
       </span></td>`;
     if (!isCash) tds += `<td style="${tdS}text-align:right;">${maskVals?'••••':fmtMC1(a.cost,currency)}</td>`;
     tds += `<td style="${tdS}text-align:right;color:#f0efe8;">${maskVals?'••••':fmtMC1(a.value,currency)}</td>`;
+    if (!isCash) tds += `<td style="${tdS}text-align:center;padding:4px 2px;height:24px;display:flex;align-items:center;justify-content:center;">${generateUPLSparkline(d.months.map(m=>{const ast=(d.byMonth[m]||[]).find(x=>x.name===a.name);return ast?{month:m,upl:ast.upl}:null;}).filter(Boolean),true)}</td>`;
     if (!isCash) tds += `<td style="${tdS}text-align:right;line-height:1.5;">${uplCell}</td>`;
     tds += `<td style="${tdS}text-align:right;">${a.pct.toFixed(1)}%</td>`;
     return `<tr>${tds}</tr>`;
@@ -3229,7 +3347,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.3</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.4</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3281,7 +3399,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.3${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.4${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
