@@ -365,7 +365,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v8.7</p>
+      <p class="gate-version">v8.8</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -386,7 +386,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v8.7</span>
+      <span class="version-badge">v8.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -668,8 +668,10 @@ function detectCurrency(raw) {
   return 'THB';
 }
 function fmtCurrency(val, currency) {
-  if (currency === 'USD') return '$' + val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  return '\u0e3f' + Math.round(val).toLocaleString('th-TH');
+  const sign = val < 0 ? '-' : '';
+  const a = Math.abs(val);
+  if (currency === 'USD') return sign + '$' + a.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return sign + '\u0e3f' + Math.round(a).toLocaleString('th-TH');
 }
 
 // MASTER TRACKER EXTRACT
@@ -2231,7 +2233,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
         </td>
         ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);text-align:right;">${a.cost != null ? mask(fmtMC1(a.cost, currency)) : '<span style="color:var(--text3);">&#8212;</span>'}</td>` : ''}
         <td style="font-family:var(--font-mono);font-size:11px;color:var(--text);text-align:right;">${mask(fmtMC1(a.value, currency))}</td>
-        ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;text-align:center;padding:2px 4px;height:24px;display:flex;align-items:center;justify-content:center;">${generateUPLSparkline(d.months.map(m=>{const ast=(d.byMonth[m]||[]).find(x=>x.name===a.name);return ast?{month:m,upl:ast.upl}:null;}).filter(Boolean),false,activeM)}</td>` : ''}
+        ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;text-align:center;padding:2px 4px;height:24px;"><div style="display:flex;align-items:center;justify-content:center;">${generateUPLSparkline(d.months.map(m=>{const ast=(d.byMonth[m]||[]).find(x=>x.name===a.name);return ast?{month:m,upl:ast.upl}:null;}).filter(Boolean),false,activeM)}</div></td>` : ''}
         ${!isCash ? `<td style="font-family:var(--font-mono);font-size:11px;text-align:right;line-height:1.5;">${uplStr}</td>` : ''}
         <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);text-align:right;">${a.pct.toFixed(1)}%</td>
       </tr>`;
@@ -2821,7 +2823,7 @@ function buildPortfolioDrillExportCard(maskVals) {
       </span></td>`;
     if (!isCash) tds += `<td style="${tdS}text-align:right;">${maskVals?'••••':fmtMC1(a.cost,currency)}</td>`;
     tds += `<td style="${tdS}text-align:right;color:#f0efe8;">${maskVals?'••••':fmtMC1(a.value,currency)}</td>`;
-    if (!isCash) tds += `<td style="${tdS}text-align:center;padding:4px 2px;height:24px;display:flex;align-items:center;justify-content:center;">${generateUPLSparkline(d.months.map(m=>{const ast=(d.byMonth[m]||[]).find(x=>x.name===a.name);return ast?{month:m,upl:ast.upl}:null;}).filter(Boolean),true,activeM)}</td>`;
+    if (!isCash) tds += `<td style="${tdS}text-align:center;padding:4px 2px;height:24px;"><div style="display:flex;align-items:center;justify-content:center;">${generateUPLSparkline(d.months.map(m=>{const ast=(d.byMonth[m]||[]).find(x=>x.name===a.name);return ast?{month:m,upl:ast.upl}:null;}).filter(Boolean),true,activeM)}</div></td>`;
     if (!isCash) tds += `<td style="${tdS}text-align:right;line-height:1.5;">${uplCell}</td>`;
     tds += `<td style="${tdS}text-align:right;">${a.pct.toFixed(1)}%</td>`;
     return `<tr>${tds}</tr>`;
@@ -2923,8 +2925,10 @@ async function _saveExportCanvas(canvas, filename, goBtn, prog) {
 
 function fmtCurr(val, currency) {
   if (val == null) return '—';
-  if (currency === 'USD') return '$' + val.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-  return '฿' + Math.round(val).toLocaleString('th-TH');
+  const sign = val < 0 ? '-' : '';
+  const a = Math.abs(val);
+  if (currency === 'USD') return sign + '$' + a.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  return sign + '฿' + Math.round(a).toLocaleString('th-TH');
 }
 
 function renderAll(tab) {
@@ -3417,7 +3421,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.7</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v8.8</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3472,7 +3476,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.7${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v8.8${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
