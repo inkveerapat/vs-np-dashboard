@@ -186,11 +186,11 @@
   .donut-leg-item:hover { color: var(--text2); background: rgba(255,255,255,0.04); }
   .donut-leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .donut-leg-name { flex: 1; min-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; max-width: 90px; }
-  .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; min-width: 32px; text-align: right; }
-  .donut-leg-main { display: flex; align-items: center; gap: 5px; width: 100%; min-width: 0; }
-  .donut-leg-sub { display: flex; justify-content: space-between; align-items: center; padding-left: 12px; margin-top: 1px; min-width: 0; gap: 4px; }
-  .donut-leg-mv { font-family: var(--font-mono); font-size: 9px; color: var(--text2); white-space: nowrap; }
-  .donut-leg-upl { font-family: var(--font-mono); font-size: 9px; white-space: nowrap; text-align: right; }
+  .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; min-width: 52px; text-align: right; }
+  .donut-leg-main { display: grid; grid-template-columns: 1fr 52px; align-items: center; gap: 5px; width: 100%; min-width: 0; }
+  .donut-leg-sub { display: grid; grid-template-columns: 1fr 52px; align-items: center; padding-left: 12px; margin-top: 1px; min-width: 0; gap: 4px; }
+  .donut-leg-mv { font-family: var(--font-mono); font-size: 9px; color: var(--text2); white-space: nowrap; grid-column: 1; }
+  .donut-leg-upl { font-family: var(--font-mono); font-size: 9px; white-space: nowrap; text-align: right; grid-column: 2; }
   .donut-leg-upl-val { font-size: 8px; opacity: .75; }
   .donut-empty { font-family: var(--font-mono); font-size: 11px; color: var(--text3); text-align: center; padding: 32px 0; }
 
@@ -265,7 +265,7 @@
     .donut-center { max-width: 50px; }
     .donut-card-body { gap: 10px; }
     .donut-leg-name { font-size: 9px; }
-    .donut-leg-pct { font-size: 9px; min-width: 28px; }
+    .donut-leg-pct { font-size: 9px; min-width: 48px; }
 
     .chart-tooltip { min-width: 160px; font-size: 11px; padding: 10px 12px; max-width: calc(100vw - 28px); }
     .privacy-btn { font-size: 11px; padding: 4px 8px; }
