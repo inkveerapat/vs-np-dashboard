@@ -369,7 +369,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v9.4</p>
+      <p class="gate-version">v9.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -390,7 +390,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v9.4</span>
+      <span class="version-badge">v9.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -493,7 +493,10 @@
 
     <!-- Layer 1: Portfolio drill-down -->
     <div id="drill-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:91;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);">
-      <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div id="drill-panel-handle" style="padding:8px 0 0;display:flex;justify-content:center;flex-shrink:0;touch-action:none;cursor:grab;">
+        <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);"></div>
+      </div>
+      <div style="padding:10px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:10px;">
           <button onclick="navBack()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
           <span id="drill-port-title" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;"></span>
@@ -508,7 +511,10 @@
 
     <!-- Layer 2: Asset drill-down (slides over layer 1) -->
     <div id="drill-panel-2" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:92;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);">
-      <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div id="drill-panel-2-handle" style="padding:8px 0 0;display:flex;justify-content:center;flex-shrink:0;touch-action:none;cursor:grab;">
+        <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);"></div>
+      </div>
+      <div style="padding:10px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:10px;">
           <button onclick="navBack()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
           <span id="drill-portfolio-name" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;"></span>
@@ -530,7 +536,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v9.4';
+const VERSION  = 'v9.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2179,6 +2185,50 @@ window.addEventListener('popstate', function() {
   if (panel1Open) { closeDrillAll(); return; }
 });
 
+// ── Swipe-down-to-dismiss on drill panel handles ──
+function initSwipeToDismiss(handleId, panelId) {
+  const handle = document.getElementById(handleId);
+  const panel  = document.getElementById(panelId);
+  if (!handle || !panel) return;
+  let startY = 0, startTime = 0, currentY = 0, dragging = false;
+  const THRESHOLD = 100;
+  const VELOCITY_THRESHOLD = 0.5; // px/ms
+
+  function setTransition(on) {
+    panel.style.transition = on ? 'transform .32s cubic-bezier(.4,0,.2,1)' : 'none';
+  }
+  function onStart(y) {
+    dragging = true; startY = y; currentY = 0; startTime = Date.now();
+    setTransition(false);
+  }
+  function onMove(y) {
+    if (!dragging) return;
+    const delta = y - startY;
+    currentY = Math.max(0, delta);
+    panel.style.transform = 'translateY(' + currentY + 'px)';
+  }
+  function onEnd() {
+    if (!dragging) return;
+    dragging = false;
+    setTransition(true);
+    const elapsed = Math.max(1, Date.now() - startTime);
+    const velocity = currentY / elapsed;
+    if (currentY > THRESHOLD || velocity > VELOCITY_THRESHOLD) {
+      navBack();
+    } else {
+      panel.style.transform = 'translateY(0)';
+    }
+  }
+  handle.addEventListener('touchstart', e => onStart(e.touches[0].clientY), { passive: true });
+  handle.addEventListener('touchmove', e => { onMove(e.touches[0].clientY); e.preventDefault(); }, { passive: false });
+  handle.addEventListener('touchend', onEnd);
+  handle.addEventListener('mousedown', e => onStart(e.clientY));
+  window.addEventListener('mousemove', e => { if (dragging) onMove(e.clientY); });
+  window.addEventListener('mouseup', onEnd);
+}
+initSwipeToDismiss('drill-panel-handle', 'drill-panel');
+initSwipeToDismiss('drill-panel-2-handle', 'drill-panel-2');
+
 function openPortfolioDrill(tab, cardIdx) {
   const list = tab === 'ink' ? inkDonutData : fangDonutData;
   const d = list[cardIdx];
@@ -3473,7 +3523,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.4</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.5</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3528,7 +3578,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.4${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.5${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
