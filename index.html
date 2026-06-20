@@ -369,7 +369,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v9.2</p>
+      <p class="gate-version">v9.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -390,7 +390,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v9.2</span>
+      <span class="version-badge">v9.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -489,18 +489,18 @@
     </div><!-- /page-content -->
 
     <!-- DRILL-DOWN PANELS -->
-    <div id="drill-overlay" onclick="closeDrillAll()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:90;"></div>
+    <div id="drill-overlay" onclick="navBackAll()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:90;"></div>
 
     <!-- Layer 1: Portfolio drill-down -->
     <div id="drill-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:91;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);">
       <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <button onclick="closeDrillAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
+          <button onclick="navBack()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
           <span id="drill-port-title" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;"></span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <button id="drill-port-export-btn" onclick="openPortfolioDrillExportModal()" class="export-btn">&#8681; Export</button>
-          <button onclick="closeDrillAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
+          <button onclick="navBackAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
         </div>
       </div>
       <div id="drill-port-content" style="overflow-y:auto;flex:1;padding:20px;"></div>
@@ -510,12 +510,12 @@
     <div id="drill-panel-2" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:92;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);">
       <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <button onclick="closeAssetDrill()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
+          <button onclick="navBack()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
           <span id="drill-portfolio-name" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;"></span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <button id="drill-export-btn" onclick="openDrillExportModal()" class="export-btn">&#8681; Export</button>
-          <button onclick="closeDrillAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
+          <button onclick="navBackAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
         </div>
       </div>
       <div id="drill-content" style="overflow-y:auto;flex:1;padding:20px;"></div>
@@ -530,7 +530,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v9.2';
+const VERSION  = 'v9.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2145,6 +2145,40 @@ let _drillIsCashState = false, _drillIsDetailedState = false;
 let _portD = null, _portTab = null, _portCardIdx = null;
 
 // ── Layer 1: Portfolio drill ───────────────────────────────────────────────────
+// ── Back-gesture navigation ──
+// Each drill-down panel / export modal pushes a history entry when opened.
+// A device back gesture (or browser back) fires popstate, which we use to
+// close just the topmost open layer instead of leaving the page.
+let _drillNavDepth = 0;
+
+function pushDrillNav() {
+  _drillNavDepth++;
+  history.pushState({ drillNav: true, depth: _drillNavDepth }, '', '');
+}
+
+function navBack() {
+  if (_drillNavDepth > 0) { history.back(); }
+}
+
+function navBackAll() {
+  if (_drillNavDepth > 0) { history.go(-_drillNavDepth); }
+}
+
+window.addEventListener('popstate', function() {
+  if (_drillNavDepth <= 0) return; // this popstate wasn't one of ours
+  _drillNavDepth--;
+
+  if (document.getElementById('export-modal')) { closeExportModal(); return; }
+
+  const panel2 = document.getElementById('drill-panel-2');
+  const panel2Open = panel2 && panel2.style.display !== 'none' && panel2.style.transform !== 'translateY(100%)';
+  if (panel2Open) { closeAssetDrill(); return; }
+
+  const panel1 = document.getElementById('drill-panel');
+  const panel1Open = panel1 && panel1.style.display !== 'none' && panel1.style.transform !== 'translateY(100%)';
+  if (panel1Open) { closeDrillAll(); return; }
+});
+
 function openPortfolioDrill(tab, cardIdx) {
   const list = tab === 'ink' ? inkDonutData : fangDonutData;
   const d = list[cardIdx];
@@ -2154,6 +2188,7 @@ function openPortfolioDrill(tab, cardIdx) {
   document.getElementById('drill-port-title').textContent = d.title;
   renderPortfolioDrillContent(d, tab, cardIdx);
 
+  pushDrillNav();
   const overlay = document.getElementById('drill-overlay');
   const panel   = document.getElementById('drill-panel');
   overlay.style.display = 'block';
@@ -2401,6 +2436,7 @@ function openDrill(tab, cardIdx, assetName, assetIdx) {
   document.getElementById('drill-portfolio-name').textContent = d.title;
   renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed);
 
+  pushDrillNav();
   const overlay = document.getElementById('drill-overlay');
   const panel2  = document.getElementById('drill-panel-2');
   overlay.style.display = 'block';
@@ -2647,11 +2683,12 @@ function openDrillExportModal() {
         <span class="export-privacy-label">Hide financial values (privacy mode)</span></label>
       <p class="export-progress" id="export-progress"></p>
       <div class="export-actions">
-        <button class="export-cancel-btn" onclick="closeExportModal()">Cancel</button>
+        <button class="export-cancel-btn" onclick="navBack()">Cancel</button>
         <button class="export-go-btn" id="export-go-btn" onclick="runDrillExport()">Download</button>
       </div></div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeExportModal(); });
+  pushDrillNav();
+  overlay.addEventListener('click', e => { if (e.target === overlay) navBack(); });
 }
 
 function buildDrillExportCard(maskVals) {
@@ -2777,11 +2814,12 @@ function openPortfolioDrillExportModal() {
         <span class="export-privacy-label">Hide financial values (privacy mode)</span></label>
       <p class="export-progress" id="export-progress"></p>
       <div class="export-actions">
-        <button class="export-cancel-btn" onclick="closeExportModal()">Cancel</button>
+        <button class="export-cancel-btn" onclick="navBack()">Cancel</button>
         <button class="export-go-btn" id="export-go-btn" onclick="runPortfolioDrillExport()">Download</button>
       </div></div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if (e.target===overlay) closeExportModal(); });
+  pushDrillNav();
+  overlay.addEventListener('click', e => { if (e.target===overlay) navBack(); });
 }
 
 function buildPortfolioDrillExportCard(maskVals) {
@@ -2932,7 +2970,7 @@ async function _saveExportCanvas(canvas, filename, goBtn, prog) {
   }
   prog.textContent = '✓ Downloaded!';
   goBtn.textContent = 'Done ✓';
-  setTimeout(closeExportModal, 1200);
+  setTimeout(navBack, 1200);
 }
 
 function fmtCurr(val, currency) {
@@ -3009,12 +3047,13 @@ function openExportModal() {
       </label>
       <p class="export-progress" id="export-progress"></p>
       <div class="export-actions">
-        <button class="export-cancel-btn" onclick="closeExportModal()">Cancel</button>
+        <button class="export-cancel-btn" onclick="navBack()">Cancel</button>
         <button class="export-go-btn" id="export-go-btn" onclick="runExport()">Download</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeExportModal(); });
+  pushDrillNav();
+  overlay.addEventListener('click', e => { if (e.target === overlay) navBack(); });
 }
 
 function closeExportModal() {
@@ -3433,7 +3472,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.2</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.3</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3488,7 +3527,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.2${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.3${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -3566,7 +3605,7 @@ async function runExport() {
     }
 
     goBtn.textContent = 'Done ✓';
-    setTimeout(closeExportModal, 1200);
+    setTimeout(navBack, 1200);
   } catch(err) {
     prog.textContent = '⚠ Export failed: ' + err.message;
     goBtn.disabled = false;
