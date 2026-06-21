@@ -189,7 +189,9 @@
   .donut-leg-item { display: flex; flex-direction: column; font-size: 11px; color: var(--text3); cursor: default; transition: color .15s; border-radius: 4px; padding: 2px 2px; margin: 0 -2px; min-width: 0; }
   .donut-leg-item:hover { color: var(--text2); background: rgba(255,255,255,0.04); }
   .donut-leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-  .donut-leg-name { flex: 1; min-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; max-width: 90px; }
+  .donut-leg-name { flex: 1; min-width: 0; max-width: 90px; display: flex; align-items: center; gap: 3px; font-size: 10px; }
+  .donut-leg-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .donut-leg-name-arrow { flex-shrink: 0; font-size: 9px; color: var(--text3); font-family: var(--font-mono); }
   .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; min-width: 60px; text-align: right; }
   .donut-leg-main { display: grid; grid-template-columns: auto 1fr 60px; align-items: center; gap: 5px; width: 100%; min-width: 0; }
   .donut-leg-sub { display: grid; grid-template-columns: 1fr 60px; align-items: center; padding-left: 12px; margin-top: 1px; min-width: 0; gap: 4px; }
@@ -369,7 +371,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v9.8</p>
+      <p class="gate-version">v9.9</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -390,7 +392,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v9.8</span>
+      <span class="version-badge">v9.9</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -536,7 +538,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v9.8';
+const VERSION  = 'v9.9';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -994,7 +996,19 @@ function fmtMC1(v, currency) {
   if (a >= 1e3) return sign + sym + (a/1e3).toFixed(1) + 'K';
   return sign + sym + a.toFixed(2);
 }
-// Like fmtMC1 but for per-share prices — always shows 2dp regardless of magnitude
+// Like fmtMC1 but without the currency symbol — used only for canvas Y-axis
+// tick labels. iOS Safari can mismeasure ctx.measureText() width when a
+// string contains a glyph (e.g. ฿) the active canvas font lacks, causing
+// Chart.js to clip the rendered label. Dropping the symbol here avoids it;
+// the symbol still appears everywhere else (tooltips, legends, etc).
+function fmtAxisNum(v) {
+  if (v == null) return '—';
+  const a = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (a >= 1e6) return sign + (a/1e6).toFixed(2) + 'M';
+  if (a >= 1e3) return sign + (a/1e3).toFixed(1) + 'K';
+  return sign + a.toFixed(2);
+}
 function fmtShare(v, currency) {
   if (v == null) return '—';
   const sym  = (currency === 'USD') ? '$' : '\u0e3f';
@@ -1805,7 +1819,7 @@ function renderDonuts(tab) {
           onmouseleave="donutLegHover(this,'${tab}',${idx},${ai},false)">
           <div class="donut-leg-main">
             <span class="donut-leg-dot" style="background:${PALETTE[ai%PALETTE.length]}"></span>
-            <span class="donut-leg-name" title="${a.name}">${a.name}${isGrowth ? ' <span style="font-size:9px;color:var(--text3);font-family:var(--font-mono);">&#8599;&#xFE0E;</span>' : ''}</span>
+            <span class="donut-leg-name" title="${a.name}"><span class="donut-leg-name-text">${a.name}</span>${isGrowth ? '<span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span>' : ''}</span>
             <span class="donut-leg-pct">${a.pct.toFixed(1)}%</span>
           </div>
           ${subRow}
@@ -2411,16 +2425,16 @@ async function buildPortChart(history, activeM, isCash, mode, currency) {
   let data, chartColor, labelCb, yAxisCb;
   if (mode === 'cost') {
     data = history.map(h => h.cost); chartColor = '#f0b429';
-    labelCb = v => fmtMC1(v, currency); yAxisCb = v => fmtMC1(v, currency);
+    labelCb = v => fmtMC1(v, currency); yAxisCb = v => fmtAxisNum(v);
   } else if (mode === 'uplpct') {
     data = history.map(h => h.upl != null && (h.value - h.upl) > 0 ? parseFloat((h.upl/(h.value-h.upl)*100).toFixed(2)) : null);
     chartColor = '#a78bfa'; labelCb = v => (v>=0?'+':'')+v+'%'; yAxisCb = v => v+'%';
   } else if (mode === 'uplval') {
     data = history.map(h => h.upl); chartColor = '#f472b6';
-    labelCb = v => (v>=0?'+':'')+fmtMC1(v, currency); yAxisCb = v => fmtMC1(v, currency);
+    labelCb = v => (v>=0?'+':'')+fmtMC1(v, currency); yAxisCb = v => fmtAxisNum(v);
   } else {
     data = history.map(h => h.value); chartColor = '#c8f542';
-    labelCb = v => fmtMC1(v, currency); yAxisCb = v => fmtMC1(v, currency);
+    labelCb = v => fmtMC1(v, currency); yAxisCb = v => fmtAxisNum(v);
   }
 
   const ctx = document.getElementById('port-drill-chart').getContext('2d');
@@ -2656,7 +2670,7 @@ async function buildDrillChart(history, activeM, color, currency, mode, isCash) 
     data       = history.map(h => h.cost);
     chartColor = '#f0b429';
     labelCb    = v => fmtMC1(v, currency);
-    yAxisCb    = v => fmtMC1(v, currency);
+    yAxisCb    = v => fmtAxisNum(v);
   } else if (mode === 'uplpct') {
     data       = history.map(h => h.upl != null && (h.value - h.upl) > 0 ? parseFloat((h.upl/(h.value-h.upl)*100).toFixed(2)) : null);
     chartColor = '#a78bfa';
@@ -2666,12 +2680,12 @@ async function buildDrillChart(history, activeM, color, currency, mode, isCash) 
     data       = history.map(h => h.upl);
     chartColor = '#f472b6';
     labelCb    = v => (v >= 0 ? '+' : '') + fmtMC1(v, currency);
-    yAxisCb    = v => fmtMC1(v, currency);
+    yAxisCb    = v => fmtAxisNum(v);
   } else { // mktval default
     data       = history.map(h => h.value);
     chartColor = color;
     labelCb    = v => fmtMC1(v, currency);
-    yAxisCb    = v => fmtMC1(v, currency);
+    yAxisCb    = v => fmtAxisNum(v);
   }
 
   const ctx = document.getElementById('drill-chart').getContext('2d');
@@ -3525,7 +3539,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.8</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.9</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3580,7 +3594,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.8${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.9${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
