@@ -369,7 +369,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v9.7</p>
+      <p class="gate-version">v9.8</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -390,7 +390,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v9.7</span>
+      <span class="version-badge">v9.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -536,7 +536,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v9.7';
+const VERSION  = 'v9.8';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1805,7 +1805,7 @@ function renderDonuts(tab) {
           onmouseleave="donutLegHover(this,'${tab}',${idx},${ai},false)">
           <div class="donut-leg-main">
             <span class="donut-leg-dot" style="background:${PALETTE[ai%PALETTE.length]}"></span>
-            <span class="donut-leg-name" title="${a.name}">${a.name}${isGrowth ? ' <span style="font-size:9px;color:var(--text3);">↗</span>' : ''}</span>
+            <span class="donut-leg-name" title="${a.name}">${a.name}${isGrowth ? ' <span style="font-size:9px;color:var(--text3);font-family:var(--font-mono);">&#8599;&#xFE0E;</span>' : ''}</span>
             <span class="donut-leg-pct">${a.pct.toFixed(1)}%</span>
           </div>
           ${subRow}
@@ -1822,7 +1822,7 @@ function renderDonuts(tab) {
 
     return `
       <div class="donut-card">
-        <p class="donut-card-title" onclick="openPortfolioDrill('${tab}',${idx})" style="cursor:pointer;display:flex;align-items:center;gap:6px;">${d.title} <span style="font-size:9px;color:var(--text3);font-family:var(--font-mono);">↗</span></p>
+        <p class="donut-card-title" onclick="openPortfolioDrill('${tab}',${idx})" style="cursor:pointer;display:flex;align-items:center;gap:6px;">${d.title} <span style="font-size:9px;color:var(--text3);font-family:var(--font-mono);">&#8599;&#xFE0E;</span></p>
         <div class="donut-card-body">
           <div class="donut-canvas-wrap">
             <canvas id="dc-${tab}-${idx}"></canvas>
@@ -2319,7 +2319,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
         <td style="text-align:left;">
           <span style="display:inline-flex;align-items:center;gap:5px;">
             <span style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block;"></span>
-            <span style="font-size:${cellFS};color:var(--text);white-space:nowrap;" title="${a.name}">${nameDisplay}&thinsp;<span style="font-size:9px;color:var(--text3);">&#8599;</span></span>
+            <span style="font-size:${cellFS};color:var(--text);white-space:nowrap;" title="${a.name}">${nameDisplay}&thinsp;<span style="font-size:9px;color:var(--text3);font-family:var(--font-mono);">&#8599;&#xFE0E;</span></span>
           </span>
         </td>
         ${!isCash ? `<td style="font-family:var(--font-mono);font-size:${cellFS};color:var(--text2);text-align:right;">${a.cost != null ? mask(fmtMC1(a.cost, currency)) : '<span style="color:var(--text3);">&#8212;</span>'}</td>` : ''}
@@ -2403,7 +2403,8 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
 
 let _portHistory = null, _portActiveM = null, _portIsCash = false, _portCurrency = 'THB', _portChartMode = 'mktval';
 
-function buildPortChart(history, activeM, isCash, mode, currency) {
+async function buildPortChart(history, activeM, isCash, mode, currency) {
+  await ensureFontsReady();
   _portHistory = history; _portActiveM = activeM; _portIsCash = isCash; _portCurrency = currency; _portChartMode = mode;
   if (portChartInst) { portChartInst.destroy(); portChartInst = null; }
 
@@ -2638,7 +2639,8 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
 
 let _drillHistory = null, _drillActiveM = null, _drillColor = null, _drillCurrency = null, _drillIsCash = false, _drillChartMode = 'mktval';
 
-function buildDrillChart(history, activeM, color, currency, mode, isCash) {
+async function buildDrillChart(history, activeM, color, currency, mode, isCash) {
+  await ensureFontsReady();
   _drillHistory  = history;
   _drillActiveM  = activeM;
   _drillColor    = color;
@@ -3523,7 +3525,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.7</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.8</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3578,7 +3580,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.7${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.8${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
@@ -3687,10 +3689,43 @@ document.getElementById('export-btn').addEventListener('click', () => {
   if (inkData && fangData) openExportModal();
 });
 
+// Custom web fonts load async; if Chart.js measures axis label widths before
+// 'DM Mono' has finished loading, iOS Safari can undersize the axis and clip
+// Y-axis tick text. Waiting for fonts.ready (instant if already loaded) avoids it.
+async function ensureFontsReady() {
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+}
+
 async function init() {
+  await ensureFontsReady();
   const ok = await loadData();
   if (ok) renderAll('ink');
 }
+
+// ─── RESUME-FROM-BACKGROUND CANVAS FIX ───────────────────────────────────────
+// Mobile browsers (iOS Safari, Android Chrome) can discard <canvas> GPU
+// contexts when a tab is backgrounded for a while to save memory. On return,
+// the chart canvases come back blank/corrupted and the browser shows its
+// generic broken-image placeholder instead. Re-rendering from the data we
+// already have in memory (no refetch needed) fixes it without a reload.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !inkData || !fangData) return;
+  ensureFontsReady().then(() => {
+    renderAll(currentTab);
+
+    const panel1 = document.getElementById('drill-panel');
+    const panel1Open = panel1 && panel1.style.display !== 'none' && panel1.style.transform !== 'translateY(100%)';
+    if (panel1Open && _portHistory) {
+      buildPortChart(_portHistory, _portActiveM, _portIsCash, _portChartMode, _portCurrency);
+    }
+
+    const panel2 = document.getElementById('drill-panel-2');
+    const panel2Open = panel2 && panel2.style.display !== 'none' && panel2.style.transform !== 'translateY(100%)';
+    if (panel2Open && _drillHistory) {
+      buildDrillChart(_drillHistory, _drillActiveM, _drillColor, _drillCurrency, _drillChartMode, _drillIsCash);
+    }
+  });
+});
 
 // ─── PWA INSTALL PROMPT ───────────────────────────────────────────────────────
 let _installPrompt = null;
