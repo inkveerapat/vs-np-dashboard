@@ -65,7 +65,9 @@
   .page-title { font-size: 28px; font-weight: 300; letter-spacing: -.02em; }
   .page-title strong { font-weight: 500; }
   .page-subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; font-family: var(--font-mono); }
-  .tabs { display: flex; gap: 4px; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+  .tabs { display: flex; gap: 4px; margin-bottom: 28px; border-bottom: 1px solid var(--border); position: sticky; top: var(--topbar-h, 60px); z-index: 9; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); }
+  .sticky-zone { position: relative; }
+  .sticky-bar { position: sticky; top: var(--subbar-stick-top, 100px); z-index: 8; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); padding-top: 10px; margin-left: -2px; margin-right: -2px; padding-left: 2px; padding-right: 2px; }
   .tab { font-size: 13px; font-weight: 400; padding: 8px 18px 10px; background: none; border: none; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; font-family: var(--font-sans); }
   .tab:hover { color: var(--text2); }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
@@ -372,7 +374,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v10.0</p>
+      <p class="gate-version">v10.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -393,7 +395,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v10.0</span>
+      <span class="version-badge">v10.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -434,7 +436,8 @@
       <button class="tab" data-tab="household">Household</button>
     </div>
 
-    <div class="filter-bar" id="filter-bar">
+    <div class="sticky-zone">
+    <div class="filter-bar sticky-bar" id="filter-bar">
       <span class="filter-label">Viewing</span>
       <div class="filter-scroll" id="filter-scroll"></div>
     </div>
@@ -463,13 +466,15 @@
       <div class="chart-tooltip" id="chart-tooltip"></div>
     </div>
     <div class="legend" id="legend"></div>
+    </div><!-- /sticky-zone -->
 
     <div class="donut-section" id="donut-section" style="display:none;">
       <div id="allocation-bar-section" style="margin-bottom:36px;display:none;">
         <p class="donut-section-title">Current Allocation</p>
         <div id="allocation-bar-container"></div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+      <div class="sticky-zone">
+      <div class="sticky-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
         <p class="donut-section-title" style="margin:0;padding:0;border:none;">Asset Allocation Breakdown</p>
         <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;flex:1 1 auto;min-width:0;">
           <div class="filter-bar" id="donut-sort-bar" style="margin:0;flex:0 0 auto;">
@@ -487,7 +492,9 @@
         </div>
       </div>
       <div class="donut-grid" id="donut-grid"></div>
+      </div><!-- /sticky-zone -->
     </div>
+
 
     </div><!-- /page-content -->
 
@@ -539,7 +546,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v10.0';
+const VERSION  = 'v10.1';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -913,6 +920,18 @@ function getHouseholdSliced(fi) {
 }
 
 // LOAD DATA
+function updateStickyOffsets() {
+  const topbar = document.querySelector('.topbar');
+  const tabs   = document.querySelector('.tabs');
+  if (!topbar || !tabs) return;
+  const topbarH = topbar.getBoundingClientRect().height;
+  const tabsH   = tabs.getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--topbar-h', topbarH + 'px');
+  document.documentElement.style.setProperty('--subbar-stick-top', (topbarH + tabsH) + 'px');
+}
+window.addEventListener('resize', updateStickyOffsets);
+window.addEventListener('orientationchange', updateStickyOffsets);
+
 async function loadData() {
   setStatus('loading','Fetching from Google Sheets\u2026');
   const skelEl = document.getElementById('skeleton-screen');
@@ -954,6 +973,8 @@ async function loadData() {
     document.getElementById('chart-loading').style.display = 'none';
     if (skelEl)    skelEl.style.display    = 'none';
     if (contentEl) contentEl.style.display = 'block';
+    updateStickyOffsets();
+    setTimeout(updateStickyOffsets, 250);
     return true;
   } catch(e) {
     setStatus('error','Failed: ' + e.message);
@@ -963,6 +984,7 @@ async function loadData() {
     document.getElementById('chart-loading').style.display = 'none';
     if (skelEl)    skelEl.style.display    = 'none';
     if (contentEl) contentEl.style.display = 'block';
+    updateStickyOffsets();
     return false;
   }
 }
@@ -3609,7 +3631,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v10.0</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v10.1</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3664,7 +3686,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v10.0${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v10.1${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
