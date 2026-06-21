@@ -121,6 +121,7 @@
 
   /* LINE CHART */
   .chart-wrap { position: relative; width: 100%; height: clamp(240px, 38vh, 420px); }
+  .mini-chart-wrap { position: relative; width: 100%; }
   .chart-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; color: var(--text3); }
   .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 18px; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text3); cursor: pointer; padding: 3px 0; transition: color .15s; user-select: none; }
@@ -371,7 +372,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v9.9</p>
+      <p class="gate-version">v10.0</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -392,7 +393,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v9.9</span>
+      <span class="version-badge">v10.0</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -538,7 +539,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v9.9';
+const VERSION  = 'v10.0';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2155,6 +2156,51 @@ function generateUPLSparkline(history, isMobile = false, cutoffMonth = null) {
 }
 
 // ── DRILL-DOWN NAVIGATION ─────────────────────────────────────────────────────
+// GENERIC CROSSHAIR + TOOLTIP FOR DRILL-DOWN MINI CHARTS
+function miniChartTooltip(crosshairId, tooltipId, getChartInst, labelCbRef) {
+  return function(ctx) {
+    const tt = document.getElementById(tooltipId);
+    const xhair = document.getElementById(crosshairId);
+    if (!tt) return;
+    if (ctx.tooltip.opacity === 0) {
+      tt.style.display = 'none';
+      if (xhair) xhair.style.display = 'none';
+      return;
+    }
+    const t = ctx.tooltip;
+    const inst = getChartInst();
+    if (!inst) return;
+    const chartArea = inst.chartArea;
+    const x = t.caretX;
+
+    if (xhair) {
+      if (x >= chartArea.left && x <= chartArea.right) {
+        xhair.style.display = 'block';
+        xhair.style.left    = x + 'px';
+        xhair.style.top     = chartArea.top + 'px';
+        xhair.style.height  = (chartArea.bottom - chartArea.top) + 'px';
+      } else {
+        xhair.style.display = 'none';
+      }
+    }
+
+    const p = t.dataPoints && t.dataPoints[0];
+    if (!p || p.raw === null || p.raw === undefined) { tt.style.display = 'none'; return; }
+    const val = privacyMode ? '••••' : labelCbRef.cb(p.raw);
+    tt.innerHTML = `<div class="tt-month">${t.title[0] || ''}</div><div class="tt-row"><span class="tt-val">${val}</span></div>`;
+    tt.style.display = 'block';
+
+    const wr = tt.parentElement.getBoundingClientRect();
+    const ttW = 160;
+    let l = t.caretX + 14;
+    if (l + ttW > wr.width) l = t.caretX - ttW - 10;
+    tt.style.left = Math.max(0, l) + 'px';
+    tt.style.top  = Math.max(0, t.caretY - 44) + 'px';
+  };
+}
+const _portDrillLabelRef = { cb: v => String(v) };
+const _drillLabelRef = { cb: v => String(v) };
+
 let drillChartInst = null;
 let portChartInst  = null;
 
@@ -2381,7 +2427,13 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
           <button class="filter-pill" id="pchart-uplval" onclick="switchPortChart('uplval')">UPL</button>
         </div>` : ''}
       </div>
-      <canvas id="port-drill-chart" height="120"></canvas>
+      <div style="position:relative;">
+        <div class="mini-chart-wrap">
+          <canvas id="port-drill-chart" height="120"></canvas>
+          <div class="chart-crosshair" id="port-drill-crosshair"></div>
+        </div>
+        <div class="chart-tooltip" id="port-drill-tooltip"></div>
+      </div>
     </div>
 
     <div style="margin-bottom:20px;">
@@ -2437,6 +2489,8 @@ async function buildPortChart(history, activeM, isCash, mode, currency) {
     labelCb = v => fmtMC1(v, currency); yAxisCb = v => fmtAxisNum(v);
   }
 
+  _portDrillLabelRef.cb = labelCb;
+
   const ctx = document.getElementById('port-drill-chart').getContext('2d');
   portChartInst = new Chart(ctx, {
     type: 'line',
@@ -2447,11 +2501,16 @@ async function buildPortChart(history, activeM, isCash, mode, currency) {
         borderWidth: 2, fill: true, tension: 0.3, spanGaps: true,
         pointRadius: history.map(h => h.month === activeM ? 5 : 2),
         pointBackgroundColor: history.map(h => h.month === activeM ? chartColor : chartColor + '99'),
+        pointHoverRadius: 5,
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => privacyMode ? '••••' : labelCb(c.raw) } } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false, external: miniChartTooltip('port-drill-crosshair', 'port-drill-tooltip', () => portChartInst, _portDrillLabelRef) }
+      },
       scales: {
         x: { ticks: { color: '#888', font: { size: 9 }, maxRotation: 45 }, grid: { color: '#ffffff0a' } },
         y: { ticks: { color: '#888', font: { size: 9 }, callback: v => privacyMode ? '••' : yAxisCb(v) }, grid: { color: '#ffffff0a' } }
@@ -2635,7 +2694,13 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
         <div class="drill-chart-title" style="margin:0;">Chart</div>
         ${chartToggleHtml}
       </div>
-      <canvas id="drill-chart" height="120"></canvas>
+      <div style="position:relative;">
+        <div class="mini-chart-wrap">
+          <canvas id="drill-chart" height="120"></canvas>
+          <div class="chart-crosshair" id="drill-chart-crosshair"></div>
+        </div>
+        <div class="chart-tooltip" id="drill-chart-tooltip"></div>
+      </div>
     </div>
     <div>
       <div class="drill-chart-title" style="margin-bottom:10px;">Full History</div>
@@ -2688,6 +2753,8 @@ async function buildDrillChart(history, activeM, color, currency, mode, isCash) 
     yAxisCb    = v => fmtAxisNum(v);
   }
 
+  _drillLabelRef.cb = labelCb;
+
   const ctx = document.getElementById('drill-chart').getContext('2d');
   drillChartInst = new Chart(ctx, {
     type: 'line',
@@ -2700,6 +2767,7 @@ async function buildDrillChart(history, activeM, color, currency, mode, isCash) 
         borderWidth: 2,
         pointRadius: history.map(h => h.month === activeM ? 5 : 2),
         pointBackgroundColor: history.map(h => h.month === activeM ? chartColor : chartColor + '99'),
+        pointHoverRadius: 5,
         fill: true,
         tension: 0.3,
         spanGaps: true,
@@ -2707,9 +2775,11 @@ async function buildDrillChart(history, activeM, color, currency, mode, isCash) 
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: ctx => privacyMode ? '••••' : labelCb(ctx.raw) }
-      }},
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false, external: miniChartTooltip('drill-chart-crosshair', 'drill-chart-tooltip', () => drillChartInst, _drillLabelRef) }
+      },
       scales: {
         x: { ticks: { color: '#888', font: { size: 9 }, maxRotation: 45 }, grid: { color: '#ffffff0a' } },
         y: { ticks: { color: '#888', font: { size: 9 }, callback: yAxisCb }, grid: { color: '#ffffff0a' } }
@@ -3539,7 +3609,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v9.9</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v10.0</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3594,7 +3664,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v9.9${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v10.0${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
