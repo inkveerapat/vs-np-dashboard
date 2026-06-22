@@ -60,7 +60,7 @@
   .refresh-btn .refresh-label { display: inline; }
   .logout-btn { background: none; border: none; color: var(--text3); font-size: 12px; cursor: pointer; font-family: var(--font-mono); letter-spacing: .04em; padding: 0; transition: color .15s; white-space: nowrap; }
   .logout-btn:hover { color: var(--text2); }
-  .main { max-width: 1100px; margin: 0 auto; padding: 36px 32px 64px; width: 100%; }
+  .main { max-width: 1280px; margin: 0 auto; padding: 36px 32px 64px; width: 100%; }
   .page-header { margin-bottom: 40px; }
   .page-title { font-size: 28px; font-weight: 300; letter-spacing: -.02em; }
   .page-title strong { font-weight: 500; }
@@ -168,7 +168,7 @@
   /* DONUT SECTION */
   .donut-section { margin-top: 48px; }
   .donut-section-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-  .donut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+  .donut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; }
   .donut-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 20px 18px; }
   .donut-card-title { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 16px; }
   .donut-card-body { display: flex; align-items: center; gap: 18px; }
@@ -202,6 +202,22 @@
   .donut-leg-upl { font-family: var(--font-mono); font-size: 9px; text-align: right; grid-column: 2; }
   .donut-leg-upl-val { font-size: 8px; opacity: .75; display: block; }
   .donut-empty { font-family: var(--font-mono); font-size: 11px; color: var(--text3); text-align: center; padding: 32px 0; }
+
+  /* DESKTOP: cap donut-grid to 3 columns max, give cards more breathing room */
+  @media (min-width: 1024px) {
+    .donut-grid { grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .donut-card { padding: 26px 26px 24px; }
+    .donut-card-title { font-size: 13px; margin-bottom: 20px; }
+    .donut-card-body { gap: 24px; }
+    .donut-canvas-wrap { width: 120px; height: 120px; }
+    .donut-center { max-width: 64px; }
+    .donut-center-total { font-size: 13px; }
+    .donut-leg-name { max-width: 130px; font-size: 11px; }
+    .donut-leg-pct { min-width: 68px; font-size: 11px; }
+    .donut-leg-main { grid-template-columns: auto 1fr 68px; gap: 7px; }
+    .donut-leg-sub { grid-template-columns: 1fr 68px; }
+    .donut-leg-mv, .donut-leg-upl { font-size: 10px; }
+  }
 
   /* ALLOCATION BAR (compact) */
   .alloc-bar-track { display: flex; height: 6px; border-radius: 99px; overflow: hidden; background: var(--surface2); margin-bottom: 10px; }
@@ -374,7 +390,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v10.3</p>
+      <p class="gate-version">v10.4</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -395,7 +411,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v10.3</span>
+      <span class="version-badge">v10.4</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -546,7 +562,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v10.3';
+const VERSION  = 'v10.4';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3643,7 +3659,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v10.3</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v10.4</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3698,7 +3714,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v10.3${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v10.4${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
