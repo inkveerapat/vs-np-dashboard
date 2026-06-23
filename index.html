@@ -65,25 +65,14 @@
   .page-title { font-size: 28px; font-weight: 300; letter-spacing: -.02em; }
   .page-title strong { font-weight: 500; }
   .page-subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; font-family: var(--font-mono); }
-  .tabs { display: flex; gap: 4px; margin-bottom: 28px; border-bottom: 1px solid var(--border); position: sticky; top: var(--topbar-h, 60px); z-index: 9; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); transition: box-shadow .15s, border-color .15s; }
-  .sticky-sentinel { height: 1px; }
-  .tabs.is-stuck { border-bottom-color: var(--border2); box-shadow: 0 6px 14px -6px rgba(0,0,0,0.45); }
-  .sticky-bar.is-stuck { box-shadow: 0 6px 14px -6px rgba(0,0,0,0.45); }
-  #filter-bar.is-stuck { border-bottom: 1px solid var(--border2); }
-  #donut-sticky-bar.is-stuck { border-bottom-color: var(--border2) !important; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 28px; border-bottom: 1px solid var(--border); position: sticky; top: var(--topbar-h, 60px); z-index: 9; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); }
   .sticky-zone { position: relative; }
-  .sticky-bar { position: sticky; top: var(--subbar-stick-top, 100px); z-index: 8; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); padding-top: 10px; padding-bottom: 10px; margin-left: -2px; margin-right: -2px; padding-left: 2px; padding-right: 2px; transition: box-shadow .15s; }
+  .sticky-bar { position: sticky; top: var(--subbar-stick-top, 100px); z-index: 8; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); padding-top: 10px; padding-bottom: 10px; margin-left: -2px; margin-right: -2px; padding-left: 2px; padding-right: 2px; }
   .tab { font-size: 13px; font-weight: 400; padding: 8px 18px 10px; background: none; border: none; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; font-family: var(--font-sans); }
   .tab:hover { color: var(--text2); }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
 
   /* METRIC CARDS */
-  .metric-headline { text-align: center; padding: 14px 0 18px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-  .metric-headline-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
-  .metric-headline-val { font-family: var(--font-mono); font-weight: 500; color: var(--text); line-height: 1.1; font-size: clamp(26px, 5vw, 38px); letter-spacing: -.02em; }
-  .metric-headline-sub { font-family: var(--font-mono); font-size: 12px; margin-top: 5px; color: var(--text3); }
-  .metric-headline-sub.pos { color: var(--green); }
-  .metric-headline-sub.neg { color: var(--red); }
   .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 32px; }
   .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
   .metric-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); font-family: var(--font-mono); margin-bottom: 6px; }
@@ -120,9 +109,7 @@
   .goal-card-mom.pos { color: var(--green); }
   .goal-card-mom.neg { color: var(--red); }
   .goal-card-mom.flat { color: var(--text3); }
-  .goal-card--condo { border-color: rgba(240,180,41,0.3); background: linear-gradient(180deg, rgba(240,180,41,0.05), var(--surface) 60%); }
-  .goal-card--condo .goal-card-title { color: var(--amber); }
-  .goal-pill { display: inline-block; font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--amber); background: rgba(240,180,41,0.12); border: 1px solid rgba(240,180,41,0.3); border-radius: 99px; padding: 2px 7px; margin-left: 7px; vertical-align: middle; }
+  .goal-card--condo { }
   .condo-detail-row { display: flex; gap: 8px; margin-top: 4px; }
   .condo-detail-item { flex: 1; background: var(--surface2); border-radius: var(--radius); padding: 8px 10px; min-width: 0; }
   .condo-detail-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); display: block; margin-bottom: 3px; }
@@ -283,7 +270,6 @@
     .tabs { gap: 0; }
     .tab { flex: 1; text-align: center; padding: 8px 6px 10px; font-size: 12px; }
 
-    .metric-headline { padding: 10px 0 14px; margin-bottom: 16px; }
     .metric-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
     .metric-card { padding: 12px 12px; }
     .metric-val { font-size: 16px; }
@@ -405,7 +391,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v10.9</p>
+      <p class="gate-version">v10.8</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -426,7 +412,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v10.9</span>
+      <span class="version-badge">v10.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -461,21 +447,18 @@
       <p class="page-subtitle" id="data-range">Loading data&hellip;</p>
     </div>
 
-    <div class="sticky-sentinel" id="tabs-sentinel"></div>
-    <div class="tabs" id="tabs-bar">
+    <div class="tabs">
       <button class="tab active" data-tab="ink">Ink</button>
       <button class="tab" data-tab="fang">Fang</button>
       <button class="tab" data-tab="household">Household</button>
     </div>
 
     <div class="sticky-zone">
-    <div class="sticky-sentinel" id="filter-bar-sentinel"></div>
     <div class="filter-bar sticky-bar" id="filter-bar">
       <span class="filter-label">Viewing</span>
       <div class="filter-scroll" id="filter-scroll"></div>
     </div>
 
-    <div id="metric-headline" class="metric-headline"></div>
     <div id="metric-grid" class="metric-grid"></div>
     <div class="error-box" id="error-box"></div>
 
@@ -508,8 +491,7 @@
         <div id="allocation-bar-container"></div>
       </div>
       <div class="sticky-zone">
-      <div class="sticky-sentinel" id="donut-bar-sentinel"></div>
-      <div class="sticky-bar" id="donut-sticky-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+      <div class="sticky-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
         <p class="donut-section-title" style="margin:0;padding:0;border:none;">Asset Allocation Breakdown</p>
         <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;flex:1 1 auto;min-width:0;">
           <div class="filter-bar" id="donut-sort-bar" style="margin:0;flex:0 0 auto;">
@@ -581,7 +563,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v10.9';
+const VERSION  = 'v10.8';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -967,50 +949,6 @@ function updateStickyOffsets() {
 window.addEventListener('resize', updateStickyOffsets);
 window.addEventListener('orientationchange', updateStickyOffsets);
 
-let _stickyObserversSetUp = false;
-function setupStickyObservers() {
-  if (_stickyObserversSetUp) return;
-  const pairs = [
-    ['tabs-sentinel',      'tabs-bar'],
-    ['filter-bar-sentinel','filter-bar'],
-    ['donut-bar-sentinel', 'donut-sticky-bar'],
-  ];
-  pairs.forEach(([sentinelId, barId]) => {
-    const sentinel = document.getElementById(sentinelId);
-    const bar      = document.getElementById(barId);
-    if (!sentinel || !bar) return;
-    const obs = new IntersectionObserver(([entry]) => {
-      const stuck = !entry.isIntersecting && entry.boundingClientRect.top < 0;
-      bar.classList.toggle('is-stuck', stuck);
-    }, { threshold: 0 });
-    obs.observe(sentinel);
-  });
-  _stickyObserversSetUp = true;
-}
-
-// Animate a numeric value in-place (e.g. $842,300 -> $591,200) using a raw number + formatter.
-// Falls back to an instant text swap when privacy mode is on, or no prior value exists yet.
-const _reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-function animateMetricValue(el, raw, formatFn) {
-  if (!el) return;
-  const prevRaw = el.dataset.raw !== undefined ? parseFloat(el.dataset.raw) : null;
-  el.dataset.raw = raw;
-  if (privacyMode || _reducedMotion || prevRaw === null || !isFinite(prevRaw) || prevRaw === raw) {
-    el.textContent = formatFn(raw);
-    return;
-  }
-  const start = performance.now();
-  const duration = 220;
-  function step(now) {
-    const p = Math.min(1, (now - start) / duration);
-    const eased = 1 - Math.pow(1 - p, 3);
-    const val = prevRaw + (raw - prevRaw) * eased;
-    el.textContent = formatFn(val);
-    if (p < 1) requestAnimationFrame(step);
-  }
-  requestAnimationFrame(step);
-}
-
 async function loadData() {
   setStatus('loading','Fetching from Google Sheets\u2026');
   const skelEl = document.getElementById('skeleton-screen');
@@ -1053,7 +991,6 @@ async function loadData() {
     if (skelEl)    skelEl.style.display    = 'none';
     if (contentEl) contentEl.style.display = 'block';
     updateStickyOffsets();
-    setupStickyObservers();
     setTimeout(updateStickyOffsets, 250);
     return true;
   } catch(e) {
@@ -1065,7 +1002,6 @@ async function loadData() {
     if (skelEl)    skelEl.style.display    = 'none';
     if (contentEl) contentEl.style.display = 'block';
     updateStickyOffsets();
-    setupStickyObservers();
     return false;
   }
 }
@@ -1336,7 +1272,7 @@ function renderGoals(tab) {
       return `
         <div class="goal-card goal-card--condo">
           <div class="goal-card-header">
-            <span class="goal-card-title">KNB107 Condo Loan Payoff<span class="goal-pill">Target</span></span>
+            <span class="goal-card-title">KNB107 Condo Loan Payoff</span>
             <span class="goal-card-icon">&#127968;</span>
           </div>
           <div class="goal-card-current" style="font-size:18px;color:var(--text3);">No data</div>
@@ -1355,7 +1291,7 @@ function renderGoals(tab) {
     return `
       <div class="goal-card goal-card--condo">
         <div class="goal-card-header">
-          <span class="goal-card-title">KNB107 Condo Loan Payoff<span class="goal-pill">Target</span></span>
+          <span class="goal-card-title">KNB107 Condo Loan Payoff</span>
           <span class="goal-card-icon">&#127968;</span>
         </div>
         <div class="goal-card-current">${pct.toFixed(1)}%</div>
@@ -1447,9 +1383,9 @@ function renderMetrics(tab) {
       : '—';
     const ytdCls = ytd ? (ytd.diff >= 0 ? 'pos' : 'neg') : '';
     return [
-      {label:'Current net worth', val:mask(fmtM(last)),          sub:mom+' MoM',                         cls:parseFloat(mom)>=0?'pos':'neg', raw:last},
+      {label:'Current net worth', val:mask(fmtM(last)),          sub:mom+' MoM',                         cls:parseFloat(mom)>=0?'pos':'neg'},
       {label:'All-time growth',   val:fmtPct(last,first),        sub:'Since '+d.firstLabel,               cls:''},
-      {label:'Peak',              val:mask(fmtM(peak)),          sub:d.months[d.totals.indexOf(peak)],    cls:'', raw:peak},
+      {label:'Peak',              val:mask(fmtM(peak)),          sub:d.months[d.totals.indexOf(peak)],    cls:''},
       {label: ytd ? ytd.label : 'YTD', val: ytd ? mask(ytdVal) : '—', sub: ytd ? 'vs '+mask(fmtM(ytd.janVal))+' Jan' : 'No Jan in range', cls: ytdCls},
     ];
   }
@@ -1487,36 +1423,15 @@ function renderMetrics(tab) {
       ? (hhYtd.diff >= 0 ? '+' : '') + fmtM(hhYtd.diff) + ' (' + (hhYtd.pct >= 0 ? '+' : '') + hhYtd.pct.toFixed(1) + '%)'
       : '—';
     cards=[
-      {label:'Household net worth', val:mask(fmtM(tot)),                       sub:mom+' MoM',             cls:parseFloat(mom)>=0?'pos':'neg', raw:tot},
+      {label:'Household net worth', val:mask(fmtM(tot)),                       sub:mom+' MoM',             cls:parseFloat(mom)>=0?'pos':'neg'},
       {label:"Ink's share",         val:tot>0?(iL/tot*100).toFixed(0)+'%':'—', sub:mask(fmtM(iL)),         cls:''},
       {label:"Fang's share",        val:tot>0?(fL/tot*100).toFixed(0)+'%':'—', sub:mask(fmtM(fL)),         cls:''},
       {label: hhYtd ? hhYtd.label : 'YTD', val: hhYtd ? mask(hhYtdVal) : '—', sub: hhYtd ? 'vs '+mask(fmtM(hhYtd.janVal))+' Jan' : 'No Jan in range', cls: hhYtd ? (hhYtd.diff >= 0 ? 'pos' : 'neg') : ''},
     ];
   }
-  const headline = cards[0];
-  const gridCards = cards.slice(1);
-
-  if (headline.raw !== undefined && !privacyMode) {
-    document.getElementById('metric-headline').innerHTML =
-      `<p class="metric-headline-label">${headline.label}</p>` +
-      `<p class="metric-headline-val"></p>` +
-      `<p class="metric-headline-sub ${headline.cls}">${headline.sub}</p>`;
-    animateMetricValue(document.querySelector('#metric-headline .metric-headline-val'), headline.raw, v => fmtM(v));
-  } else {
-    document.getElementById('metric-headline').innerHTML =
-      `<p class="metric-headline-label">${headline.label}</p>` +
-      `<p class="metric-headline-val">${headline.val}</p>` +
-      `<p class="metric-headline-sub ${headline.cls}">${headline.sub}</p>`;
-  }
-
-  document.getElementById('metric-grid').innerHTML = gridCards.map((c, i) =>
-    `<div class="metric-card"><p class="metric-label">${c.label}</p><p class="metric-val" data-card-i="${i}">${c.raw !== undefined && !privacyMode ? '' : c.val}</p><p class="metric-sub ${c.cls}">${c.sub}</p></div>`
+  document.getElementById('metric-grid').innerHTML = cards.map(c =>
+    `<div class="metric-card"><p class="metric-label">${c.label}</p><p class="metric-val">${c.val}</p><p class="metric-sub ${c.cls}">${c.sub}</p></div>`
   ).join('');
-  gridCards.forEach((c, i) => {
-    if (c.raw !== undefined && !privacyMode) {
-      animateMetricValue(document.querySelector(`#metric-grid [data-card-i="${i}"]`), c.raw, v => fmtM(v));
-    }
-  });
 }
 
 function renderDataRange(tab) {
@@ -3399,9 +3314,9 @@ function buildSummaryCard(tab, maskVals) {
     condoSection = `
       <div style="margin-bottom:24px;">
         <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">KNB107 Condo Loan Payoff · ${c.label}</p>
-        <div style="background:linear-gradient(180deg, rgba(240,180,41,0.05), #161616 60%);border:1px solid rgba(240,180,41,0.3);border-radius:10px;padding:16px 18px;">
+        <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
-            <span style="font-size:12px;font-weight:500;color:#f0b429;">Payoff Progress<span style="display:inline-block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#f0b429;background:rgba(240,180,41,0.12);border:1px solid rgba(240,180,41,0.3);border-radius:99px;padding:2px 7px;margin-left:7px;vertical-align:middle;">Target</span></span>
+            <span style="font-size:12px;font-weight:500;color:#f0efe8;">Payoff Progress</span>
             <span style="font-size:20px;font-family:'DM Mono',monospace;font-weight:500;color:${col};">${pct.toFixed(1)}%</span>
           </div>
           <div style="display:flex;gap:8px;margin-bottom:14px;">
@@ -3752,21 +3667,14 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v10.9</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v10.8</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
 
-    <!-- Headline metric -->
-    <div style="text-align:center;padding:16px 0 20px;border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:20px;">
-      <p style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;font-family:'DM Mono',monospace;margin-bottom:7px;">${metricRows[0].label}</p>
-      <p style="font-size:34px;font-weight:500;color:#f0efe8;font-family:'DM Mono',monospace;letter-spacing:-.02em;margin:0;line-height:1.1;">${metricRows[0].val}</p>
-      <p style="font-size:12px;font-family:'DM Mono',monospace;color:${metricRows[0].pos === true ? '#5ce0a8' : metricRows[0].pos === false ? '#f06b6b' : '#555450'};margin-top:5px;">${metricRows[0].sub}</p>
-    </div>
-
     <!-- Metrics -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px;">
-      ${metricRows.slice(1).map(c => `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;">
+      ${metricRows.map(c => `
         <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;">
           <p style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;font-family:'DM Mono',monospace;margin-bottom:5px;">${c.label}</p>
           <p style="font-size:19px;font-weight:500;color:#f0efe8;font-family:'DM Mono',monospace;letter-spacing:-.02em;margin-bottom:2px;">${c.val}</p>
@@ -3814,7 +3722,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v10.9${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v10.8${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
