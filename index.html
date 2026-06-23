@@ -20,7 +20,7 @@
   :root {
     --bg: #0d0d0d; --surface: #161616; --surface2: #1e1e1e;
     --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
-    --text: #f0efe8; --text2: #888780; --text3: #555450;
+    --text: #f0efe8; --text2: #a3a299; --text3: #555450;
     --accent: #c8f542; --green: #5ce0a8; --red: #f06b6b; --amber: #f0b429;
     --font-sans: 'DM Sans', sans-serif; --font-mono: 'DM Mono', monospace;
     --radius: 8px; --radius-lg: 12px;
@@ -67,7 +67,7 @@
   .page-subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; font-family: var(--font-mono); }
   .tabs { display: flex; gap: 4px; margin-bottom: 28px; border-bottom: 1px solid var(--border); position: sticky; top: var(--topbar-h, 60px); z-index: 9; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); }
   .sticky-zone { position: relative; }
-  .sticky-bar { position: sticky; top: var(--subbar-stick-top, 100px); z-index: 8; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); padding-top: 10px; padding-bottom: 10px; margin-left: -2px; margin-right: -2px; padding-left: 2px; padding-right: 2px; }
+  .sticky-bar { position: sticky; top: var(--subbar-stick-top, 100px); z-index: 8; background: rgba(20,20,20,0.97); border-top: 1px solid var(--border2); backdrop-filter: blur(8px); padding-top: 10px; padding-bottom: 10px; margin-left: -2px; margin-right: -2px; padding-left: 2px; padding-right: 2px; }
   .tab { font-size: 13px; font-weight: 400; padding: 8px 18px 10px; background: none; border: none; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; font-family: var(--font-sans); }
   .tab:hover { color: var(--text2); }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
@@ -391,7 +391,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v10.9</p>
+      <p class="gate-version">v11.0</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -412,7 +412,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v10.9</span>
+      <span class="version-badge">v11.0</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -564,7 +564,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v10.9';
+const VERSION  = 'v11.0';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1077,7 +1077,7 @@ function getLatestValues(d, config) {
 
 function goalColor(pct) {
   if (pct >= 100) return '#5ce0a8';
-  if (pct >= 60)  return '#c8f542';
+  if (pct >= 60)  return '#8fdcb6';
   if (pct >= 30)  return '#f0b429';
   return '#f06b6b';
 }
@@ -3668,7 +3668,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v10.9</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v11.0</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3723,7 +3723,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v10.9${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v11.0${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
