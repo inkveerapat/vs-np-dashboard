@@ -65,11 +65,11 @@
   .page-title { font-size: 28px; font-weight: 300; letter-spacing: -.02em; }
   .page-title strong { font-weight: 500; }
   .page-subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; font-family: var(--font-mono); }
-  .tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--border); position: sticky; top: var(--topbar-h, 60px); z-index: 9; background: rgba(18,18,18,0.97); backdrop-filter: blur(8px); transition: border-color .15s, box-shadow .15s; }
-  .tabs.stuck { border-bottom-color: var(--border2); box-shadow: 0 1px 0 rgba(255,255,255,0.06); }
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--border); position: sticky; top: var(--topbar-h, 60px); z-index: 9; background: var(--bg); transition: background .15s, border-color .15s, box-shadow .15s; }
+  .tabs.stuck { background: rgba(18,18,18,0.97); backdrop-filter: blur(8px); border-bottom-color: var(--border2); box-shadow: 0 4px 10px rgba(0,0,0,0.35); }
   .sticky-zone { position: relative; }
-  .sticky-bar { position: sticky; top: var(--subbar-stick-top, 100px); z-index: 8; background: rgba(27,27,27,0.97); backdrop-filter: blur(8px); transition: box-shadow .15s; padding-top: 10px; padding-bottom: 10px; margin-left: -2px; margin-right: -2px; padding-left: 2px; padding-right: 2px; }
-  .sticky-bar.stuck { box-shadow: 0 1px 0 rgba(255,255,255,0.05); }
+  .sticky-bar { position: sticky; top: var(--subbar-stick-top, 100px); z-index: 8; background: var(--bg); transition: background .15s, box-shadow .15s; padding-top: 10px; padding-bottom: 10px; margin-left: -2px; margin-right: -2px; padding-left: 2px; padding-right: 2px; }
+  .sticky-bar.stuck { background: rgba(27,27,27,0.97); backdrop-filter: blur(8px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); }
   .tab { font-size: 13px; font-weight: 400; padding: 8px 18px 10px; background: none; border: none; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; font-family: var(--font-sans); }
   .tab:hover { color: var(--text2); }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
@@ -394,7 +394,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v11.3</p>
+      <p class="gate-version">v11.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -415,7 +415,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v11.3</span>
+      <span class="version-badge">v11.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -567,7 +567,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v11.3';
+const VERSION  = 'v11.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -941,6 +941,33 @@ function getHouseholdSliced(fi) {
 }
 
 // LOAD DATA
+function getOrCreateSentinel(el) {
+  let sentinel = el.previousElementSibling;
+  if (!sentinel || !sentinel.classList || !sentinel.classList.contains('sticky-sentinel')) {
+    sentinel = document.createElement('div');
+    sentinel.className = 'sticky-sentinel';
+    sentinel.style.cssText = 'position:relative;height:1px;margin-bottom:-1px;pointer-events:none;';
+    el.parentNode.insertBefore(sentinel, el);
+  }
+  return sentinel;
+}
+
+let stickyObservers = [];
+function setupStuckObservers() {
+  stickyObservers.forEach(o => o.disconnect());
+  stickyObservers = [];
+  document.querySelectorAll('.tabs, .sticky-bar').forEach(el => {
+    const offset = parseFloat(getComputedStyle(el).top) || 0;
+    const sentinel = getOrCreateSentinel(el);
+    const observer = new IntersectionObserver(
+      ([entry]) => { el.classList.toggle('stuck', !entry.isIntersecting); },
+      { rootMargin: `-${Math.max(offset, 0)}px 0px 0px 0px`, threshold: 0 }
+    );
+    observer.observe(sentinel);
+    stickyObservers.push(observer);
+  });
+}
+
 function updateStickyOffsets() {
   const topbar = document.querySelector('.topbar');
   const tabs   = document.querySelector('.tabs');
@@ -949,26 +976,9 @@ function updateStickyOffsets() {
   const tabsH   = tabs.getBoundingClientRect().height;
   document.documentElement.style.setProperty('--topbar-h', topbarH + 'px');
   document.documentElement.style.setProperty('--subbar-stick-top', (topbarH + tabsH) + 'px');
-  updateStuckStates();
+  setupStuckObservers();
 }
 window.addEventListener('resize', updateStickyOffsets);
-
-// Toggle .stuck on .tabs / .sticky-bar only while they're actively pinned
-// (position:sticky elements report their CSS "top" value as their viewport
-// top once stuck, vs. their natural offset otherwise).
-function updateStuckStates() {
-  document.querySelectorAll('.tabs, .sticky-bar').forEach(el => {
-    const cssTop = parseFloat(getComputedStyle(el).top) || 0;
-    const isStuck = el.getBoundingClientRect().top <= cssTop + 1;
-    el.classList.toggle('stuck', isStuck);
-  });
-}
-let stuckRAF = null;
-window.addEventListener('scroll', () => {
-  if (stuckRAF) return;
-  stuckRAF = requestAnimationFrame(() => { updateStuckStates(); stuckRAF = null; });
-}, { passive: true });
-window.addEventListener('resize', updateStuckStates);
 window.addEventListener('orientationchange', updateStickyOffsets);
 
 async function loadData() {
@@ -3689,7 +3699,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v11.3</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v11.5</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3744,7 +3754,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v11.3${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v11.5${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
