@@ -394,7 +394,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v11.5</p>
+      <p class="gate-version">v11.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -415,7 +415,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v11.5</span>
+      <span class="version-badge">v11.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -567,7 +567,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v11.5';
+const VERSION  = 'v11.6';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2266,7 +2266,14 @@ function miniChartTooltip(crosshairId, tooltipId, getChartInst, labelCbRef) {
 
     const p = t.dataPoints && t.dataPoints[0];
     if (!p || p.raw === null || p.raw === undefined) { tt.style.display = 'none'; return; }
-    const val = privacyMode ? '••••' : labelCbRef.cb(p.raw);
+    const out = labelCbRef.cb(p.raw, p.dataIndex);
+    let val;
+    if (out && typeof out === 'object') {
+      const secondary = out.secondary != null ? (privacyMode ? '••••' : out.secondary) : null;
+      val = secondary != null ? `${out.main} (${secondary})` : out.main;
+    } else {
+      val = privacyMode ? '••••' : out;
+    }
     tt.innerHTML = `<div class="tt-month">${t.title[0] || ''}</div><div class="tt-row"><span class="tt-val">${val}</span></div>`;
     tt.style.display = 'block';
 
@@ -2504,7 +2511,6 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
           <button class="filter-pill active" id="pchart-mktval" onclick="switchPortChart('mktval')">Mkt Val</button>
           <button class="filter-pill" id="pchart-cost"   onclick="switchPortChart('cost')">Cost</button>
           <button class="filter-pill" id="pchart-uplpct" onclick="switchPortChart('uplpct')">UPL%</button>
-          <button class="filter-pill" id="pchart-uplval" onclick="switchPortChart('uplval')">UPL</button>
         </div>` : ''}
       </div>
       <div style="position:relative;">
@@ -2564,10 +2570,13 @@ async function buildPortChart(history, activeM, isCash, mode, currency) {
     labelCb = v => fmtMC1(v, currency); yAxisCb = v => fmtAxisNum(v);
   } else if (mode === 'uplpct') {
     data = history.map(h => h.upl != null && (h.value - h.upl) > 0 ? parseFloat((h.upl/(h.value-h.upl)*100).toFixed(2)) : null);
-    chartColor = '#a78bfa'; labelCb = v => (v>=0?'+':'')+v+'%'; yAxisCb = v => v+'%';
-  } else if (mode === 'uplval') {
-    data = history.map(h => h.upl); chartColor = '#f472b6';
-    labelCb = v => (v>=0?'+':'')+fmtMC1(v, currency); yAxisCb = v => fmtAxisNum(v);
+    const uplDollar = history.map(h => h.upl);
+    chartColor = '#a78bfa';
+    labelCb = (v, i) => ({
+      main: (v>=0?'+':'')+v+'%',
+      secondary: uplDollar[i] != null ? (uplDollar[i]>=0?'+':'-')+fmtMC1(Math.abs(uplDollar[i]), currency) : null
+    });
+    yAxisCb = v => v+'%';
   } else {
     data = history.map(h => h.value); chartColor = '#c8f542';
     labelCb = v => fmtMC1(v, currency); yAxisCb = v => fmtAxisNum(v);
@@ -2605,7 +2614,7 @@ async function buildPortChart(history, activeM, isCash, mode, currency) {
 }
 
 function switchPortChart(mode) {
-  ['mktval','cost','uplpct','uplval'].forEach(m => {
+  ['mktval','cost','uplpct'].forEach(m => {
     const el = document.getElementById('pchart-' + m);
     if (el) el.classList.toggle('active', m === mode);
   });
@@ -2732,7 +2741,6 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
       <button class="filter-pill active" id="dchart-mktval"  onclick="switchDrillChart('mktval')">Market Value</button>
       <button class="filter-pill"        id="dchart-cost"    onclick="switchDrillChart('cost')">Cost</button>
       <button class="filter-pill"        id="dchart-uplpct"  onclick="switchDrillChart('uplpct')">UPL%</button>
-      <button class="filter-pill"        id="dchart-uplval"  onclick="switchDrillChart('uplval')">UPL</button>
     </div>`;
 
   // ── History table ──────────────────────────────────────────────────────────
@@ -2827,14 +2835,13 @@ async function buildDrillChart(history, activeM, color, currency, mode, isCash) 
     yAxisCb    = v => fmtAxisNum(v);
   } else if (mode === 'uplpct') {
     data       = history.map(h => h.upl != null && (h.value - h.upl) > 0 ? parseFloat((h.upl/(h.value-h.upl)*100).toFixed(2)) : null);
+    const uplDollar = history.map(h => h.upl);
     chartColor = '#a78bfa';
-    labelCb    = v => (v >= 0 ? '+' : '') + v + '%';
+    labelCb    = (v, i) => ({
+      main: (v >= 0 ? '+' : '') + v + '%',
+      secondary: uplDollar[i] != null ? (uplDollar[i]>=0?'+':'-')+fmtMC1(Math.abs(uplDollar[i]), currency) : null
+    });
     yAxisCb    = v => v + '%';
-  } else if (mode === 'uplval') {
-    data       = history.map(h => h.upl);
-    chartColor = '#f472b6';
-    labelCb    = v => (v >= 0 ? '+' : '') + fmtMC1(v, currency);
-    yAxisCb    = v => fmtAxisNum(v);
   } else { // mktval default
     data       = history.map(h => h.value);
     chartColor = color;
@@ -2880,7 +2887,7 @@ async function buildDrillChart(history, activeM, color, currency, mode, isCash) 
 
 function switchDrillChart(mode) {
   if (_drillIsCash) return;
-  ['mktval','cost','uplpct','uplval'].forEach(m => {
+  ['mktval','cost','uplpct'].forEach(m => {
     const el = document.getElementById('dchart-' + m);
     if (el) el.classList.toggle('active', m === mode);
   });
@@ -2948,7 +2955,7 @@ function buildDrillExportCard(maskVals) {
   const snapHtml = snapRows.map(([l,v]) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="font-size:12px;color:#888780;">${l}</span><span style="font-family:'DM Mono',monospace;font-size:12px;color:#f0efe8;">${v}</span></div>`).join('');
 
   const drillChartUrl = captureCanvas(document.getElementById('drill-chart'));
-  const chartModeLabels = { mktval: 'Market Value', cost: 'Cost', uplpct: 'Unrealised P/L %', uplval: 'Unrealised P/L' };
+  const chartModeLabels = { mktval: 'Market Value', cost: 'Cost', uplpct: 'Unrealised P/L %' };
   const drillChartLabel = chartModeLabels[_drillChartMode] || 'Chart';
   const chartSec = drillChartUrl ? `<div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Chart · ${drillChartLabel}</p><div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;"><img src="${drillChartUrl}" style="width:100%;display:block;border-radius:6px;"/></div></div>` : '';
 
@@ -3075,7 +3082,7 @@ function buildPortfolioDrillExportCard(maskVals) {
   }).filter(Boolean);
 
   const portChartUrl = captureCanvas(document.getElementById('port-drill-chart'));
-  const portChartModeLabels = { mktval: 'Market Value', cost: 'Cost', uplpct: 'Unrealised P/L %', uplval: 'Unrealised P/L' };
+  const portChartModeLabels = { mktval: 'Market Value', cost: 'Cost', uplpct: 'Unrealised P/L %' };
   const portChartLabel = portChartModeLabels[_portChartMode] || 'Portfolio Value';
   const chartSec = portChartUrl ? `<div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Portfolio Value · ${portChartLabel}</p><div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;"><img src="${portChartUrl}" style="width:100%;display:block;border-radius:6px;"/></div></div>` : '';
 
@@ -3699,7 +3706,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v11.5</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v11.6</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3754,7 +3761,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v11.5${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v11.6${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
