@@ -405,7 +405,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v12.5</p>
+      <p class="gate-version">v12.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -426,7 +426,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v12.5</span>
+      <span class="version-badge">v12.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -578,7 +578,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v12.5';
+const VERSION  = 'v12.6';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1490,9 +1490,17 @@ function renderMetrics(tab) {
     const iP=inkS.totals[inkS.totals.length-2]??iL;
     const fP=fangS.totals.length>1 ? fangS.totals[fangS.totals.length-2] : fL;
     const mom=fmtPct(tot,iP+fP);
-    const momInk=fmtPct(iL,iP), momFang=fmtPct(fL,fP);
-    const momInkCls  = momInk==='—'  ? '' : (parseFloat(momInk)>=0  ? 'pos' : 'neg');
-    const momFangCls = momFang==='—' ? '' : (parseFloat(momFang)>=0 ? 'pos' : 'neg');
+    // Share MoM: relative change in each person's *share* of household net worth
+    // (not their own $ growth) — e.g. share went 25.6% -> 27.4% is a +7.0% MoM shift.
+    const prevTot = iP+fP;
+    const shareInkNow   = tot>0     ? iL/tot     : null;
+    const shareFangNow  = tot>0     ? fL/tot     : null;
+    const shareInkPrev  = prevTot>0 ? iP/prevTot : null;
+    const shareFangPrev = prevTot>0 ? fP/prevTot : null;
+    const momShareInk  = (shareInkNow!=null  && shareInkPrev!=null)  ? fmtPct(shareInkNow,  shareInkPrev)  : '—';
+    const momShareFang = (shareFangNow!=null && shareFangPrev!=null) ? fmtPct(shareFangNow, shareFangPrev) : '—';
+    const momShareInkColor  = momShareInk==='—'  ? 'inherit' : (parseFloat(momShareInk)>=0  ? 'var(--green)' : 'var(--red)');
+    const momShareFangColor = momShareFang==='—' ? 'inherit' : (parseFloat(momShareFang)>=0 ? 'var(--green)' : 'var(--red)');
     // Household YTD: combine ink + fang totals aligned by month
     const inkJan = calcYTD(inkS.months, inkS.totals);
     const fangStart = inkS.months.indexOf(fangS.months[0]);
@@ -1518,8 +1526,8 @@ function renderMetrics(tab) {
       : '—';
     cards=[
       {label:'Household net worth', val:mask(fmtM(tot)),                       sub:mom+' MoM',             cls:parseFloat(mom)>=0?'pos':'neg'},
-      {label:"Ink's share",         val:tot>0?(iL/tot*100).toFixed(0)+'%':'—', sub:mask(fmtM(iL))+' · '+momInk+' MoM',  cls:momInkCls},
-      {label:"Fang's share",        val:tot>0?(fL/tot*100).toFixed(0)+'%':'—', sub:mask(fmtM(fL))+' · '+momFang+' MoM', cls:momFangCls},
+      {label:"Ink's share",         val:tot>0?(iL/tot*100).toFixed(1)+'%':'—', sub:mask(fmtM(iL))+' · <span style="color:'+momShareInkColor+'">'+momShareInk+' MoM</span>',   cls:''},
+      {label:"Fang's share",        val:tot>0?(fL/tot*100).toFixed(1)+'%':'—', sub:mask(fmtM(fL))+' · <span style="color:'+momShareFangColor+'">'+momShareFang+' MoM</span>', cls:''},
       {label: hhYtd ? hhYtd.label : 'YTD', val: hhYtd ? mask(hhYtdVal) : '—', sub: hhYtd ? 'vs '+mask(fmtM(hhYtd.janVal))+' Jan' : 'No Jan in range', cls: hhYtd ? (hhYtd.diff >= 0 ? 'pos' : 'neg') : ''},
     ];
   }
@@ -3603,7 +3611,16 @@ function buildSummaryCard(tab, maskVals) {
     const iP = inkS.totals[inkS.totals.length-2] ?? iL;
     const fP = fangS.totals.length > 1 ? fangS.totals[fangS.totals.length-2] : fL;
     const mom = fmtPct(tot, iP + fP);
-    const momInk = fmtPct(iL, iP), momFang = fmtPct(fL, fP);
+    // Share MoM: relative change in each person's *share*, not their own $ growth
+    const prevTot = iP + fP;
+    const shareInkNow   = tot>0     ? iL/tot     : null;
+    const shareFangNow  = tot>0     ? fL/tot     : null;
+    const shareInkPrev  = prevTot>0 ? iP/prevTot : null;
+    const shareFangPrev = prevTot>0 ? fP/prevTot : null;
+    const momShareInk  = (shareInkNow!=null  && shareInkPrev!=null)  ? fmtPct(shareInkNow,  shareInkPrev)  : '—';
+    const momShareFang = (shareFangNow!=null && shareFangPrev!=null) ? fmtPct(shareFangNow, shareFangPrev) : '—';
+    const momShareInkColor  = momShareInk==='—'  ? '#555450' : (parseFloat(momShareInk)>=0  ? '#5ce0a8' : '#f06b6b');
+    const momShareFangColor = momShareFang==='—' ? '#555450' : (parseFloat(momShareFang)>=0 ? '#5ce0a8' : '#f06b6b');
     // Household YTD (same logic as renderMetrics)
     let hhJanIdx = -1;
     for (let i = inkS.totals.length - 1; i >= 0; i--) {
@@ -3626,8 +3643,8 @@ function buildSummaryCard(tab, maskVals) {
       : '—';
     metricRows = [
       { label: 'Household Net Worth', val: fmt(tot),                          sub: mom + ' MoM',           pos: parseFloat(mom) >= 0 },
-      { label: "Ink's Share",         val: tot > 0 ? (iL/tot*100).toFixed(0) + '%' : '—', sub: fmt(iL) + ' · ' + momInk + ' MoM',  pos: momInk==='—' ? null : parseFloat(momInk) >= 0 },
-      { label: "Fang's Share",        val: tot > 0 ? (fL/tot*100).toFixed(0) + '%' : '—', sub: fmt(fL) + ' · ' + momFang + ' MoM', pos: momFang==='—' ? null : parseFloat(momFang) >= 0 },
+      { label: "Ink's Share",         val: tot > 0 ? (iL/tot*100).toFixed(1) + '%' : '—', sub: fmt(iL) + ' · <span style="color:' + momShareInkColor + '">' + momShareInk + ' MoM</span>',   pos: null },
+      { label: "Fang's Share",        val: tot > 0 ? (fL/tot*100).toFixed(1) + '%' : '—', sub: fmt(fL) + ' · <span style="color:' + momShareFangColor + '">' + momShareFang + ' MoM</span>', pos: null },
       { label: hhYtd ? hhYtd.label : 'YTD', val: hhYtd ? (maskVals ? '••••••' : hhYtdVal) : '—',
         sub: hhYtd ? 'vs ' + fmt(hhYtd.janVal) + ' Jan' : 'No Jan in range',                              pos: hhYtd ? hhYtd.diff >= 0 : null },
     ];
@@ -3769,7 +3786,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v12.5</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v12.6</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3824,7 +3841,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v12.5${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v12.6${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
