@@ -405,7 +405,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v12.6</p>
+      <p class="gate-version">v12.7</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -426,7 +426,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v12.6</span>
+      <span class="version-badge">v12.7</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -578,7 +578,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v12.6';
+const VERSION  = 'v12.7';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1490,15 +1490,20 @@ function renderMetrics(tab) {
     const iP=inkS.totals[inkS.totals.length-2]??iL;
     const fP=fangS.totals.length>1 ? fangS.totals[fangS.totals.length-2] : fL;
     const mom=fmtPct(tot,iP+fP);
-    // Share MoM: relative change in each person's *share* of household net worth
-    // (not their own $ growth) — e.g. share went 25.6% -> 27.4% is a +7.0% MoM shift.
+    // Share MoM: the plain point difference in each person's share (e.g. 27.9% -> 27.0%
+    // is shown as -0.9% MoM) — not a relative % change, and not labeled "pp".
     const prevTot = iP+fP;
-    const shareInkNow   = tot>0     ? iL/tot     : null;
-    const shareFangNow  = tot>0     ? fL/tot     : null;
-    const shareInkPrev  = prevTot>0 ? iP/prevTot : null;
-    const shareFangPrev = prevTot>0 ? fP/prevTot : null;
-    const momShareInk  = (shareInkNow!=null  && shareInkPrev!=null)  ? fmtPct(shareInkNow,  shareInkPrev)  : '—';
-    const momShareFang = (shareFangNow!=null && shareFangPrev!=null) ? fmtPct(shareFangNow, shareFangPrev) : '—';
+    const shareInkNow   = tot>0     ? iL/tot*100     : null;
+    const shareFangNow  = tot>0     ? fL/tot*100     : null;
+    const shareInkPrev  = prevTot>0 ? iP/prevTot*100 : null;
+    const shareFangPrev = prevTot>0 ? fP/prevTot*100 : null;
+    function shareMoM(now, prev) {
+      if (now==null || prev==null) return '—';
+      const d = now - prev;
+      return (d>=0?'+':'')+d.toFixed(1)+'%';
+    }
+    const momShareInk  = shareMoM(shareInkNow,  shareInkPrev);
+    const momShareFang = shareMoM(shareFangNow, shareFangPrev);
     const momShareInkColor  = momShareInk==='—'  ? 'inherit' : (parseFloat(momShareInk)>=0  ? 'var(--green)' : 'var(--red)');
     const momShareFangColor = momShareFang==='—' ? 'inherit' : (parseFloat(momShareFang)>=0 ? 'var(--green)' : 'var(--red)');
     // Household YTD: combine ink + fang totals aligned by month
@@ -3611,14 +3616,20 @@ function buildSummaryCard(tab, maskVals) {
     const iP = inkS.totals[inkS.totals.length-2] ?? iL;
     const fP = fangS.totals.length > 1 ? fangS.totals[fangS.totals.length-2] : fL;
     const mom = fmtPct(tot, iP + fP);
-    // Share MoM: relative change in each person's *share*, not their own $ growth
+    // Share MoM: the plain point difference in each person's share (e.g. 27.9% -> 27.0%
+    // is shown as -0.9% MoM) — not a relative % change, and not labeled "pp".
     const prevTot = iP + fP;
-    const shareInkNow   = tot>0     ? iL/tot     : null;
-    const shareFangNow  = tot>0     ? fL/tot     : null;
-    const shareInkPrev  = prevTot>0 ? iP/prevTot : null;
-    const shareFangPrev = prevTot>0 ? fP/prevTot : null;
-    const momShareInk  = (shareInkNow!=null  && shareInkPrev!=null)  ? fmtPct(shareInkNow,  shareInkPrev)  : '—';
-    const momShareFang = (shareFangNow!=null && shareFangPrev!=null) ? fmtPct(shareFangNow, shareFangPrev) : '—';
+    const shareInkNow   = tot>0     ? iL/tot*100     : null;
+    const shareFangNow  = tot>0     ? fL/tot*100     : null;
+    const shareInkPrev  = prevTot>0 ? iP/prevTot*100 : null;
+    const shareFangPrev = prevTot>0 ? fP/prevTot*100 : null;
+    function shareMoM(now, prev) {
+      if (now==null || prev==null) return '—';
+      const d = now - prev;
+      return (d>=0?'+':'')+d.toFixed(1)+'%';
+    }
+    const momShareInk  = shareMoM(shareInkNow,  shareInkPrev);
+    const momShareFang = shareMoM(shareFangNow, shareFangPrev);
     const momShareInkColor  = momShareInk==='—'  ? '#555450' : (parseFloat(momShareInk)>=0  ? '#5ce0a8' : '#f06b6b');
     const momShareFangColor = momShareFang==='—' ? '#555450' : (parseFloat(momShareFang)>=0 ? '#5ce0a8' : '#f06b6b');
     // Household YTD (same logic as renderMetrics)
@@ -3786,7 +3797,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v12.6</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v12.7</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3841,7 +3852,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v12.6${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v12.7${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
