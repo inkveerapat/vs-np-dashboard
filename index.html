@@ -25,7 +25,7 @@
     --font-sans: 'DM Sans', sans-serif; --font-mono: 'DM Mono', monospace;
     --radius: 8px; --radius-lg: 12px;
   }
-  html, body { height: 100%; overflow-x: hidden; }
+  html, body { height: 100%; overflow-x: hidden; overscroll-behavior-y: none; }
   body { background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
   * { -webkit-tap-highlight-color: transparent; }
   button, a, [onclick] { touch-action: manipulation; }
@@ -164,6 +164,12 @@
   .drill-history-table td { font-family:var(--font-mono);text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text2); }
   .drill-history-table td:first-child { text-align:left;color:var(--text3); }
   .drill-history-table tr.drill-active-row td { color:var(--text);background:rgba(255,255,255,0.04); }
+  .drill-history-table tbody tr.drill-clickable-row { cursor:pointer; transition:background .15s; }
+  .drill-history-table tbody tr.drill-clickable-row:hover td { background:rgba(255,255,255,0.035); }
+  .viewing-pill { display:inline-flex; align-items:center; gap:6px; background:rgba(240,180,41,0.12); border:1px solid rgba(240,180,41,0.35); border-radius:99px; padding:4px 10px 4px 8px; font-family:var(--font-mono); font-size:10px; color:var(--amber); cursor:pointer; white-space:nowrap; transition:opacity .15s; }
+  .viewing-pill:hover { opacity:.82; }
+  .viewing-pill-dot { width:5px; height:5px; border-radius:50%; background:var(--amber); flex-shrink:0; display:inline-block; }
+  .viewing-pill-arrow { color:var(--text3); }
   @media (max-width: 480px) {
     .drill-history-table th { padding:4px 3px; font-size:8.5px; }
     .drill-history-table td { padding:4px 3px; }
@@ -405,7 +411,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v13.0</p>
+      <p class="gate-version">v13.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -426,7 +432,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v13.0</span>
+      <span class="version-badge">v13.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -538,14 +544,23 @@
       <div id="drill-panel-handle" style="padding:8px 0 0;display:flex;justify-content:center;flex-shrink:0;touch-action:none;cursor:grab;">
         <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);"></div>
       </div>
-      <div style="padding:10px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <button onclick="navBack()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
-          <span id="drill-port-title" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;"></span>
+      <div style="padding:10px 20px 0;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden;">
+            <button onclick="navBack()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;flex-shrink:0;">←</button>
+            <span id="drill-port-title" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <button id="drill-port-export-btn" onclick="openPortfolioDrillExportModal()" class="export-btn">&#8681; Export</button>
+            <button onclick="navBackAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <button id="drill-port-export-btn" onclick="openPortfolioDrillExportModal()" class="export-btn">&#8681; Export</button>
-          <button onclick="navBackAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
+        <div id="port-viewing-bar" style="display:none;padding-bottom:10px;">
+          <button class="viewing-pill" id="port-viewing-pill" onclick="jumpPortToLatest()">
+            <span class="viewing-pill-dot"></span>
+            <span id="port-viewing-label"></span>
+            <span class="viewing-pill-arrow">· Jump to latest →</span>
+          </button>
         </div>
       </div>
       <div id="drill-port-content" style="overflow-y:auto;flex:1;padding:20px;overscroll-behavior:contain;"></div>
@@ -556,14 +571,23 @@
       <div id="drill-panel-2-handle" style="padding:8px 0 0;display:flex;justify-content:center;flex-shrink:0;touch-action:none;cursor:grab;">
         <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);"></div>
       </div>
-      <div style="padding:10px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <button onclick="navBack()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;">←</button>
-          <span id="drill-portfolio-name" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;"></span>
+      <div style="padding:10px 20px 0;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden;">
+            <button onclick="navBack()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0;line-height:1;flex-shrink:0;">←</button>
+            <span id="drill-portfolio-name" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <button id="drill-export-btn" onclick="openDrillExportModal()" class="export-btn">&#8681; Export</button>
+            <button onclick="navBackAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <button id="drill-export-btn" onclick="openDrillExportModal()" class="export-btn">&#8681; Export</button>
-          <button onclick="navBackAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
+        <div id="drill-viewing-bar" style="display:none;padding-bottom:10px;">
+          <button class="viewing-pill" id="drill-viewing-pill" onclick="jumpDrillToLatest()">
+            <span class="viewing-pill-dot"></span>
+            <span id="drill-viewing-label"></span>
+            <span class="viewing-pill-arrow">· Jump to latest →</span>
+          </button>
         </div>
       </div>
       <div id="drill-content" style="overflow-y:auto;flex:1;padding:20px;overscroll-behavior:contain;"></div>
@@ -578,7 +602,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v13.0';
+const VERSION  = 'v13.1';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2444,7 +2468,7 @@ function initSwipeToDismiss(handleId, panelId) {
       panel.style.transform = 'translateY(0)';
     }
   }
-  handle.addEventListener('touchstart', e => onStart(e.touches[0].clientY), { passive: true });
+  handle.addEventListener('touchstart', e => { onStart(e.touches[0].clientY); e.preventDefault(); }, { passive: false });
   handle.addEventListener('touchmove', e => { onMove(e.touches[0].clientY); e.preventDefault(); }, { passive: false });
   handle.addEventListener('touchend', onEnd);
   handle.addEventListener('mousedown', e => onStart(e.clientY));
@@ -2472,10 +2496,13 @@ function openPortfolioDrill(tab, cardIdx) {
   document.body.style.overflow = 'hidden';
 }
 
-function renderPortfolioDrillContent(d, tab, cardIdx) {
+function renderPortfolioDrillContent(d, tab, cardIdx, viewingM) {
   const allM    = getDonutMonths(tab);
   const latestM = allM[allM.length - 1];
-  const activeM = donutFilterState[tab] || latestM;
+  const activeM = viewingM || donutFilterState[tab] || latestM;
+  _portViewingM = activeM;
+  _portLatestM  = latestM;
+  updateViewingPill('port', activeM, latestM);
   const isCash  = d.title.toLowerCase().includes('cash');
   const currency = d.currency;
   const isNarrow = window.innerWidth <= 480;
@@ -2564,7 +2591,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
     const uplCell = hUplPct !== null
       ? `<span style="color:${hUplC};white-space:nowrap;">${h.upl>=0?'+':''}${hUplPct.toFixed(1)}%</span><span style="color:${hUplC};font-size:9px;opacity:.8;white-space:nowrap;"> ${mask('('+fmtMC1(h.upl,currency)+')')}</span>`
       : '—';
-    return `<tr class="${isAct?'drill-active-row':''}">
+    return `<tr class="drill-clickable-row ${isAct?'drill-active-row':''}" onclick="viewPortMonth('${h.month}')">
       <td>${h.month}</td>
       ${!isCash ? `<td>${mask(fmtMC1(h.cost, currency))}</td>` : ''}
       <td>${mask(fmtMC1(h.value, currency))}</td>
@@ -2578,7 +2605,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
 
   document.getElementById('drill-port-content').innerHTML = `
     <div style="margin-bottom:16px;">
-      <p style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;">${activeM} · ${assets.length} holdings</p>
+      <p style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:${activeM!==latestM?'var(--amber)':'var(--text3)'};margin-bottom:10px;">${activeM!==latestM?'Viewing ':'As of '}${activeM} · ${assets.length} holdings</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:20px;">${metricCards}</div>
     </div>
 
@@ -2632,6 +2659,34 @@ function renderPortfolioDrillContent(d, tab, cardIdx) {
 }
 
 let _portHistory = null, _portActiveM = null, _portIsCash = false, _portCurrency = 'THB', _portChartMode = 'mktval';
+let _portViewingM = null, _portLatestM = null;
+
+// Shared: show/hide the "Viewing <month> · Jump to latest" pill in a drill header.
+// prefix is 'port' or 'drill' matching the bar/pill/label element ids.
+function updateViewingPill(prefix, activeM, latestM) {
+  const bar   = document.getElementById(prefix + '-viewing-bar');
+  const label = document.getElementById(prefix + '-viewing-label');
+  if (!bar || !label) return;
+  if (activeM && activeM !== latestM) {
+    label.textContent = 'Viewing ' + activeM;
+    bar.style.display = 'block';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+// Switch the currently open portfolio drill panel to a different month.
+// Local to the open panel only — does not touch the global month filter
+// and does not push a back-nav entry.
+function viewPortMonth(month) {
+  if (!_portD) return;
+  renderPortfolioDrillContent(_portD, _portTab, _portCardIdx, month);
+}
+
+function jumpPortToLatest() {
+  if (!_portD || !_portLatestM) return;
+  renderPortfolioDrillContent(_portD, _portTab, _portCardIdx, _portLatestM);
+}
 
 async function buildPortChart(history, activeM, isCash, mode, currency) {
   await ensureFontsReady();
@@ -2662,6 +2717,7 @@ async function buildPortChart(history, activeM, isCash, mode, currency) {
 
   _portDrillLabelRef.cb = labelCb;
 
+  const latestMonth = history.length ? history[history.length - 1].month : null;
   const ctx = document.getElementById('port-drill-chart').getContext('2d');
   portChartInst = new Chart(ctx, {
     type: 'line',
@@ -2670,9 +2726,11 @@ async function buildPortChart(history, activeM, isCash, mode, currency) {
       datasets: [{
         data, borderColor: chartColor, backgroundColor: chartColor + '18',
         borderWidth: 2, fill: true, tension: 0.3, spanGaps: true,
-        pointRadius: history.map(h => h.month === activeM ? 5 : 2),
-        pointBackgroundColor: history.map(h => h.month === activeM ? chartColor : chartColor + '99'),
-        pointHoverRadius: 5,
+        pointRadius: history.map(h => h.month === activeM ? 6 : (h.month === latestMonth ? 4 : 2)),
+        pointBackgroundColor: history.map(h => h.month === activeM ? chartColor : (h.month === latestMonth ? '#fff' : chartColor + '99')),
+        pointBorderColor: history.map(h => h.month === activeM ? '#fff' : chartColor),
+        pointBorderWidth: history.map(h => h.month === activeM || h.month === latestMonth ? 2 : 0),
+        pointHoverRadius: 6,
       }]
     },
     options: {
@@ -2711,7 +2769,7 @@ function openAssetFromPortfolio(tab, cardIdx, assetName, assetIdx) {
   _drillAssetIdx = assetIdx; _drillIsCashState = isCash; _drillIsDetailedState = isDetailed;
 
   document.getElementById('drill-portfolio-name').textContent = d.title;
-  renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed);
+  renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed, _portViewingM);
 
   pushDrillNav();
   const panel2 = document.getElementById('drill-panel-2');
@@ -2774,10 +2832,13 @@ function closeDrillAll() {
 // Keep old closeDrill alias so any existing references still work
 function closeDrill() { closeDrillAll(); }
 
-function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
+function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed, viewingM) {
   const allM    = getDonutMonths(tab);
   const latestM = allM[allM.length - 1];
-  const activeM = donutFilterState[tab] || latestM;
+  const activeM = viewingM || donutFilterState[tab] || latestM;
+  _drillViewingM = activeM;
+  _drillLatestM  = latestM;
+  updateViewingPill('drill', activeM, latestM);
   const color   = PALETTE[assetIdx % PALETTE.length];
   const currency = d.currency;
 
@@ -2847,7 +2908,7 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
     if (!isCash)    tds += `<td>${uplStr}</td>`;
     tds += `<td>${h.pct.toFixed(1)}%</td>`;
 
-    return `<tr class="${isActive?'drill-active-row':''}">${tds}</tr>`;
+    return `<tr class="drill-clickable-row ${isActive?'drill-active-row':''}" onclick="viewDrillMonth('${h.month}')">${tds}</tr>`;
   }).join('');
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -2857,7 +2918,7 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
       <span class="drill-asset-name">${assetName}</span>
     </div>
     <div class="drill-snapshot">
-      <div class="drill-snapshot-title">${snap.month} Snapshot</div>
+      <div class="drill-snapshot-title" style="${snap.month!==latestM?'color:var(--amber);':''}">${snap.month!==latestM?'Viewing: ':''}${snap.month} Snapshot</div>
       ${snapHtml}
     </div>
     <div class="drill-chart-wrap">
@@ -2888,6 +2949,20 @@ function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed) {
 }
 
 let _drillHistory = null, _drillActiveM = null, _drillColor = null, _drillCurrency = null, _drillIsCash = false, _drillChartMode = 'mktval';
+let _drillViewingM = null, _drillLatestM = null;
+
+// Switch the currently open asset drill panel to a different month.
+// Local to the open panel only — does not touch the global month filter
+// and does not push a back-nav entry.
+function viewDrillMonth(month) {
+  if (!_drillD) return;
+  renderDrillContent(_drillD, _drillAssetName, _drillAssetIdx, _drillTab, _drillIsCashState, _drillIsDetailedState, month);
+}
+
+function jumpDrillToLatest() {
+  if (!_drillD || !_drillLatestM) return;
+  renderDrillContent(_drillD, _drillAssetName, _drillAssetIdx, _drillTab, _drillIsCashState, _drillIsDetailedState, _drillLatestM);
+}
 
 async function buildDrillChart(history, activeM, color, currency, mode, isCash) {
   await ensureFontsReady();
@@ -2929,6 +3004,7 @@ async function buildDrillChart(history, activeM, color, currency, mode, isCash) 
 
   _drillLabelRef.cb = labelCb;
 
+  const latestMonth = history.length ? history[history.length - 1].month : null;
   const ctx = document.getElementById('drill-chart').getContext('2d');
   drillChartInst = new Chart(ctx, {
     type: 'line',
@@ -2939,9 +3015,11 @@ async function buildDrillChart(history, activeM, color, currency, mode, isCash) 
         borderColor: chartColor,
         backgroundColor: chartColor + '18',
         borderWidth: 2,
-        pointRadius: history.map(h => h.month === activeM ? 5 : 2),
-        pointBackgroundColor: history.map(h => h.month === activeM ? chartColor : chartColor + '99'),
-        pointHoverRadius: 5,
+        pointRadius: history.map(h => h.month === activeM ? 6 : (h.month === latestMonth ? 4 : 2)),
+        pointBackgroundColor: history.map(h => h.month === activeM ? chartColor : (h.month === latestMonth ? '#fff' : chartColor + '99')),
+        pointBorderColor: history.map(h => h.month === activeM ? '#fff' : chartColor),
+        pointBorderWidth: history.map(h => h.month === activeM || h.month === latestMonth ? 2 : 0),
+        pointHoverRadius: 6,
         fill: true,
         tension: 0.3,
         spanGaps: true,
@@ -2978,7 +3056,7 @@ function openDrillExportModal() {
   if (!_drillD) return;
   exportMaskValues = privacyMode;
   const allM = getDonutMonths(_drillTab);
-  const activeM = donutFilterState[_drillTab] || allM[allM.length - 1];
+  const activeM = _drillViewingM || donutFilterState[_drillTab] || allM[allM.length - 1];
   const overlay = document.createElement('div');
   overlay.className = 'export-modal-overlay'; overlay.id = 'export-modal';
   overlay.innerHTML = `
@@ -3008,7 +3086,7 @@ function buildDrillExportCard(maskVals) {
   const assetIdx = _drillAssetIdx, isCash = _drillIsCashState, isDetailed = _drillIsDetailedState;
   const currency = d.currency, color = PALETTE[assetIdx % PALETTE.length];
   const allM = getDonutMonths(tab);
-  const activeM = donutFilterState[tab] || allM[allM.length - 1];
+  const activeM = _drillViewingM || donutFilterState[tab] || allM[allM.length - 1];
   const history = d.months.map(m => {
     const a = (d.byMonth[m] || []).find(x => x.name === assetName);
     return a ? { month: m, ...a } : null;
@@ -3097,7 +3175,7 @@ async function runDrillExport() {
     const canvas = await html2canvas(card, { backgroundColor:'#0d0d0d', scale: exportFmt==='pdf'?2:2.5, useCORS:true, allowTaint:true, logging:false, imageTimeout:0 });
     document.body.removeChild(card);
     const allM = getDonutMonths(_drillTab);
-    const activeM = donutFilterState[_drillTab] || allM[allM.length-1];
+    const activeM = _drillViewingM || donutFilterState[_drillTab] || allM[allM.length-1];
     const slug = (_drillAssetName+'-'+activeM).replace(/[^a-z0-9]+/gi,'-').toLowerCase();
     await _saveExportCanvas(canvas, `vsnp-asset-${slug}`, goBtn, prog);
   } catch(err) { prog.textContent='⚠ '+err.message; goBtn.disabled=false; goBtn.textContent='Retry'; }
@@ -3109,7 +3187,7 @@ function openPortfolioDrillExportModal() {
   if (!_portD) return;
   exportMaskValues = privacyMode;
   const allM = getDonutMonths(_portTab);
-  const activeM = donutFilterState[_portTab] || allM[allM.length - 1];
+  const activeM = _portViewingM || donutFilterState[_portTab] || allM[allM.length - 1];
   const overlay = document.createElement('div');
   overlay.className = 'export-modal-overlay'; overlay.id = 'export-modal';
   overlay.innerHTML = `
@@ -3138,7 +3216,7 @@ function buildPortfolioDrillExportCard(maskVals) {
   const d = _portD, tab = _portTab, cardIdx = _portCardIdx;
   const currency = d.currency, isCash = d.title.toLowerCase().includes('cash');
   const allM = getDonutMonths(tab);
-  const activeM = donutFilterState[tab] || allM[allM.length-1];
+  const activeM = _portViewingM || donutFilterState[tab] || allM[allM.length-1];
 
   let assets = d.byMonth[activeM];
   if (!assets || !assets.length) {
@@ -3258,7 +3336,7 @@ async function runPortfolioDrillExport() {
     const canvas = await html2canvas(card, { backgroundColor:'#0d0d0d', scale: exportFmt==='pdf'?2:2.5, useCORS:true, allowTaint:true, logging:false, imageTimeout:0 });
     document.body.removeChild(card);
     const allM = getDonutMonths(_portTab);
-    const activeM = donutFilterState[_portTab]||allM[allM.length-1];
+    const activeM = _portViewingM || donutFilterState[_portTab]||allM[allM.length-1];
     const slug = (_portD.title+'-'+activeM).replace(/[^a-z0-9]+/gi,'-').toLowerCase();
     await _saveExportCanvas(canvas, `vsnp-portfolio-${slug}`, goBtn, prog);
   } catch(err) { prog.textContent='⚠ '+err.message; goBtn.disabled=false; goBtn.textContent='Retry'; }
@@ -3801,7 +3879,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v13.0</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v13.1</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3856,7 +3934,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v13.0${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v13.1${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
