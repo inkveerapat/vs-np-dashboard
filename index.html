@@ -411,7 +411,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v13.1</p>
+      <p class="gate-version">v13.2</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -432,7 +432,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v13.1</span>
+      <span class="version-badge">v13.2</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -602,7 +602,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v13.1';
+const VERSION  = 'v13.2';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2523,6 +2523,22 @@ function renderPortfolioDrillContent(d, tab, cardIdx, viewingM) {
   const totalUPLPct = (!isCash && totalMV > 0 && totalUPL !== null && (totalMV - totalUPL) > 0)
     ? (totalUPL / (totalMV - totalUPL) * 100) : null;
 
+  // ── Allocation donut data (colors matched to the Holdings table below) ──
+  const origAssetsForColor = d.byMonth[activeM] || assets;
+  const donutAssets = assets.map(a => {
+    const origIdx = origAssetsForColor.findIndex(x => x.name === a.name);
+    return { ...a, _color: PALETTE[(origIdx >= 0 ? origIdx : 0) % PALETTE.length] };
+  });
+  const TOP_N = 3;
+  const topHoldingsHtml = donutAssets.slice(0, TOP_N).map(a => `
+    <div style="display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:10px;color:var(--text2);line-height:1.5;">
+      <span style="width:6px;height:6px;border-radius:50%;background:${a._color};flex-shrink:0;"></span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name}</span>
+      <span style="margin-left:auto;padding-left:6px;color:var(--text3);flex-shrink:0;">${a.pct.toFixed(1)}%</span>
+    </div>`).join('') + (donutAssets.length > TOP_N ? `
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);opacity:.8;">+${donutAssets.length - TOP_N} more</div>` : '');
+
+
   // ── Summary metric cards ──
   const uplColor = totalUPL >= 0 ? '#5ce0a8' : '#f06b6b';
   const uplPctStr = totalUPLPct !== null ? `${totalUPL>=0?'+':''}${totalUPLPct.toFixed(1)}%` : null;
@@ -2539,6 +2555,17 @@ function renderPortfolioDrillContent(d, tab, cardIdx, viewingM) {
       <p style="font-family:var(--font-mono);font-size:16px;font-weight:500;color:${c.col};letter-spacing:-.02em;">${c.val}</p>
       ${c.sub ? `<p style="font-family:var(--font-mono);font-size:10px;color:${c.col};opacity:.8;">${c.sub}</p>` : ''}
     </div>`).join('');
+
+  const allocationCard = donutAssets.length ? `
+    <div style="grid-column:span 2;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;min-width:0;display:flex;align-items:center;gap:12px;">
+      <div style="position:relative;width:48px;height:48px;flex-shrink:0;">
+        <canvas id="port-drill-donut-mini"></canvas>
+      </div>
+      <div style="min-width:0;flex:1;">
+        <p style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Allocation</p>
+        ${topHoldingsHtml}
+      </div>
+    </div>` : '';
 
   // ── Portfolio MV history for chart ──
   const portHistory = d.months.map(m => {
@@ -2606,7 +2633,7 @@ function renderPortfolioDrillContent(d, tab, cardIdx, viewingM) {
   document.getElementById('drill-port-content').innerHTML = `
     <div style="margin-bottom:16px;">
       <p style="font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:${activeM!==latestM?'var(--amber)':'var(--text3)'};margin-bottom:10px;">${activeM!==latestM?'Viewing ':'As of '}${activeM} · ${assets.length} holdings</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:20px;">${metricCards}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:20px;">${allocationCard}${metricCards}</div>
     </div>
 
     <div class="drill-chart-wrap">
@@ -2656,10 +2683,46 @@ function renderPortfolioDrillContent(d, tab, cardIdx, viewingM) {
 
   // Build the portfolio chart
   buildPortChart(portHistory, activeM, isCash, 'mktval', currency);
+
+  // Build the allocation mini-donut (part of the metric-cards row)
+  if (_portDonutInst) { _portDonutInst.destroy(); _portDonutInst = null; }
+  _portDonutAssets = donutAssets;
+  requestAnimationFrame(() => {
+    const canvas = document.getElementById('port-drill-donut-mini');
+    if (!canvas || !donutAssets.length) return;
+    const wrap = canvas.parentElement;
+    const SZ = wrap.offsetWidth || 48;
+    canvas.width = SZ; canvas.height = SZ;
+    canvas.style.width = SZ + 'px'; canvas.style.height = SZ + 'px';
+
+    _portDonutInst = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: donutAssets.map(a => a.name),
+        datasets: [{ data: donutAssets.map(a => a.pct), backgroundColor: donutAssets.map(a => a._color), borderColor: '#161616', borderWidth: 1.5, hoverOffset: 4 }]
+      },
+      options: {
+        responsive: false, cutout: '62%', animation: { duration: 300 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: true, backgroundColor: '#1e1e1e', borderColor: 'var(--border)', borderWidth: 1,
+            titleFont: { family: 'DM Mono', size: 10 }, bodyFont: { family: 'DM Mono', size: 10 },
+            padding: 8, displayColors: false,
+            callbacks: {
+              title: items => donutAssets[items[0].dataIndex].name,
+              label: item => `${donutAssets[item.dataIndex].pct.toFixed(1)}% · ${mask(fmtMC1(donutAssets[item.dataIndex].value, currency))}`
+            }
+          }
+        }
+      }
+    });
+  });
 }
 
 let _portHistory = null, _portActiveM = null, _portIsCash = false, _portCurrency = 'THB', _portChartMode = 'mktval';
 let _portViewingM = null, _portLatestM = null;
+let _portDonutInst = null, _portDonutAssets = [];
 
 // Shared: show/hide the "Viewing <month> · Jump to latest" pill in a drill header.
 // prefix is 'port' or 'drill' matching the bar/pill/label element ids.
@@ -3879,7 +3942,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v13.1</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v13.2</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3934,7 +3997,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v13.1${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v13.2${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
