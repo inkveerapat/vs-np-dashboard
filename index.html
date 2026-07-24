@@ -128,8 +128,8 @@
   .goal-bar-mom.flat { color: var(--text3); }
 
   /* LINE CHART */
-  .chart-wrap { position: relative; width: 100%; height: clamp(260px, 42vh, 480px); }
-  .mini-chart-wrap { position: relative; width: 100%; height: clamp(180px, 26vh, 260px); }
+  .chart-wrap { position: relative; width: 100%; height: clamp(260px, 42vh, 480px); touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  .mini-chart-wrap { position: relative; width: 100%; height: clamp(180px, 26vh, 260px); touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
   .chart-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; color: var(--text3); }
   .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 18px; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text3); cursor: pointer; padding: 3px 0; transition: color .15s; user-select: none; }
@@ -184,7 +184,7 @@
   .donut-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 20px 18px; }
   .donut-card-title { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 16px; }
   .donut-card-body { display: flex; align-items: center; gap: 18px; }
-  .donut-canvas-wrap { position: relative; flex-shrink: 0; width: 100px; height: 100px; }
+  .donut-canvas-wrap { position: relative; flex-shrink: 0; width: 100px; height: 100px; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
   .donut-center {
     position: absolute;
     top: 50%; left: 50%;
@@ -411,7 +411,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v13.1</p>
+      <p class="gate-version">v13.2</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -432,7 +432,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v13.1</span>
+      <span class="version-badge">v13.2</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -602,7 +602,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v13.1';
+const VERSION  = 'v13.2';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3879,7 +3879,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v13.1</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v13.2</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -3934,7 +3934,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v13.1${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v13.2${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
