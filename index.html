@@ -411,7 +411,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v13.4</p>
+      <p class="gate-version">v13.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -432,7 +432,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v13.4</span>
+      <span class="version-badge">v13.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -522,11 +522,17 @@
             </div>
           </div>
         </div>
+        <div class="range-bar" id="split-range-bar">
+          <button class="range-btn active" data-range="all" onclick="setSplitRange('all')">All</button>
+          <button class="range-btn" data-range="12" onclick="setSplitRange('12')">12M</button>
+          <button class="range-btn" data-range="6" onclick="setSplitRange('6')">6M</button>
+          <button class="range-btn" data-range="3" onclick="setSplitRange('3')">3M</button>
+        </div>
         <div class="chart-wrap" style="height:240px;">
           <canvas id="split-chart"></canvas>
           <div class="chart-crosshair" id="split-crosshair"></div>
+          <div class="chart-tooltip" id="split-tooltip"></div>
         </div>
-        <div class="chart-tooltip" id="split-tooltip"></div>
         <div class="legend">
           <span class="legend-item"><span class="legend-dot" style="background:#4da8f5"></span>Ink</span>
           <span class="legend-item"><span class="legend-dot" style="background:#5ce0a8"></span>Fang</span>
@@ -535,11 +541,17 @@
 
       <div style="margin-bottom:8px;">
         <p class="donut-section-title">Cash vs. Invested</p>
+        <div class="range-bar" id="cashinvest-range-bar">
+          <button class="range-btn active" data-range="all" onclick="setCashInvestRange('all')">All</button>
+          <button class="range-btn" data-range="12" onclick="setCashInvestRange('12')">12M</button>
+          <button class="range-btn" data-range="6" onclick="setCashInvestRange('6')">6M</button>
+          <button class="range-btn" data-range="3" onclick="setCashInvestRange('3')">3M</button>
+        </div>
         <div class="chart-wrap" style="height:240px;">
           <canvas id="cashinvest-chart"></canvas>
           <div class="chart-crosshair" id="cashinvest-crosshair"></div>
+          <div class="chart-tooltip" id="cashinvest-tooltip"></div>
         </div>
-        <div class="chart-tooltip" id="cashinvest-tooltip"></div>
         <div class="legend">
           <span class="legend-item"><span class="legend-dot" style="background:#c8f542"></span>Cash</span>
           <span class="legend-item"><span class="legend-dot" style="background:#4da8f5"></span>Invested</span>
@@ -639,7 +651,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v13.4';
+const VERSION  = 'v13.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1645,16 +1657,15 @@ let chartRange = 'all'; // 'all' | '12' | '6' | '3'
 
 function setRange(r) {
   chartRange = r;
-  document.querySelectorAll('.range-btn').forEach(b => {
+  document.querySelectorAll('#range-bar .range-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.range === r);
   });
   renderChart(currentTab);
-  renderHouseholdCharts(currentTab);
 }
 
-function sliceByRange(months, datasets) {
-  if (chartRange === 'all') return { months, datasets };
-  const n = parseInt(chartRange);
+function sliceByRangeGeneric(months, datasets, range) {
+  if (range === 'all') return { months, datasets };
+  const n = parseInt(range);
   const start = Math.max(0, months.length - n);
   const slicedMonths = months.slice(start);
   const slicedDatasets = datasets.map(ds => ({
@@ -1662,6 +1673,10 @@ function sliceByRange(months, datasets) {
     data: ds.data.slice(start),
   }));
   return { months: slicedMonths, datasets: slicedDatasets };
+}
+
+function sliceByRange(months, datasets) {
+  return sliceByRangeGeneric(months, datasets, chartRange);
 }
 
 function makeGradient(ctx, color, alpha1 = 0.22, alpha2 = 0.0) {
@@ -1773,27 +1788,25 @@ function buildCashInvestDatasets() {
   const inkCashIdx = INK_CONFIG.cashComponentIdx;
   const fangCashIdx = FANG_CONFIG.cashComponentIdx;
 
-  const cash = im.map((_, i) => {
-    const inkCash = inkS.components[inkCashIdx].values[i] || 0;
+  const inkCash = [], fangCash = [], inkInvest = [], fangInvest = [];
+  im.forEach((_, i) => {
+    const ic = inkS.components[inkCashIdx].values[i] || 0;
+    const ii = inkS.totals[i] - ic;
     const fi = fs !== -1 ? i - fs : -1;
-    const fangCash = (fi >= 0 && fi < fangS.totals.length) ? (fangS.components[fangCashIdx].values[fi] || 0) : 0;
-    return inkCash + fangCash;
-  });
-  const invest = im.map((_, i) => {
-    const inkCash = inkS.components[inkCashIdx].values[i] || 0;
-    const inkInvest = inkS.totals[i] - inkCash;
-    const fi = fs !== -1 ? i - fs : -1;
-    let fangInvest = 0;
+    let fc = 0, fnv = 0;
     if (fi >= 0 && fi < fangS.totals.length) {
-      const fangCash = fangS.components[fangCashIdx].values[fi] || 0;
-      fangInvest = fangS.totals[fi] - fangCash;
+      fc  = fangS.components[fangCashIdx].values[fi] || 0;
+      fnv = fangS.totals[fi] - fc;
     }
-    return inkInvest + fangInvest;
+    inkCash.push(ic); fangCash.push(fc);
+    inkInvest.push(ii); fangInvest.push(fnv);
   });
-  return { labels: im, cash, invest };
+  const cash   = inkCash.map((v, i) => v + fangCash[i]);
+  const invest = inkInvest.map((v, i) => v + fangInvest[i]);
+  return { labels: im, cash, invest, inkCash, fangCash, inkInvest, fangInvest };
 }
 
-// Shared crosshair + tooltip renderer for both new charts
+// Tooltip renderer for the Contribution Split chart — adds a MoM sub-line per series
 function extTooltipGeneric(ctx, ttId, xhairId, getChartInst, isPct) {
   const tt = document.getElementById(ttId);
   const xhair = document.getElementById(xhairId);
@@ -1821,7 +1834,20 @@ function extTooltipGeneric(ctx, ttId, xhairId, getChartInst, isPct) {
   t.dataPoints.forEach(p => {
     if (p.raw === null) return;
     const valStr = isPct ? p.formattedValue + '%' : mask(fmtM(p.raw));
-    html += `<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${valStr}</span></div>`;
+    let momHtml = '';
+    const prevVal = p.dataIndex > 0 ? p.dataset.data[p.dataIndex - 1] : null;
+    if (prevVal !== null && prevVal !== undefined) {
+      const diff = p.raw - prevVal;
+      const sign = diff >= 0 ? '+' : '';
+      const col  = diff >= 0 ? '#5ce0a8' : '#f06b6b';
+      if (isPct) {
+        momHtml = `<div style="color:${col};font-size:10px;margin-top:1px;padding-left:12px;">${sign}${diff.toFixed(1)}% MoM (${p.raw}% vs ${prevVal}%)</div>`;
+      } else {
+        const pctChg = prevVal !== 0 ? ` (${sign}${(diff / prevVal * 100).toFixed(1)}%)` : '';
+        momHtml = `<div style="color:${col};font-size:10px;margin-top:1px;padding-left:12px;">${sign}${mask(fmtM(diff))}${pctChg} MoM</div>`;
+      }
+    }
+    html += `<div class="tt-row"><span class="tt-row-label"><span class="tt-dot" style="background:${p.dataset.borderColor}"></span>${p.dataset.label}</span><span class="tt-val">${valStr}</span></div>${momHtml}`;
   });
   tt.innerHTML = html;
   tt.style.display = 'block';
@@ -1833,14 +1859,82 @@ function extTooltipGeneric(ctx, ttId, xhairId, getChartInst, isPct) {
   tt.style.top  = Math.max(t.caretY - 10, 4) + 'px';
 }
 
+// Dedicated tooltip for Cash vs Invested — breaks each category into
+// total / Ink's amount / Fang's amount / their % shares / MoM change on the total
+function extTooltipCashInvest(ctx, breakdown) {
+  const tt = document.getElementById('cashinvest-tooltip');
+  const xhair = document.getElementById('cashinvest-crosshair');
+  if (!tt) return;
+  if (ctx.tooltip.opacity === 0) {
+    tt.style.display = 'none';
+    if (xhair) xhair.style.display = 'none';
+    return;
+  }
+  const t = ctx.tooltip;
+  if (xhair && cashInvestChartInst) {
+    const area = cashInvestChartInst.chartArea;
+    const x = t.caretX;
+    if (x >= area.left && x <= area.right) {
+      xhair.style.display = 'block';
+      xhair.style.left    = x + 'px';
+      xhair.style.top     = area.top + 'px';
+      xhair.style.height  = (area.bottom - area.top) + 'px';
+    } else {
+      xhair.style.display = 'none';
+    }
+  }
+
+  const idx     = t.dataPoints[0] ? t.dataPoints[0].dataIndex : 0;
+  const cashPt  = t.dataPoints.find(p => p.dataset.label === 'Cash');
+  const investPt = t.dataPoints.find(p => p.dataset.label === 'Invested');
+
+  function section(label, totalPt, inkArr, fangArr, color) {
+    if (!totalPt || totalPt.raw === null) return '';
+    const total = totalPt.raw;
+    const ink   = inkArr[idx]  || 0;
+    const fang  = fangArr[idx] || 0;
+    const inkPct  = total > 0 ? (ink  / total * 100).toFixed(1) : '0.0';
+    const fangPct = total > 0 ? (fang / total * 100).toFixed(1) : '0.0';
+    const prevTotal = idx > 0 ? totalPt.dataset.data[idx - 1] : null;
+    let momHtml = '';
+    if (prevTotal !== null && prevTotal !== undefined) {
+      const diff = total - prevTotal;
+      const sign = diff >= 0 ? '+' : '';
+      const col  = diff >= 0 ? '#5ce0a8' : '#f06b6b';
+      const pctChg = prevTotal !== 0 ? ` (${sign}${(diff / prevTotal * 100).toFixed(1)}%)` : '';
+      momHtml = `<div style="color:${col};font-size:10px;margin-top:1px;">${sign}${mask(fmtM(diff))}${pctChg} MoM</div>`;
+    }
+    return `
+      <div style="margin-top:8px;">
+        <div class="tt-row" style="font-weight:600;color:var(--text);"><span class="tt-row-label"><span class="tt-dot" style="background:${color}"></span>${label}</span><span class="tt-val">${mask(fmtM(total))}</span></div>
+        ${momHtml}
+        <div class="tt-row" style="padding-left:12px;"><span style="color:var(--text3);">Ink</span><span class="tt-val">${mask(fmtM(ink))} <span style="color:var(--text3);font-size:10px;">(${inkPct}%)</span></span></div>
+        <div class="tt-row" style="padding-left:12px;"><span style="color:var(--text3);">Fang</span><span class="tt-val">${mask(fmtM(fang))} <span style="color:var(--text3);font-size:10px;">(${fangPct}%)</span></span></div>
+      </div>`;
+  }
+
+  let html = `<div class="tt-month">${t.title[0] || ''}</div>`;
+  html += section('Cash', cashPt, breakdown.inkCash, breakdown.fangCash, '#c8f542');
+  html += section('Invested', investPt, breakdown.inkInvest, breakdown.fangInvest, '#4da8f5');
+
+  tt.innerHTML = html;
+  tt.style.display = 'block';
+
+  const wrapWidth = ctx.chart.canvas.parentElement.clientWidth;
+  let left = t.caretX + 14;
+  if (left + 250 > wrapWidth) left = t.caretX - 250 - 14;
+  tt.style.left = Math.max(left, 4) + 'px';
+  tt.style.top  = Math.max(t.caretY - 10, 4) + 'px';
+}
+
 function renderSplitChart() {
   const canvas = document.getElementById('split-chart');
   if (!canvas) return;
   if (splitChartInst) { splitChartInst.destroy(); splitChartInst = null; }
   const raw = buildSplitDatasets();
-  const { months: labels, datasets: sliced } = sliceByRange(raw.labels, [
+  const { months: labels, datasets: sliced } = sliceByRangeGeneric(raw.labels, [
     { data: raw.ink }, { data: raw.fang }
-  ]);
+  ], splitRange);
   const ctx2d = canvas.getContext('2d');
   const isPct = splitMode === 'pct';
   splitChartInst = new Chart(ctx2d, {
@@ -1873,9 +1967,15 @@ function renderCashInvestChart() {
   if (!canvas) return;
   if (cashInvestChartInst) { cashInvestChartInst.destroy(); cashInvestChartInst = null; }
   const raw = buildCashInvestDatasets();
-  const { months: labels, datasets: sliced } = sliceByRange(raw.labels, [
-    { data: raw.cash }, { data: raw.invest }
-  ]);
+  const { months: labels, datasets: sliced } = sliceByRangeGeneric(raw.labels, [
+    { data: raw.cash }, { data: raw.invest },
+    { data: raw.inkCash }, { data: raw.fangCash },
+    { data: raw.inkInvest }, { data: raw.fangInvest }
+  ], cashInvestRange);
+  const breakdown = {
+    inkCash: sliced[2].data, fangCash: sliced[3].data,
+    inkInvest: sliced[4].data, fangInvest: sliced[5].data
+  };
   const ctx2d = canvas.getContext('2d');
   cashInvestChartInst = new Chart(ctx2d, {
     type: 'line',
@@ -1893,7 +1993,7 @@ function renderCashInvestChart() {
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { display: false }, tooltip: { enabled: false, external: (c) => extTooltipGeneric(c, 'cashinvest-tooltip', 'cashinvest-crosshair', () => cashInvestChartInst, false) } },
+      plugins: { legend: { display: false }, tooltip: { enabled: false, external: (c) => extTooltipCashInvest(c, breakdown) } },
       scales: {
         x: { grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, border: { color: 'rgba(255,255,255,0.06)' } },
         y: { stacked: true, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => mask(fmtM(v)) }, border: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
@@ -1919,6 +2019,25 @@ function setSplitMode(mode) {
   if (pctBtn) pctBtn.classList.toggle('active', mode === 'pct');
   if (absBtn) absBtn.classList.toggle('active', mode === 'abs');
   renderSplitChart();
+}
+
+let splitRange = 'all';
+let cashInvestRange = 'all';
+
+function setSplitRange(r) {
+  splitRange = r;
+  document.querySelectorAll('#split-range-bar .range-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === r);
+  });
+  renderSplitChart();
+}
+
+function setCashInvestRange(r) {
+  cashInvestRange = r;
+  document.querySelectorAll('#cashinvest-range-bar .range-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === r);
+  });
+  renderCashInvestChart();
 }
 
 function renderChart(tab) {
@@ -4129,7 +4248,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v13.4</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v13.5</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -4184,7 +4303,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v13.4${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v13.5${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
