@@ -411,7 +411,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v13.6</p>
+      <p class="gate-version">v13.7</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -432,7 +432,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v13.6</span>
+      <span class="version-badge">v13.7</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -651,7 +651,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v13.6';
+const VERSION  = 'v13.7';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1887,6 +1887,7 @@ function extTooltipCashInvest(ctx, breakdown) {
   const idx     = t.dataPoints[0] ? t.dataPoints[0].dataIndex : 0;
   const cashPt  = t.dataPoints.find(p => p.dataset.label === 'Cash');
   const investPt = t.dataPoints.find(p => p.dataset.label === 'Invested');
+  const grandTotal = (cashPt && cashPt.raw !== null ? cashPt.raw : 0) + (investPt && investPt.raw !== null ? investPt.raw : 0);
 
   function section(label, totalPt, inkArr, fangArr, color) {
     if (!totalPt || totalPt.raw === null) return '';
@@ -1895,6 +1896,7 @@ function extTooltipCashInvest(ctx, breakdown) {
     const fang  = fangArr[idx] || 0;
     const inkPct  = total > 0 ? (ink  / total * 100).toFixed(1) : '0.0';
     const fangPct = total > 0 ? (fang / total * 100).toFixed(1) : '0.0';
+    const ofTotalPct = grandTotal > 0 ? (total / grandTotal * 100).toFixed(1) : '0.0';
     const prevTotal = idx > 0 ? totalPt.dataset.data[idx - 1] : null;
     let momHtml = '';
     if (prevTotal !== null && prevTotal !== undefined) {
@@ -1906,7 +1908,7 @@ function extTooltipCashInvest(ctx, breakdown) {
     }
     return `
       <div style="margin-top:8px;">
-        <div class="tt-row" style="font-weight:600;color:var(--text);"><span class="tt-row-label"><span class="tt-dot" style="background:${color}"></span>${label}</span><span class="tt-val">${mask(fmtM(total))}</span></div>
+        <div class="tt-row" style="font-weight:600;color:var(--text);"><span class="tt-row-label"><span class="tt-dot" style="background:${color}"></span>${label}</span><span class="tt-val">${mask(fmtM(total))} <span style="color:var(--text3);font-size:10px;font-weight:400;">(${ofTotalPct}% of total)</span></span></div>
         ${momHtml}
         <div class="tt-row" style="padding-left:12px;"><span style="color:var(--text3);">Ink</span><span class="tt-val">${mask(fmtM(ink))} <span style="color:var(--text3);font-size:10px;">(${inkPct}%)</span></span></div>
         <div class="tt-row" style="padding-left:12px;"><span style="color:var(--text3);">Fang</span><span class="tt-val">${mask(fmtM(fang))} <span style="color:var(--text3);font-size:10px;">(${fangPct}%)</span></span></div>
