@@ -411,7 +411,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v13.5</p>
+      <p class="gate-version">v13.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -432,7 +432,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v13.5</span>
+      <span class="version-badge">v13.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -651,7 +651,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v13.5';
+const VERSION  = 'v13.1';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3869,12 +3869,73 @@ function buildSummaryCard(tab, maskVals) {
       </div>
     </div>` : '';
 
+  // ── Household-only charts: Contribution Split & Cash vs Invested ──
+  let householdChartsSection = '';
+  if (tab === 'household') {
+    const splitCanvas = document.getElementById('split-chart');
+    const cashInvestCanvas = document.getElementById('cashinvest-chart');
+    const splitDataUrl = splitCanvas ? captureCanvas(splitCanvas) : null;
+    const cashInvestDataUrl = cashInvestCanvas ? captureCanvas(cashInvestCanvas) : null;
+
+    const splitModeLabel = splitMode === 'pct' ? '% Share' : '$ Absolute';
+    const splitRangeLabel = splitRange === 'all' ? 'All time' : splitRange + ' months';
+    const cashInvestRangeLabel = cashInvestRange === 'all' ? 'All time' : cashInvestRange + ' months';
+
+    const splitLegend = `
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888780;margin-right:14px;"><span style="width:8px;height:8px;border-radius:2px;background:#4da8f5;display:inline-block;"></span>Ink</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888780;margin-right:14px;"><span style="width:8px;height:8px;border-radius:2px;background:#5ce0a8;display:inline-block;"></span>Fang</span>`;
+    const cashInvestLegend = `
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888780;margin-right:14px;"><span style="width:8px;height:8px;border-radius:2px;background:#c8f542;display:inline-block;"></span>Cash</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888780;margin-right:14px;"><span style="width:8px;height:8px;border-radius:2px;background:#4da8f5;display:inline-block;"></span>Invested</span>`;
+
+    const splitSection = splitDataUrl ? `
+      <div style="margin-bottom:24px;">
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Contribution Split · ${splitModeLabel} · ${splitRangeLabel}</p>
+        <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;">
+          <img src="${splitDataUrl}" style="width:100%;display:block;border-radius:6px;" />
+          <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:4px 0;">${splitLegend}</div>
+        </div>
+      </div>` : '';
+
+    const cashInvestSection = cashInvestDataUrl ? `
+      <div style="margin-bottom:24px;">
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Cash vs. Invested · ${cashInvestRangeLabel}</p>
+        <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;">
+          <img src="${cashInvestDataUrl}" style="width:100%;display:block;border-radius:6px;" />
+          <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:4px 0;">${cashInvestLegend}</div>
+        </div>
+      </div>` : '';
+
+    householdChartsSection = splitSection + cashInvestSection;
+  }
+
   // ── Condo section (ink tab only) ──
   let condoSection = '';
   if (tab === 'ink' && condoData) {
-    const c   = condoData.latest;
-    const pct = Math.min(c.pctPaid, 100);
+    const fullCost = condoData.latest.fullCost;
+    function normLabel(s) { return s.replace(/\s+/g,' ').trim().toLowerCase(); }
+    const c = condoData.entries.find(e => normLabel(e.label) === normLabel(viewingLabel))
+           ?? condoData.entries.find(e => {
+                const eMon = e.month.slice(0,3).toLowerCase();
+                const eYr  = e.year.slice(-2);
+                const vMon = viewingLabel.slice(0,3).toLowerCase();
+                const vYr  = viewingLabel.replace(/\D/g,'').slice(-2);
+                return eMon === vMon && eYr === vYr;
+              })
+           ?? condoData.latest;
+    const pct = Math.min(c.paid / fullCost * 100, 100);
     const col = goalColor(pct);
+
+    // YTD Paid — same logic as the live card: viewed month's cumulative paid vs January of the same year
+    const janEntry = condoData.entries.find(e => e.year === c.year && e.month.slice(0,3).toLowerCase() === 'jan')
+                   ?? condoData.entries.find(e => e.year === c.year);
+    const ytdPaid = janEntry ? (c.paid - janEntry.paid) : null;
+    const ytdPaidRow = ytdPaid !== null ? `
+            <div style="flex:1;background:#1e1e1e;border-radius:8px;padding:8px 10px;">
+              <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#555450;margin-bottom:3px;">YTD Paid</p>
+              <p style="font-family:'DM Mono',monospace;font-size:11px;color:${ytdPaid >= 0 ? '#5ce0a8' : '#f06b6b'};">${maskVals ? '••••••' : fmtM(ytdPaid)}</p>
+            </div>` : '';
+
     condoSection = `
       <div style="margin-bottom:24px;">
         <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">KNB107 Condo Loan Payoff · ${c.label}</p>
@@ -3883,7 +3944,7 @@ function buildSummaryCard(tab, maskVals) {
             <span style="font-size:12px;font-weight:500;color:#f0efe8;">Payoff Progress</span>
             <span style="font-size:20px;font-family:'DM Mono',monospace;font-weight:500;color:${col};">${pct.toFixed(1)}%</span>
           </div>
-          <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
             <div style="flex:1;background:#1e1e1e;border-radius:8px;padding:8px 10px;">
               <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#555450;margin-bottom:3px;">Original Cost</p>
               <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;">${maskVals ? '••••••' : fmtM(c.fullCost)}</p>
@@ -3896,6 +3957,9 @@ function buildSummaryCard(tab, maskVals) {
               <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#555450;margin-bottom:3px;">Remaining</p>
               <p style="font-family:'DM Mono',monospace;font-size:11px;color:#f06b6b;">${maskVals ? '••••••' : fmtM(c.outstanding)}</p>
             </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;">
+            ${ytdPaidRow}
           </div>
           <div style="height:6px;background:#222;border-radius:99px;overflow:hidden;">
             <div style="width:${pct}%;height:100%;background:${col};border-radius:99px;"></div>
@@ -4248,7 +4312,7 @@ function buildSummaryCard(tab, maskVals) {
         <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;margin-top:4px;">Viewing: ${viewingLabel}</p>
       </div>
       <div style="text-align:right;">
-        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v13.5</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:3px 8px;">v13.1</span>
         <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;margin-top:6px;">Exported ${now}</p>
       </div>
     </div>
@@ -4295,6 +4359,9 @@ function buildSummaryCard(tab, maskVals) {
     <!-- Chart -->
     ${chartSection}
 
+    <!-- Household-only charts -->
+    ${householdChartsSection}
+
     <!-- Allocation -->
     ${allocBarSection}
 
@@ -4303,7 +4370,7 @@ function buildSummaryCard(tab, maskVals) {
 
     <!-- Footer -->
     <div style="margin-top:8px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;">
-      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v13.5${maskVals ? ' · Values hidden' : ''}</p>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">VS NP Dashboard · v13.1${maskVals ? ' · Values hidden' : ''}</p>
       <p style="font-family:'DM Mono',monospace;font-size:10px;color:#555450;">${now}</p>
     </div>`;
 
