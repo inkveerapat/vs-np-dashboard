@@ -250,7 +250,9 @@
   .alloc-chevron { font-size: 9px; color: var(--text3); margin-left: 2px; flex-shrink: 0; transition: transform .2s ease, color .2s ease; display: inline-block; }
   .alloc-chevron.open { transform: rotate(90deg); color: var(--text2); }
   .alloc-holdings { max-height: 0; overflow: hidden; transition: max-height .25s ease; }
-  .alloc-holding-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 4px 0 17px; }
+  .alloc-holding-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 4px 0 17px; cursor: pointer; border-radius: 4px; transition: background .15s; }
+  .alloc-holding-row:hover { background: rgba(255,255,255,0.04); }
+  .alloc-holding-row:hover .alloc-holding-name { color: var(--text); }
   .alloc-holding-name { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .alloc-holding-pcts { font-family: var(--font-mono); font-size: 10.5px; color: var(--text2); flex-shrink: 0; white-space: nowrap; }
   .alloc-holding-pcts .within { color: var(--text); }
@@ -424,7 +426,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v14.1</p>
+      <p class="gate-version">v14.2</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -445,7 +447,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v14.1</span>
+      <span class="version-badge">v14.2</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -664,7 +666,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v14.1';
+const VERSION  = 'v14.2';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2315,8 +2317,10 @@ function renderAllocationBar(tab) {
     const pct = (p.value / total) * 100;
     const { assets, currency } = resolveDonutAssetsForPortfolio(tab, p.title);
     const isCashPortfolio = p.title.toLowerCase().includes('cash');
+    const donutList = tab === 'ink' ? inkDonutData : fangDonutData;
+    const cardIdx = donutList.findIndex(dd => dd.title === p.title);
 
-    const holdingsHtml = assets.length ? assets.map(a => {
+    const holdingsHtml = assets.length ? assets.map((a, ai) => {
       // asset.pct is its % *within this portfolio* (currency-agnostic ratio, already
       // computed at extraction time). We derive % of net worth from that ratio times
       // this portfolio's own % of net worth — avoids any cross-currency conversion,
@@ -2333,9 +2337,11 @@ function renderAllocationBar(tab) {
         ? `${uplPct !== null ? (uplPct >= 0 ? '+' : '') + uplPct.toFixed(1) + '%' : '—'} (${a.upl >= 0 ? '+' : ''}${mask(fmtMC1(a.upl, currency))})`
         : '';
 
+      const drillAttr = cardIdx >= 0 ? `onclick="openDrill('${tab}',${cardIdx},'${a.name.replace(/'/g,"\\'")}',${ai})"` : '';
+
       return `
-        <div class="alloc-holding-row">
-          <span class="alloc-holding-name" title="${a.name}">${a.name}</span>
+        <div class="alloc-holding-row" ${drillAttr}>
+          <span class="alloc-holding-name" title="${a.name}">${a.name}${cardIdx >= 0 ? '<span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span>' : ''}</span>
           <span class="alloc-holding-pcts"><span class="within">${withinPct.toFixed(1)}%</span><span class="sep">·</span>${ofNWPct.toFixed(1)}% of net worth</span>
         </div>
         <div class="alloc-holding-sub">
