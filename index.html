@@ -89,6 +89,21 @@
   /* GOAL SECTION */
   .goal-section { margin-bottom: 36px; }
   .goal-section-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 14px; }
+  .ratio-bar-wrap { margin: 2px 0 14px; }
+  .ratio-bar { display: flex; height: 20px; border-radius: 6px; overflow: hidden; background: var(--surface2); }
+  .ratio-seg-cash { background: var(--accent); transition: width .4s ease; }
+  .ratio-seg-invest { background: #4da8f5; transition: width .4s ease; }
+  .ratio-legend { display: flex; justify-content: space-between; }
+  .ratio-leg-item { display: flex; flex-direction: column; min-width: 0; }
+  .ratio-leg-item:last-child { text-align: right; align-items: flex-end; }
+  .ratio-leg-label { font-size: 10.5px; color: var(--text2); display: flex; align-items: center; }
+  .ratio-leg-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; flex-shrink: 0; }
+  .ratio-leg-item:last-child .ratio-leg-dot { margin-right: 0; margin-left: 5px; order: 2; }
+  .ratio-leg-val { font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--text); margin-top: 3px; }
+  .ratio-leg-mom { font-family: var(--font-mono); font-size: 10px; margin-top: 2px; }
+  .ratio-leg-mom.pos { color: var(--green); }
+  .ratio-leg-mom.neg { color: var(--red); }
+  .ratio-leg-mom.flat { color: var(--text3); }
   .goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .goal-grid > .goal-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .goal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
@@ -426,7 +441,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v14.2</p>
+      <p class="gate-version">v14.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -447,7 +462,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v14.2</span>
+      <span class="version-badge">v14.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -496,6 +511,11 @@
 
     <div id="metric-grid" class="metric-grid"></div>
     <div class="error-box" id="error-box"></div>
+
+    <div id="cashinvest-section" style="display:none;margin-bottom:24px;">
+      <p class="goal-section-title">Cash vs Invested</p>
+      <div class="goal-card" id="cashinvest-card"></div>
+    </div>
 
     <div class="goal-section" id="goal-section">
       <p class="goal-section-title">Goal Progress</p>
@@ -666,7 +686,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v14.2';
+const VERSION  = 'v14.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1271,6 +1291,70 @@ function goalBarStackedHTML(label, inkVal, fangVal, target) {
 }
 
 // RENDER GOALS
+function renderCashInvestRatio(tab) {
+  const section = document.getElementById('cashinvest-section');
+  const card = document.getElementById('cashinvest-card');
+  if (!section || !card) return;
+
+  // Household has its own cash-vs-invest trend chart already — this snapshot
+  // widget is Ink/Fang-specific.
+  if (tab === 'household') { section.style.display = 'none'; return; }
+
+  const active = getActiveData(tab);
+  const d = tab === 'ink' ? active.ink : active.fang;
+  const config = tab === 'ink' ? INK_CONFIG : FANG_CONFIG;
+  const rawData = tab === 'ink' ? inkData : fangData;
+  if (!d || !d.totals.length) { section.style.display = 'none'; return; }
+
+  const { cash: cashVal, invest: investVal } = getLatestValues(d, config);
+  const totalVal = cashVal + investVal;
+
+  // MoM: same approach as the goal cards — slice one more month back.
+  const fi  = filterState[tab];
+  const idx = fi < 0 ? rawData.totals.length - 1 : fi;
+  let prevCash = null, prevInvest = null;
+  if (idx > 0) {
+    const pv = getLatestValues(sliceData(rawData, idx - 1), config);
+    prevCash = pv.cash; prevInvest = pv.invest;
+  }
+
+  function momStr(cur, prev) {
+    if (prev === null || prev === 0) return { str: '—', cls: 'flat' };
+    const diff = cur - prev;
+    const pctChg = (diff / prev) * 100;
+    const cls = diff > 0 ? 'pos' : diff < 0 ? 'neg' : 'flat';
+    const sign = diff >= 0 ? '+' : '';
+    return { str: `${sign}${pctChg.toFixed(1)}% vs last mo.`, cls };
+  }
+
+  const cashMom = momStr(cashVal, prevCash);
+  const investMom = momStr(investVal, prevInvest);
+
+  const cashPct = totalVal > 0 ? (cashVal / totalVal) * 100 : 0;
+  const investPct = 100 - cashPct;
+
+  section.style.display = 'block';
+  card.innerHTML = `
+    <div class="ratio-bar-wrap">
+      <div class="ratio-bar">
+        <div class="ratio-seg-cash" style="width:${cashPct}%;"></div>
+        <div class="ratio-seg-invest" style="width:${investPct}%;"></div>
+      </div>
+    </div>
+    <div class="ratio-legend">
+      <div class="ratio-leg-item">
+        <span class="ratio-leg-label"><span class="ratio-leg-dot" style="background:var(--accent);"></span>Cash &middot; ${cashPct.toFixed(0)}%</span>
+        <span class="ratio-leg-val">${mask(fmtM(cashVal))}</span>
+        <span class="ratio-leg-mom ${cashMom.cls}">${cashMom.str}</span>
+      </div>
+      <div class="ratio-leg-item">
+        <span class="ratio-leg-label">Invested &middot; ${investPct.toFixed(0)}%<span class="ratio-leg-dot" style="background:#4da8f5;"></span></span>
+        <span class="ratio-leg-val">${mask(fmtM(investVal))}</span>
+        <span class="ratio-leg-mom ${investMom.cls}">${investMom.str}</span>
+      </div>
+    </div>`;
+}
+
 function renderGoals(tab) {
   const grid = document.getElementById('goal-grid');
   const active = getActiveData(tab);
@@ -3839,6 +3923,7 @@ function renderAll(tab) {
   renderFilter(tab);
   renderMetrics(tab);
   renderDataRange(tab);
+  renderCashInvestRatio(tab);
   renderGoals(tab);
   renderLegend(tab);
   renderChart(tab);
