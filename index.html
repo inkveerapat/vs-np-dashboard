@@ -236,16 +236,29 @@
   .alloc-bar-seg { height: 100%; transition: opacity .15s, transform .15s; transform-origin: center; cursor: pointer; }
   .alloc-bar-seg.dim { opacity: .35; }
   .alloc-bar-seg.hl { opacity: 1; transform: scaleY(1.6); }
-  .alloc-legend { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 5px; }
+  .alloc-legend { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 5px; align-items: start; }
   @media (max-width: 480px) { .alloc-legend { grid-template-columns: 1fr; } }
-  .alloc-leg-item { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px; margin: 0 -4px; border-radius: 4px; cursor: pointer; transition: background .15s, color .15s; }
-  .alloc-leg-item:hover, .alloc-leg-item.hl { background: rgba(255,255,255,0.04); }
+  .alloc-leg-item { border-radius: 4px; margin: 0 -4px; }
+  .alloc-leg-item.expanded { grid-column: 1 / -1; }
+  .alloc-leg-row { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px; border-radius: 4px; cursor: pointer; transition: background .15s, color .15s; }
+  .alloc-leg-row:hover, .alloc-leg-item.hl .alloc-leg-row { background: rgba(255,255,255,0.04); }
   .alloc-leg-name-wrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
   .alloc-leg-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; transition: transform .15s; }
   .alloc-leg-item.hl .alloc-leg-dot { transform: scale(1.3); }
   .alloc-leg-name { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .alloc-leg-item.hl .alloc-leg-name { color: var(--text); }
   .alloc-leg-pct { font-family: var(--font-mono); font-size: 11px; color: var(--text); flex-shrink: 0; margin-left: 8px; }
+  .alloc-chevron { font-size: 9px; color: var(--text3); margin-left: 2px; flex-shrink: 0; transition: transform .2s ease, color .2s ease; display: inline-block; }
+  .alloc-chevron.open { transform: rotate(90deg); color: var(--text2); }
+  .alloc-holdings { max-height: 0; overflow: hidden; transition: max-height .25s ease; }
+  .alloc-holding-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 4px 0 17px; }
+  .alloc-holding-name { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .alloc-holding-pcts { font-family: var(--font-mono); font-size: 10.5px; color: var(--text2); flex-shrink: 0; white-space: nowrap; }
+  .alloc-holding-pcts .within { color: var(--text); }
+  .alloc-holding-pcts .sep { color: var(--text3); margin: 0 3px; }
+  .alloc-holding-sub { display: flex; justify-content: flex-end; padding: 0 4px 7px 17px; }
+  .alloc-holding-mv { font-family: var(--font-mono); font-size: 10px; color: var(--text3); }
+  .alloc-holdings-empty { padding: 8px 4px 8px 17px; font-size: 11px; color: var(--text3); }
 
   /* STATUS */
   .status-bar { margin-top: 32px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
@@ -411,7 +424,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v13.7</p>
+      <p class="gate-version">v13.8</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -432,7 +445,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v13.7</span>
+      <span class="version-badge">v13.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -651,7 +664,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v13.7';
+const VERSION  = 'v13.8';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2229,6 +2242,26 @@ function selectDonutFilter(tab, month) {
   renderDonuts(tab);
 }
 
+function resolveDonutAssetsForPortfolio(tab, title) {
+  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  const dData = list.find(d => d.title === title);
+  if (!dData) return { assets: [], currency: 'THB' };
+  const allMonths = getDonutMonths(tab);
+  const latest = allMonths[allMonths.length - 1];
+  const activeMonth = donutFilterState[tab] || latest;
+  let assets = dData.byMonth[activeMonth];
+  if (!assets || !assets.length) {
+    const available = dData.months.filter(m => {
+      const ai = allMonths.indexOf(m), ac = allMonths.indexOf(activeMonth);
+      return ai <= ac;
+    });
+    const fallback = available[available.length - 1];
+    assets = fallback ? (dData.byMonth[fallback] || []) : [];
+  }
+  assets = applyDonutSort([...assets], donutSortState[tab] || 'value', title.toLowerCase().includes('cash'));
+  return { assets, currency: dData.currency };
+}
+
 function renderAllocationBar(tab) {
   const barSection = document.getElementById('allocation-bar-section');
   const barContainer = document.getElementById('allocation-bar-container');
@@ -2280,17 +2313,60 @@ function renderAllocationBar(tab) {
   let legendHtml = '';
   portfolios.forEach((p, i) => {
     const pct = (p.value / total) * 100;
-    legendHtml += `<div class="alloc-leg-item" data-alloc-idx="${i}"
-        onmouseenter="allocHover('${tab}',${i},true)" onmouseleave="allocHover('${tab}',${i},false)">
-      <div class="alloc-leg-name-wrap">
-        <span class="alloc-leg-dot" style="background:${p.color};"></span>
-        <span class="alloc-leg-name" title="${p.title}">${p.title}</span>
+    const { assets, currency } = resolveDonutAssetsForPortfolio(tab, p.title);
+
+    const holdingsHtml = assets.length ? assets.map(a => {
+      // asset.pct is its % *within this portfolio* (currency-agnostic ratio, already
+      // computed at extraction time). We derive % of net worth from that ratio times
+      // this portfolio's own % of net worth — avoids any cross-currency conversion,
+      // since some portfolios (e.g. US stocks) are tracked in USD.
+      const withinPct = a.pct;
+      const ofNWPct = (withinPct / 100) * pct;
+      return `
+        <div class="alloc-holding-row">
+          <span class="alloc-holding-name" title="${a.name}">${a.name}</span>
+          <span class="alloc-holding-pcts"><span class="within">${withinPct.toFixed(1)}%</span><span class="sep">·</span>${ofNWPct.toFixed(1)}% of net worth</span>
+        </div>
+        <div class="alloc-holding-sub">
+          <span class="alloc-holding-mv">${mask(fmtMC1(a.value, currency))}</span>
+        </div>`;
+    }).join('') : `<div class="alloc-holdings-empty">No holdings data for this period</div>`;
+
+    legendHtml += `<div class="alloc-leg-item" data-alloc-idx="${i}">
+      <div class="alloc-leg-row" onclick="toggleAllocRow('${tab}',${i})"
+          onmouseenter="allocHover('${tab}',${i},true)" onmouseleave="allocHover('${tab}',${i},false)">
+        <div class="alloc-leg-name-wrap">
+          <span class="alloc-leg-dot" style="background:${p.color};"></span>
+          <span class="alloc-leg-name" title="${p.title}">${p.title}</span>
+          <span class="alloc-chevron" id="alloc-chev-${tab}-${i}">&#9656;</span>
+        </div>
+        <span class="alloc-leg-pct">${pct.toFixed(1)}%</span>
       </div>
-      <span class="alloc-leg-pct">${pct.toFixed(1)}%</span>
+      <div class="alloc-holdings" id="alloc-holdings-${tab}-${i}">${holdingsHtml}</div>
     </div>`;
   });
 
   barContainer.innerHTML = `<div class="alloc-bar-track">${trackHtml}</div><div class="alloc-legend">${legendHtml}</div>`;
+}
+
+function toggleAllocRow(tab, i) {
+  const holdings = document.getElementById(`alloc-holdings-${tab}-${i}`);
+  const chev = document.getElementById(`alloc-chev-${tab}-${i}`);
+  if (!holdings) return;
+  const container = document.getElementById('allocation-bar-container');
+  const item = container ? container.querySelector(`.alloc-leg-item[data-alloc-idx="${i}"]`) : null;
+  const isOpen = holdings.classList.contains('open');
+  if (isOpen) {
+    holdings.style.maxHeight = '0px';
+    holdings.classList.remove('open');
+    if (chev) chev.classList.remove('open');
+    if (item) item.classList.remove('expanded');
+  } else {
+    holdings.classList.add('open');
+    if (chev) chev.classList.add('open');
+    if (item) item.classList.add('expanded');
+    holdings.style.maxHeight = holdings.scrollHeight + 'px';
+  }
 }
 
 function allocHover(tab, i, entering) {
