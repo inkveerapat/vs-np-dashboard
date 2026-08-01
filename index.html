@@ -104,6 +104,10 @@
   .ratio-leg-mom.pos { color: var(--green); }
   .ratio-leg-mom.neg { color: var(--red); }
   .ratio-leg-mom.flat { color: var(--text3); }
+  #cashinvest-card { transition: background .15s; }
+  #cashinvest-card:hover { background: #1a1a1a; }
+  .ratio-view-history { font-size: 10.5px; color: var(--text3); text-align: right; margin-top: 12px; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+  #cashinvest-card:hover .ratio-view-history { color: var(--text2); }
   .goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .goal-grid > .goal-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .goal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
@@ -574,24 +578,6 @@
         </div>
       </div>
 
-      <div style="margin-bottom:8px;">
-        <p class="donut-section-title">Cash vs. Invested</p>
-        <div class="range-bar" id="cashinvest-range-bar">
-          <button class="range-btn active" data-range="all" onclick="setCashInvestRange('all')">All</button>
-          <button class="range-btn" data-range="12" onclick="setCashInvestRange('12')">12M</button>
-          <button class="range-btn" data-range="6" onclick="setCashInvestRange('6')">6M</button>
-          <button class="range-btn" data-range="3" onclick="setCashInvestRange('3')">3M</button>
-        </div>
-        <div class="chart-wrap" style="height:240px;">
-          <canvas id="cashinvest-chart"></canvas>
-          <div class="chart-crosshair" id="cashinvest-crosshair"></div>
-          <div class="chart-tooltip" id="cashinvest-tooltip"></div>
-        </div>
-        <div class="legend">
-          <span class="legend-item"><span class="legend-dot" style="background:#c8f542"></span>Cash</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#4da8f5"></span>Invested</span>
-        </div>
-      </div>
     </div>
 
     <div class="donut-section" id="donut-section" style="display:none;">
@@ -1354,6 +1340,8 @@ function renderCashInvestRatio(tab) {
   const investPct = 100 - cashPct;
 
   section.style.display = 'block';
+  card.style.cursor = 'pointer';
+  card.onclick = () => openCashInvestDrill(tab);
   card.innerHTML = `
     <div class="ratio-bar-wrap">
       <div class="ratio-bar">
@@ -1372,7 +1360,8 @@ function renderCashInvestRatio(tab) {
         <span class="ratio-leg-val">${mask(fmtM(investVal))}</span>
         <span class="ratio-leg-mom ${investMom.cls}">${investMom.str}</span>
       </div>
-    </div>`;
+    </div>
+    <div class="ratio-view-history">View history &amp; split <span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></div>`;
 }
 
 function renderGoals(tab) {
@@ -1863,10 +1852,9 @@ function buildDatasets(tab) {
   }
 }
 
-// ─── HOUSEHOLD-ONLY CHARTS: contribution split & cash vs invested ──────────────
+// ─── HOUSEHOLD-ONLY CHARTS: contribution split ──────────────────────────────
 let splitMode = 'pct'; // 'pct' | 'abs'
 let splitChartInst = null;
-let cashInvestChartInst = null;
 
 function buildSplitDatasets() {
   const active = getActiveData('household');
@@ -1899,7 +1887,7 @@ function buildSplitDatasets() {
   return { labels: im, ink: inkOut, fang: fangOut };
 }
 
-function buildCashInvestDatasets() {
+function buildHouseholdCashInvestDatasets() {
   const active = getActiveData('household');
   const inkS = active.ink, fangS = active.fang;
   const im = inkS.months;
@@ -1923,6 +1911,20 @@ function buildCashInvestDatasets() {
   const cash   = inkCash.map((v, i) => v + fangCash[i]);
   const invest = inkInvest.map((v, i) => v + fangInvest[i]);
   return { labels: im, cash, invest, inkCash, fangCash, inkInvest, fangInvest };
+}
+
+// Cash vs Invested series for any tab — Ink/Fang use their own components directly;
+// Household reuses the combined builder above (which also carries the Ink/Fang
+// breakdown, used by the drilldown tooltip).
+function buildCashInvestSeriesForTab(tab) {
+  if (tab === 'household') return buildHouseholdCashInvestDatasets();
+  const active = getActiveData(tab);
+  const d = tab === 'ink' ? active.ink : active.fang;
+  const config = tab === 'ink' ? INK_CONFIG : FANG_CONFIG;
+  const cashIdx = config.cashComponentIdx;
+  const cash = d.months.map((_, i) => d.components[cashIdx].values[i] || 0);
+  const invest = cash.map((c, i) => d.totals[i] - c);
+  return { labels: d.months, cash, invest };
 }
 
 // Tooltip renderer for the Contribution Split chart — adds a MoM sub-line per series
@@ -1978,11 +1980,12 @@ function extTooltipGeneric(ctx, ttId, xhairId, getChartInst, isPct) {
   tt.style.top  = Math.max(t.caretY - 10, 4) + 'px';
 }
 
-// Dedicated tooltip for Cash vs Invested — breaks each category into
-// total / Ink's amount / Fang's amount / their % shares / MoM change on the total
-function extTooltipCashInvest(ctx, breakdown) {
-  const tt = document.getElementById('cashinvest-tooltip');
-  const xhair = document.getElementById('cashinvest-crosshair');
+// Reusable tooltip for the Cash vs Invested drilldown charts (bar history + all-time split).
+// breakdown is null for Ink/Fang (no sub-split to show); provided for Household
+// (adds the Ink/Fang amounts within each Cash/Invested total).
+function extTooltipCashInvestGeneric(ctx, ttId, xhairId, getChartInst, breakdown, isPct) {
+  const tt = document.getElementById(ttId);
+  const xhair = document.getElementById(xhairId);
   if (!tt) return;
   if (ctx.tooltip.opacity === 0) {
     tt.style.display = 'none';
@@ -1990,8 +1993,9 @@ function extTooltipCashInvest(ctx, breakdown) {
     return;
   }
   const t = ctx.tooltip;
-  if (xhair && cashInvestChartInst) {
-    const area = cashInvestChartInst.chartArea;
+  const chartInstRef = getChartInst();
+  if (xhair && chartInstRef) {
+    const area = chartInstRef.chartArea;
     const x = t.caretX;
     if (x >= area.left && x <= area.right) {
       xhair.style.display = 'block';
@@ -2003,40 +2007,50 @@ function extTooltipCashInvest(ctx, breakdown) {
     }
   }
 
-  const idx     = t.dataPoints[0] ? t.dataPoints[0].dataIndex : 0;
-  const cashPt  = t.dataPoints.find(p => p.dataset.label === 'Cash');
+  const idx      = t.dataPoints[0] ? t.dataPoints[0].dataIndex : 0;
+  const cashPt   = t.dataPoints.find(p => p.dataset.label === 'Cash');
   const investPt = t.dataPoints.find(p => p.dataset.label === 'Invested');
-  const grandTotal = (cashPt && cashPt.raw !== null ? cashPt.raw : 0) + (investPt && investPt.raw !== null ? investPt.raw : 0);
+  const grandTotal = isPct ? 100 :
+    (cashPt && cashPt.raw !== null ? cashPt.raw : 0) + (investPt && investPt.raw !== null ? investPt.raw : 0);
 
   function section(label, totalPt, inkArr, fangArr, color) {
     if (!totalPt || totalPt.raw === null) return '';
     const total = totalPt.raw;
-    const ink   = inkArr[idx]  || 0;
-    const fang  = fangArr[idx] || 0;
-    const inkPct  = total > 0 ? (ink  / total * 100).toFixed(1) : '0.0';
-    const fangPct = total > 0 ? (fang / total * 100).toFixed(1) : '0.0';
-    const ofTotalPct = grandTotal > 0 ? (total / grandTotal * 100).toFixed(1) : '0.0';
+    const valStr = isPct ? total + '%' : mask(fmtM(total));
+    const ofTotalStr = isPct ? '' : ` <span style="color:var(--text3);font-size:10px;font-weight:400;">(${grandTotal > 0 ? (total / grandTotal * 100).toFixed(1) : '0.0'}% of total)</span>`;
     const prevTotal = idx > 0 ? totalPt.dataset.data[idx - 1] : null;
     let momHtml = '';
     if (prevTotal !== null && prevTotal !== undefined) {
       const diff = total - prevTotal;
       const sign = diff >= 0 ? '+' : '';
       const col  = diff >= 0 ? '#5ce0a8' : '#f06b6b';
-      const pctChg = prevTotal !== 0 ? ` (${sign}${(diff / prevTotal * 100).toFixed(1)}%)` : '';
-      momHtml = `<div style="color:${col};font-size:10px;margin-top:1px;">${sign}${mask(fmtM(diff))}${pctChg} MoM</div>`;
+      if (isPct) {
+        momHtml = `<div style="color:${col};font-size:10px;margin-top:1px;">${sign}${diff.toFixed(1)}pp MoM</div>`;
+      } else {
+        const pctChg = prevTotal !== 0 ? ` (${sign}${(diff / prevTotal * 100).toFixed(1)}%)` : '';
+        momHtml = `<div style="color:${col};font-size:10px;margin-top:1px;">${sign}${mask(fmtM(diff))}${pctChg} MoM</div>`;
+      }
+    }
+    let breakdownHtml = '';
+    if (breakdown) {
+      const ink  = inkArr[idx]  || 0;
+      const fang = fangArr[idx] || 0;
+      const inkPct  = total > 0 ? (ink  / total * 100).toFixed(1) : '0.0';
+      const fangPct = total > 0 ? (fang / total * 100).toFixed(1) : '0.0';
+      breakdownHtml = `
+        <div class="tt-row" style="padding-left:12px;"><span style="color:var(--text3);">Ink</span><span class="tt-val">${mask(fmtM(ink))} <span style="color:var(--text3);font-size:10px;">(${inkPct}%)</span></span></div>
+        <div class="tt-row" style="padding-left:12px;"><span style="color:var(--text3);">Fang</span><span class="tt-val">${mask(fmtM(fang))} <span style="color:var(--text3);font-size:10px;">(${fangPct}%)</span></span></div>`;
     }
     return `
       <div style="margin-top:8px;">
-        <div class="tt-row" style="font-weight:600;color:var(--text);"><span class="tt-row-label"><span class="tt-dot" style="background:${color}"></span>${label}</span><span class="tt-val">${mask(fmtM(total))} <span style="color:var(--text3);font-size:10px;font-weight:400;">(${ofTotalPct}% of total)</span></span></div>
-        ${momHtml}
-        <div class="tt-row" style="padding-left:12px;"><span style="color:var(--text3);">Ink</span><span class="tt-val">${mask(fmtM(ink))} <span style="color:var(--text3);font-size:10px;">(${inkPct}%)</span></span></div>
-        <div class="tt-row" style="padding-left:12px;"><span style="color:var(--text3);">Fang</span><span class="tt-val">${mask(fmtM(fang))} <span style="color:var(--text3);font-size:10px;">(${fangPct}%)</span></span></div>
+        <div class="tt-row" style="font-weight:600;color:var(--text);"><span class="tt-row-label"><span class="tt-dot" style="background:${color}"></span>${label}</span><span class="tt-val">${valStr}${ofTotalStr}</span></div>
+        ${momHtml}${breakdownHtml}
       </div>`;
   }
 
   let html = `<div class="tt-month">${t.title[0] || ''}</div>`;
-  html += section('Cash', cashPt, breakdown.inkCash, breakdown.fangCash, '#c8f542');
-  html += section('Invested', investPt, breakdown.inkInvest, breakdown.fangInvest, '#4da8f5');
+  html += section('Cash', cashPt, breakdown ? breakdown.inkCash : null, breakdown ? breakdown.fangCash : null, '#c8f542');
+  html += section('Invested', investPt, breakdown ? breakdown.inkInvest : null, breakdown ? breakdown.fangInvest : null, '#4da8f5');
 
   tt.innerHTML = html;
   tt.style.display = 'block';
@@ -2046,6 +2060,216 @@ function extTooltipCashInvest(ctx, breakdown) {
   if (left + 250 > wrapWidth) left = t.caretX - 250 - 14;
   tt.style.left = Math.max(left, 4) + 'px';
   tt.style.top  = Math.max(t.caretY - 10, 4) + 'px';
+}
+
+// ─── CASH VS INVESTED DRILLDOWN (Ink / Fang / Household) ────────────────────
+let ciDrillTab = null;
+let ciDrillBarRange = '12';
+let ciDrillSplitMode = 'pct';
+let ciDrillSplitRange = 'all';
+let ciDrillBarChartInst = null;
+let ciDrillSplitChartInst = null;
+
+function openCashInvestDrill(tab) {
+  ciDrillTab = tab;
+  ciDrillBarRange = '12';
+  ciDrillSplitMode = 'pct';
+  ciDrillSplitRange = 'all';
+
+  const titleTab = tab === 'ink' ? 'Ink' : tab === 'fang' ? 'Fang' : 'Household';
+  document.getElementById('drill-port-title').textContent = `Cash vs Invested — ${titleTab}`;
+
+  // This drill has no export/viewing-month controls — hide the ones the
+  // portfolio drill panel normally shows.
+  const exportBtn = document.getElementById('drill-port-export-btn');
+  if (exportBtn) exportBtn.style.display = 'none';
+  const viewingBar = document.getElementById('port-viewing-bar');
+  if (viewingBar) viewingBar.style.display = 'none';
+
+  renderCashInvestDrillContent(tab);
+
+  pushDrillNav();
+  const overlay = document.getElementById('drill-overlay');
+  const panel   = document.getElementById('drill-panel');
+  overlay.style.display = 'block';
+  panel.style.display   = 'flex';
+  requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
+  document.body.style.overflow = 'hidden';
+}
+
+function renderCashInvestDrillContent(tab) {
+  const content = document.getElementById('drill-port-content');
+  if (!content) return;
+  content.innerHTML = `
+    <div style="margin-bottom:28px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <p class="donut-section-title" style="margin:0;padding:0;border:none;">History</p>
+        <div class="range-bar" id="ci-drill-bar-range-bar" style="margin:0;">
+          <button class="range-btn" data-range="3" onclick="setCiDrillBarRange('3')">3M</button>
+          <button class="range-btn active" data-range="12" onclick="setCiDrillBarRange('12')">12M</button>
+          <button class="range-btn" data-range="6" onclick="setCiDrillBarRange('6')">6M</button>
+          <button class="range-btn" data-range="all" onclick="setCiDrillBarRange('all')">All</button>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="ci-drill-bar-chart"></canvas>
+        <div class="chart-crosshair" id="ci-drill-bar-crosshair"></div>
+        <div class="chart-tooltip" id="ci-drill-bar-tooltip"></div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#c8f542"></span>Cash</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#4da8f5"></span>Invested</span>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <p class="donut-section-title" style="margin:0;padding:0;border:none;">All-Time Split</p>
+        <div class="filter-bar" style="margin:0;">
+          <div style="display:flex;gap:6px;">
+            <button class="filter-pill active" id="ci-drill-split-mode-pct" onclick="setCiDrillSplitMode('pct')">% Share</button>
+            <button class="filter-pill" id="ci-drill-split-mode-abs" onclick="setCiDrillSplitMode('abs')">$ Absolute</button>
+          </div>
+        </div>
+      </div>
+      <div class="range-bar" id="ci-drill-split-range-bar">
+        <button class="range-btn active" data-range="all" onclick="setCiDrillSplitRange('all')">All</button>
+        <button class="range-btn" data-range="12" onclick="setCiDrillSplitRange('12')">12M</button>
+        <button class="range-btn" data-range="6" onclick="setCiDrillSplitRange('6')">6M</button>
+        <button class="range-btn" data-range="3" onclick="setCiDrillSplitRange('3')">3M</button>
+      </div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="ci-drill-split-chart"></canvas>
+        <div class="chart-crosshair" id="ci-drill-split-crosshair"></div>
+        <div class="chart-tooltip" id="ci-drill-split-tooltip"></div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#c8f542"></span>Cash</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#4da8f5"></span>Invested</span>
+      </div>
+    </div>`;
+
+  renderCashInvestDrillBar(tab);
+  renderCashInvestDrillSplit(tab);
+}
+
+function renderCashInvestDrillBar(tab) {
+  const canvas = document.getElementById('ci-drill-bar-chart');
+  if (!canvas) return;
+  if (ciDrillBarChartInst) { ciDrillBarChartInst.destroy(); ciDrillBarChartInst = null; }
+  const raw = buildCashInvestSeriesForTab(tab);
+  const extra = tab === 'household'
+    ? [{ data: raw.inkCash }, { data: raw.fangCash }, { data: raw.inkInvest }, { data: raw.fangInvest }]
+    : [];
+  const { months: labels, datasets: sliced } = sliceByRangeGeneric(raw.labels, [
+    { data: raw.cash }, { data: raw.invest }, ...extra
+  ], ciDrillBarRange);
+  const breakdown = tab === 'household' ? {
+    inkCash: sliced[2].data, fangCash: sliced[3].data,
+    inkInvest: sliced[4].data, fangInvest: sliced[5].data
+  } : null;
+  const ctx2d = canvas.getContext('2d');
+  ciDrillBarChartInst = new Chart(ctx2d, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Cash', data: sliced[0].data, backgroundColor: '#c8f542', stack: 'a', borderRadius: 2 },
+        { label: 'Invested', data: sliced[1].data, backgroundColor: '#4da8f5', stack: 'a', borderRadius: 2 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { enabled: false, external: (c) => extTooltipCashInvestGeneric(c, 'ci-drill-bar-tooltip', 'ci-drill-bar-crosshair', () => ciDrillBarChartInst, breakdown, false) } },
+      scales: {
+        x: { stacked: true, grid: { display: false, drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, border: { color: 'rgba(255,255,255,0.06)' } },
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => mask(fmtM(v)) }, border: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderCashInvestDrillSplit(tab) {
+  const canvas = document.getElementById('ci-drill-split-chart');
+  if (!canvas) return;
+  if (ciDrillSplitChartInst) { ciDrillSplitChartInst.destroy(); ciDrillSplitChartInst = null; }
+  const raw = buildCashInvestSeriesForTab(tab);
+  const isPct = ciDrillSplitMode === 'pct';
+  let cashOut, investOut;
+  if (isPct) {
+    cashOut = raw.cash.map((v, i) => {
+      const tot = v + raw.invest[i];
+      return tot > 0 ? +(v / tot * 100).toFixed(1) : null;
+    });
+    investOut = raw.invest.map((v, i) => {
+      const tot = v + raw.cash[i];
+      return tot > 0 ? +(v / tot * 100).toFixed(1) : null;
+    });
+  } else {
+    cashOut = raw.cash;
+    investOut = raw.invest;
+  }
+  const extra = tab === 'household' && !isPct
+    ? [{ data: raw.inkCash }, { data: raw.fangCash }, { data: raw.inkInvest }, { data: raw.fangInvest }]
+    : [];
+  const { months: labels, datasets: sliced } = sliceByRangeGeneric(raw.labels, [
+    { data: cashOut }, { data: investOut }, ...extra
+  ], ciDrillSplitRange);
+  const breakdown = (tab === 'household' && !isPct) ? {
+    inkCash: sliced[2].data, fangCash: sliced[3].data,
+    inkInvest: sliced[4].data, fangInvest: sliced[5].data
+  } : null;
+  const ctx2d = canvas.getContext('2d');
+  ciDrillSplitChartInst = new Chart(ctx2d, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Cash', data: sliced[0].data, borderColor: '#c8f542',
+          backgroundColor: makeGradient(ctx2d, '#c8f542', 0.45, 0.18),
+          borderWidth: 2, fill: true, stack: 'a', tension: 0.3, pointRadius: 0, spanGaps: false },
+        { label: 'Invested', data: sliced[1].data, borderColor: '#4da8f5',
+          backgroundColor: makeGradient(ctx2d, '#4da8f5', 0.45, 0.18),
+          borderWidth: 2, fill: true, stack: 'a', tension: 0.3, pointRadius: 0, spanGaps: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { enabled: false, external: (c) => extTooltipCashInvestGeneric(c, 'ci-drill-split-tooltip', 'ci-drill-split-crosshair', () => ciDrillSplitChartInst, breakdown, isPct) } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, border: { color: 'rgba(255,255,255,0.06)' } },
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => isPct ? v + '%' : mask(fmtM(v)) }, border: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true, max: isPct ? 100 : undefined }
+      }
+    }
+  });
+}
+
+function setCiDrillBarRange(r) {
+  ciDrillBarRange = r;
+  document.querySelectorAll('#ci-drill-bar-range-bar .range-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === r);
+  });
+  renderCashInvestDrillBar(ciDrillTab);
+}
+
+function setCiDrillSplitMode(mode) {
+  if (ciDrillSplitMode === mode) return;
+  ciDrillSplitMode = mode;
+  const pctBtn = document.getElementById('ci-drill-split-mode-pct');
+  const absBtn = document.getElementById('ci-drill-split-mode-abs');
+  if (pctBtn) pctBtn.classList.toggle('active', mode === 'pct');
+  if (absBtn) absBtn.classList.toggle('active', mode === 'abs');
+  renderCashInvestDrillSplit(ciDrillTab);
+}
+
+function setCiDrillSplitRange(r) {
+  ciDrillSplitRange = r;
+  document.querySelectorAll('#ci-drill-split-range-bar .range-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === r);
+  });
+  renderCashInvestDrillSplit(ciDrillTab);
 }
 
 function renderSplitChart() {
@@ -2083,53 +2307,12 @@ function renderSplitChart() {
   });
 }
 
-function renderCashInvestChart() {
-  const canvas = document.getElementById('cashinvest-chart');
-  if (!canvas) return;
-  if (cashInvestChartInst) { cashInvestChartInst.destroy(); cashInvestChartInst = null; }
-  const raw = buildCashInvestDatasets();
-  const { months: labels, datasets: sliced } = sliceByRangeGeneric(raw.labels, [
-    { data: raw.cash }, { data: raw.invest },
-    { data: raw.inkCash }, { data: raw.fangCash },
-    { data: raw.inkInvest }, { data: raw.fangInvest }
-  ], cashInvestRange);
-  const breakdown = {
-    inkCash: sliced[2].data, fangCash: sliced[3].data,
-    inkInvest: sliced[4].data, fangInvest: sliced[5].data
-  };
-  const ctx2d = canvas.getContext('2d');
-  cashInvestChartInst = new Chart(ctx2d, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Cash', data: sliced[0].data, borderColor: '#c8f542',
-          backgroundColor: makeGradient(ctx2d, '#c8f542', 0.45, 0.18),
-          borderWidth: 2, fill: true, stack: 'a', tension: 0.3, pointRadius: 0 },
-        { label: 'Invested', data: sliced[1].data, borderColor: '#4da8f5',
-          backgroundColor: makeGradient(ctx2d, '#4da8f5', 0.45, 0.18),
-          borderWidth: 2, fill: true, stack: 'a', tension: 0.3, pointRadius: 0 },
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { display: false }, tooltip: { enabled: false, external: (c) => extTooltipCashInvest(c, breakdown) } },
-      scales: {
-        x: { grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, border: { color: 'rgba(255,255,255,0.06)' } },
-        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => mask(fmtM(v)) }, border: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
-      }
-    }
-  });
-}
-
 function renderHouseholdCharts(tab) {
   const section = document.getElementById('household-charts-section');
   if (!section) return;
   if (tab !== 'household') { section.style.display = 'none'; return; }
   section.style.display = 'block';
   renderSplitChart();
-  renderCashInvestChart();
 }
 
 function setSplitMode(mode) {
@@ -2143,7 +2326,6 @@ function setSplitMode(mode) {
 }
 
 let splitRange = 'all';
-let cashInvestRange = 'all';
 
 function setSplitRange(r) {
   splitRange = r;
@@ -2151,14 +2333,6 @@ function setSplitRange(r) {
     b.classList.toggle('active', b.dataset.range === r);
   });
   renderSplitChart();
-}
-
-function setCashInvestRange(r) {
-  cashInvestRange = r;
-  document.querySelectorAll('#cashinvest-range-bar .range-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.range === r);
-  });
-  renderCashInvestChart();
 }
 
 function renderChart(tab) {
@@ -3052,6 +3226,9 @@ function openPortfolioDrill(tab, cardIdx) {
   if (!d) return;
   _portD = d; _portTab = tab; _portCardIdx = cardIdx;
 
+  const exportBtn = document.getElementById('drill-port-export-btn');
+  if (exportBtn) exportBtn.style.display = '';
+
   document.getElementById('drill-port-title').textContent = d.title;
   renderPortfolioDrillContent(d, tab, cardIdx);
 
@@ -3395,6 +3572,9 @@ function closeDrillAll() {
   document.body.style.overflow = '';
   if (drillChartInst) { drillChartInst.destroy(); drillChartInst = null; }
   if (portChartInst)  { portChartInst.destroy();  portChartInst  = null; }
+  if (ciDrillBarChartInst)   { ciDrillBarChartInst.destroy();   ciDrillBarChartInst   = null; }
+  if (ciDrillSplitChartInst) { ciDrillSplitChartInst.destroy(); ciDrillSplitChartInst = null; }
+  ciDrillTab = null;
 }
 
 // Keep old closeDrill alias so any existing references still work
@@ -4070,24 +4250,18 @@ function buildSummaryCard(tab, maskVals) {
       </div>
     </div>` : '';
 
-  // ── Household-only charts: Contribution Split & Cash vs Invested ──
+  // ── Household-only chart: Contribution Split ──
   let householdChartsSection = '';
   if (tab === 'household') {
     const splitCanvas = document.getElementById('split-chart');
-    const cashInvestCanvas = document.getElementById('cashinvest-chart');
     const splitDataUrl = splitCanvas ? captureCanvas(splitCanvas) : null;
-    const cashInvestDataUrl = cashInvestCanvas ? captureCanvas(cashInvestCanvas) : null;
 
     const splitModeLabel = splitMode === 'pct' ? '% Share' : '$ Absolute';
     const splitRangeLabel = splitRange === 'all' ? 'All time' : splitRange + ' months';
-    const cashInvestRangeLabel = cashInvestRange === 'all' ? 'All time' : cashInvestRange + ' months';
 
     const splitLegend = `
       <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888780;margin-right:14px;"><span style="width:8px;height:8px;border-radius:2px;background:#4da8f5;display:inline-block;"></span>Ink</span>
       <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888780;margin-right:14px;"><span style="width:8px;height:8px;border-radius:2px;background:#5ce0a8;display:inline-block;"></span>Fang</span>`;
-    const cashInvestLegend = `
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888780;margin-right:14px;"><span style="width:8px;height:8px;border-radius:2px;background:#c8f542;display:inline-block;"></span>Cash</span>
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888780;margin-right:14px;"><span style="width:8px;height:8px;border-radius:2px;background:#4da8f5;display:inline-block;"></span>Invested</span>`;
 
     const splitSection = splitDataUrl ? `
       <div style="margin-bottom:24px;">
@@ -4098,16 +4272,7 @@ function buildSummaryCard(tab, maskVals) {
         </div>
       </div>` : '';
 
-    const cashInvestSection = cashInvestDataUrl ? `
-      <div style="margin-bottom:24px;">
-        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Cash vs. Invested · ${cashInvestRangeLabel}</p>
-        <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;">
-          <img src="${cashInvestDataUrl}" style="width:100%;display:block;border-radius:6px;" />
-          <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:4px 0;">${cashInvestLegend}</div>
-        </div>
-      </div>` : '';
-
-    householdChartsSection = splitSection + cashInvestSection;
+    householdChartsSection = splitSection;
   }
 
   // ── Condo section (ink tab only) ──
