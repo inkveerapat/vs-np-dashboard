@@ -197,7 +197,7 @@
   .drill-leg-item-clickable:hover { opacity:.75; }
 
   /* DONUT SECTION */
-  .donut-section { margin-top: 48px; }
+  .donut-section { margin-top: 36px; }
   .donut-section-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
   .donut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; }
   .donut-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 20px 18px; }
@@ -445,7 +445,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v14.4</p>
+      <p class="gate-version">v14.5</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -466,7 +466,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v14.4</span>
+      <span class="version-badge">v14.5</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -672,7 +672,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v14.4';
+const VERSION  = 'v14.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2064,7 +2064,7 @@ function extTooltipCashInvestGeneric(ctx, ttId, xhairId, getChartInst, breakdown
 
 // ─── CASH VS INVESTED DRILLDOWN (Ink / Fang / Household) ────────────────────
 let ciDrillTab = null;
-let ciDrillBarRange = '12';
+let ciDrillBarRange = 'all';
 let ciDrillSplitMode = 'pct';
 let ciDrillSplitRange = 'all';
 let ciDrillBarChartInst = null;
@@ -2072,7 +2072,7 @@ let ciDrillSplitChartInst = null;
 
 function openCashInvestDrill(tab) {
   ciDrillTab = tab;
-  ciDrillBarRange = '12';
+  ciDrillBarRange = 'all';
   ciDrillSplitMode = 'pct';
   ciDrillSplitRange = 'all';
 
@@ -2102,14 +2102,12 @@ function renderCashInvestDrillContent(tab) {
   if (!content) return;
   content.innerHTML = `
     <div style="margin-bottom:28px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-        <p class="donut-section-title" style="margin:0;padding:0;border:none;">History</p>
-        <div class="range-bar" id="ci-drill-bar-range-bar" style="margin:0;">
-          <button class="range-btn" data-range="3" onclick="setCiDrillBarRange('3')">3M</button>
-          <button class="range-btn active" data-range="12" onclick="setCiDrillBarRange('12')">12M</button>
-          <button class="range-btn" data-range="6" onclick="setCiDrillBarRange('6')">6M</button>
-          <button class="range-btn" data-range="all" onclick="setCiDrillBarRange('all')">All</button>
-        </div>
+      <p class="donut-section-title" style="margin-bottom:14px;">History</p>
+      <div class="range-bar" id="ci-drill-bar-range-bar">
+        <button class="range-btn active" data-range="all" onclick="setCiDrillBarRange('all')">All</button>
+        <button class="range-btn" data-range="12" onclick="setCiDrillBarRange('12')">12M</button>
+        <button class="range-btn" data-range="6" onclick="setCiDrillBarRange('6')">6M</button>
+        <button class="range-btn" data-range="3" onclick="setCiDrillBarRange('3')">3M</button>
       </div>
       <div class="chart-wrap" style="height:240px;">
         <canvas id="ci-drill-bar-chart"></canvas>
@@ -2123,8 +2121,8 @@ function renderCashInvestDrillContent(tab) {
     </div>
 
     <div>
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-        <p class="donut-section-title" style="margin:0;padding:0;border:none;">All-Time Split</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <p class="donut-section-title" style="margin:0;padding:0;border:none;">Cash vs Invested Trend</p>
         <div class="filter-bar" style="margin:0;">
           <div style="display:flex;gap:6px;">
             <button class="filter-pill active" id="ci-drill-split-mode-pct" onclick="setCiDrillSplitMode('pct')">% Share</button>
