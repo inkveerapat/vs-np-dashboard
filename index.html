@@ -78,15 +78,13 @@
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
 
   /* METRIC CARDS */
-  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); grid-auto-flow: dense; gap: 12px; margin-bottom: 32px; }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 32px; }
   .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
   .metric-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); font-family: var(--font-mono); margin-bottom: 6px; }
   .metric-val { font-size: 22px; font-weight: 500; color: var(--text); letter-spacing: -.02em; font-family: var(--font-mono); }
   .metric-sub { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: var(--font-mono); }
   .metric-sub.pos { color: var(--green); }
   .metric-sub.neg { color: var(--red); }
-  .metric-card.combined-share { grid-column: 1 / -1; transition: background .15s; }
-  .metric-card.combined-share:hover { background: #1a1a1a; }
 
   /* GOAL SECTION */
   .goal-section { margin-bottom: 36px; }
@@ -108,8 +106,11 @@
   .ratio-leg-mom.flat { color: var(--text3); }
   #cashinvest-card { transition: background .15s; }
   #cashinvest-card:hover { background: #1a1a1a; }
+  #inkfang-card { transition: background .15s; }
+  #inkfang-card:hover { background: #1a1a1a; }
   .ratio-view-history { font-size: 10.5px; color: var(--text3); text-align: right; margin-top: 12px; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
   #cashinvest-card:hover .ratio-view-history { color: var(--text2); }
+  #inkfang-card:hover .ratio-view-history { color: var(--text2); }
   .goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .goal-grid > .goal-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .goal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
@@ -447,7 +448,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v14.7</p>
+      <p class="gate-version">v14.8</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -468,7 +469,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v14.7</span>
+      <span class="version-badge">v14.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -517,6 +518,11 @@
 
     <div id="metric-grid" class="metric-grid"></div>
     <div class="error-box" id="error-box"></div>
+
+    <div id="inkfang-section" style="display:none;margin-bottom:24px;">
+      <p class="goal-section-title">Ink vs Fang Share</p>
+      <div class="goal-card" id="inkfang-card"></div>
+    </div>
 
     <div id="cashinvest-section" style="display:none;margin-bottom:24px;">
       <p class="goal-section-title">Cash vs Invested</p>
@@ -644,7 +650,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v14.7';
+const VERSION  = 'v14.8';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1663,22 +1669,6 @@ function renderMetrics(tab) {
     const iP=inkS.totals[inkS.totals.length-2]??iL;
     const fP=fangS.totals.length>1 ? fangS.totals[fangS.totals.length-2] : fL;
     const mom=fmtPct(tot,iP+fP);
-    // Share MoM: the plain point difference in each person's share (e.g. 27.9% -> 27.0%
-    // is shown as -0.9% MoM) — not a relative % change, and not labeled "pp".
-    const prevTot = iP+fP;
-    const shareInkNow   = tot>0     ? iL/tot*100     : null;
-    const shareFangNow  = tot>0     ? fL/tot*100     : null;
-    const shareInkPrev  = prevTot>0 ? iP/prevTot*100 : null;
-    const shareFangPrev = prevTot>0 ? fP/prevTot*100 : null;
-    function shareMoM(now, prev) {
-      if (now==null || prev==null) return '—';
-      const d = now - prev;
-      return (d>=0?'+':'')+d.toFixed(1)+'%';
-    }
-    const momShareInk  = shareMoM(shareInkNow,  shareInkPrev);
-    const momShareFang = shareMoM(shareFangNow, shareFangPrev);
-    const momShareInkColor  = momShareInk==='—'  ? 'inherit' : (parseFloat(momShareInk)>=0  ? 'var(--green)' : 'var(--red)');
-    const momShareFangColor = momShareFang==='—' ? 'inherit' : (parseFloat(momShareFang)>=0 ? 'var(--green)' : 'var(--red)');
     // Household YTD: combine ink + fang totals aligned by month
     const inkJan = calcYTD(inkS.months, inkS.totals);
     const fangStart = inkS.months.indexOf(fangS.months[0]);
@@ -1702,45 +1692,71 @@ function renderMetrics(tab) {
     const hhYtdVal = hhYtd
       ? (hhYtd.diff >= 0 ? '+' : '') + fmtM(hhYtd.diff) + ' (' + (hhYtd.pct >= 0 ? '+' : '') + hhYtd.pct.toFixed(1) + '%)'
       : '—';
-    const inkPct  = tot > 0 ? (iL / tot * 100) : 0;
-    const fangPct = 100 - inkPct;
-    const shareCardHtml = `
-      <div class="metric-card combined-share" id="share-metric-card" style="cursor:pointer;">
-        <p class="metric-label">Ink vs Fang Share</p>
-        <div class="ratio-bar-wrap" style="margin:10px 0 12px;">
-          <div class="ratio-bar">
-            <div class="ratio-seg-cash" style="width:${inkPct}%;background:#4da8f5;"></div>
-            <div class="ratio-seg-invest" style="width:${fangPct}%;background:#5ce0a8;"></div>
-          </div>
-        </div>
-        <div class="ratio-legend">
-          <div class="ratio-leg-item">
-            <span class="ratio-leg-label"><span class="ratio-leg-dot" style="background:#4da8f5;"></span>Ink &middot; ${inkPct.toFixed(0)}%</span>
-            <span class="ratio-leg-val">${mask(fmtM(iL))}</span>
-            <span class="ratio-leg-mom" style="color:${momShareInkColor};">${momShareInk} vs last mo.</span>
-          </div>
-          <div class="ratio-leg-item">
-            <span class="ratio-leg-label">Fang &middot; ${fangPct.toFixed(0)}%<span class="ratio-leg-dot" style="background:#5ce0a8;"></span></span>
-            <span class="ratio-leg-val">${mask(fmtM(fL))}</span>
-            <span class="ratio-leg-mom" style="color:${momShareFangColor};">${momShareFang} vs last mo.</span>
-          </div>
-        </div>
-        <div class="ratio-view-history">View history &amp; split <span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></div>
-      </div>`;
     cards=[
       {label:'Household net worth', val:mask(fmtM(tot)),                       sub:mom+' MoM',             cls:parseFloat(mom)>=0?'pos':'neg'},
       {label: hhYtd ? hhYtd.label : 'YTD', val: hhYtd ? mask(hhYtdVal) : '—', sub: hhYtd ? 'vs '+mask(fmtM(hhYtd.janVal))+' Jan' : 'No Jan in range', cls: hhYtd ? (hhYtd.diff >= 0 ? 'pos' : 'neg') : ''},
     ];
-    document.getElementById('metric-grid').innerHTML =
-      `<div class="metric-card"><p class="metric-label">${cards[0].label}</p><p class="metric-val">${cards[0].val}</p><p class="metric-sub ${cards[0].cls}">${cards[0].sub}</p></div>`
-      + shareCardHtml
-      + `<div class="metric-card"><p class="metric-label">${cards[1].label}</p><p class="metric-val">${cards[1].val}</p><p class="metric-sub ${cards[1].cls}">${cards[1].sub}</p></div>`;
-    document.getElementById('share-metric-card').onclick = () => openContributionSplitDrill();
-    return;
   }
   document.getElementById('metric-grid').innerHTML = cards.map(c =>
     `<div class="metric-card"><p class="metric-label">${c.label}</p><p class="metric-val">${c.val}</p><p class="metric-sub ${c.cls}">${c.sub}</p></div>`
   ).join('');
+}
+
+function renderInkFangShare(tab) {
+  const section = document.getElementById('inkfang-section');
+  const card = document.getElementById('inkfang-card');
+  if (!section || !card) return;
+  if (tab !== 'household') { section.style.display = 'none'; return; }
+
+  const active = getActiveData(tab);
+  const inkS = active.ink, fangS = active.fang;
+  const iL = inkS.totals[inkS.totals.length - 1];
+  const fL = fangS.totals.length ? fangS.totals[fangS.totals.length - 1] : 0;
+  const tot = iL + fL;
+  if (!tot) { section.style.display = 'none'; return; }
+  const iP = inkS.totals[inkS.totals.length - 2] ?? iL;
+  const fP = fangS.totals.length > 1 ? fangS.totals[fangS.totals.length - 2] : fL;
+  const prevTot = iP + fP;
+  const shareInkNow   = tot > 0     ? iL / tot * 100     : null;
+  const shareFangNow  = tot > 0     ? fL / tot * 100     : null;
+  const shareInkPrev  = prevTot > 0 ? iP / prevTot * 100 : null;
+  const shareFangPrev = prevTot > 0 ? fP / prevTot * 100 : null;
+  function shareMoM(now, prev) {
+    if (now == null || prev == null) return '—';
+    const d = now - prev;
+    return (d >= 0 ? '+' : '') + d.toFixed(1) + '%';
+  }
+  const momShareInk  = shareMoM(shareInkNow,  shareInkPrev);
+  const momShareFang = shareMoM(shareFangNow, shareFangPrev);
+  const momShareInkColor  = momShareInk === '—'  ? 'inherit' : (parseFloat(momShareInk) >= 0  ? 'var(--green)' : 'var(--red)');
+  const momShareFangColor = momShareFang === '—' ? 'inherit' : (parseFloat(momShareFang) >= 0 ? 'var(--green)' : 'var(--red)');
+
+  const inkPct  = tot > 0 ? (iL / tot * 100) : 0;
+  const fangPct = 100 - inkPct;
+
+  section.style.display = 'block';
+  card.style.cursor = 'pointer';
+  card.onclick = () => openContributionSplitDrill();
+  card.innerHTML = `
+    <div class="ratio-bar-wrap">
+      <div class="ratio-bar">
+        <div class="ratio-seg-cash" style="width:${inkPct}%;background:#4da8f5;"></div>
+        <div class="ratio-seg-invest" style="width:${fangPct}%;background:#5ce0a8;"></div>
+      </div>
+    </div>
+    <div class="ratio-legend">
+      <div class="ratio-leg-item">
+        <span class="ratio-leg-label"><span class="ratio-leg-dot" style="background:#4da8f5;"></span>Ink &middot; ${inkPct.toFixed(0)}%</span>
+        <span class="ratio-leg-val">${mask(fmtM(iL))}</span>
+        <span class="ratio-leg-mom" style="color:${momShareInkColor};">${momShareInk} vs last mo.</span>
+      </div>
+      <div class="ratio-leg-item">
+        <span class="ratio-leg-label">Fang &middot; ${fangPct.toFixed(0)}%<span class="ratio-leg-dot" style="background:#5ce0a8;"></span></span>
+        <span class="ratio-leg-val">${mask(fmtM(fL))}</span>
+        <span class="ratio-leg-mom" style="color:${momShareFangColor};">${momShareFang} vs last mo.</span>
+      </div>
+    </div>
+    <div class="ratio-view-history">View history &amp; split <span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></div>`;
 }
 
 function renderDataRange(tab) {
@@ -4236,6 +4252,7 @@ function renderAll(tab) {
   renderFilter(tab);
   renderMetrics(tab);
   renderDataRange(tab);
+  renderInkFangShare(tab);
   renderCashInvestRatio(tab);
   renderGoals(tab);
   renderLegend(tab);
