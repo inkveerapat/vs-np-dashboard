@@ -78,7 +78,7 @@
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
 
   /* METRIC CARDS */
-  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); grid-auto-flow: dense; gap: 12px; margin-bottom: 32px; }
   .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
   .metric-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); font-family: var(--font-mono); margin-bottom: 6px; }
   .metric-val { font-size: 22px; font-weight: 500; color: var(--text); letter-spacing: -.02em; font-family: var(--font-mono); }
@@ -94,7 +94,7 @@
   .ratio-bar-wrap { margin: 2px 0 14px; }
   .ratio-bar { display: flex; height: 20px; border-radius: 6px; overflow: hidden; background: var(--surface2); }
   .ratio-seg-cash { background: var(--accent); transition: width .4s ease; }
-  .ratio-seg-invest { background: #4da8f5; transition: width .4s ease; }
+  .ratio-seg-invest { background: #a78bfa; transition: width .4s ease; }
   .ratio-legend { display: flex; justify-content: space-between; }
   .ratio-leg-item { display: flex; flex-direction: column; min-width: 0; }
   .ratio-leg-item:last-child { text-align: right; align-items: flex-end; }
@@ -447,7 +447,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v14.6</p>
+      <p class="gate-version">v14.7</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -468,7 +468,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v14.6</span>
+      <span class="version-badge">v14.7</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -644,7 +644,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v14.6';
+const VERSION  = 'v14.7';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1328,7 +1328,7 @@ function renderCashInvestRatio(tab) {
         <span class="ratio-leg-mom ${cashMom.cls}">${cashMom.str}</span>
       </div>
       <div class="ratio-leg-item">
-        <span class="ratio-leg-label">Invested &middot; ${investPct.toFixed(0)}%<span class="ratio-leg-dot" style="background:#4da8f5;"></span></span>
+        <span class="ratio-leg-label">Invested &middot; ${investPct.toFixed(0)}%<span class="ratio-leg-dot" style="background:#a78bfa;"></span></span>
         <span class="ratio-leg-val">${mask(fmtM(investVal))}</span>
         <span class="ratio-leg-mom ${investMom.cls}">${investMom.str}</span>
       </div>
@@ -2052,7 +2052,7 @@ function extTooltipCashInvestGeneric(ctx, ttId, xhairId, getChartInst, breakdown
 
   let html = `<div class="tt-month">${t.title[0] || ''}</div>`;
   html += section('Cash', cashPt, breakdown ? breakdown.inkCash : null, breakdown ? breakdown.fangCash : null, '#c8f542');
-  html += section('Invested', investPt, breakdown ? breakdown.inkInvest : null, breakdown ? breakdown.fangInvest : null, '#4da8f5');
+  html += section('Invested', investPt, breakdown ? breakdown.inkInvest : null, breakdown ? breakdown.fangInvest : null, '#a78bfa');
 
   tt.innerHTML = html;
   tt.style.display = 'block';
@@ -2118,7 +2118,7 @@ function renderCashInvestDrillContent(tab) {
       </div>
       <div class="legend">
         <span class="legend-item"><span class="legend-dot" style="background:#c8f542"></span>Cash</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#4da8f5"></span>Invested</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>Invested</span>
       </div>
     </div>
 
@@ -2145,7 +2145,7 @@ function renderCashInvestDrillContent(tab) {
       </div>
       <div class="legend">
         <span class="legend-item"><span class="legend-dot" style="background:#c8f542"></span>Cash</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#4da8f5"></span>Invested</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>Invested</span>
       </div>
     </div>`;
 
@@ -2175,7 +2175,7 @@ function renderCashInvestDrillBar(tab) {
       labels,
       datasets: [
         { label: 'Cash', data: sliced[0].data, backgroundColor: '#c8f542', stack: 'a', borderRadius: 2 },
-        { label: 'Invested', data: sliced[1].data, backgroundColor: '#4da8f5', stack: 'a', borderRadius: 2 },
+        { label: 'Invested', data: sliced[1].data, backgroundColor: '#a78bfa', stack: 'a', borderRadius: 2 },
       ]
     },
     options: {
@@ -2229,8 +2229,8 @@ function renderCashInvestDrillSplit(tab) {
         { label: 'Cash', data: sliced[0].data, borderColor: '#c8f542',
           backgroundColor: makeGradient(ctx2d, '#c8f542', 0.45, 0.18),
           borderWidth: 2, fill: true, stack: 'a', tension: 0.3, pointRadius: 0, spanGaps: false },
-        { label: 'Invested', data: sliced[1].data, borderColor: '#4da8f5',
-          backgroundColor: makeGradient(ctx2d, '#4da8f5', 0.45, 0.18),
+        { label: 'Invested', data: sliced[1].data, borderColor: '#a78bfa',
+          backgroundColor: makeGradient(ctx2d, '#a78bfa', 0.45, 0.18),
           borderWidth: 2, fill: true, stack: 'a', tension: 0.3, pointRadius: 0, spanGaps: false },
       ]
     },
@@ -4837,7 +4837,7 @@ function buildSummaryCard(tab, maskVals) {
       <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
         <div style="display:flex;height:20px;border-radius:6px;overflow:hidden;background:#1e1e1e;margin-bottom:12px;">
           <div style="width:${ciCashPct}%;background:#c8f542;"></div>
-          <div style="width:${ciInvestPct}%;background:#4da8f5;"></div>
+          <div style="width:${ciInvestPct}%;background:#a78bfa;"></div>
         </div>
         <div style="display:flex;justify-content:space-between;">
           <div>
@@ -4846,7 +4846,7 @@ function buildSummaryCard(tab, maskVals) {
             <p style="font-family:'DM Mono',monospace;font-size:10px;color:${ciCashMom.col};margin:0;">${ciCashMom.str}</p>
           </div>
           <div style="text-align:right;">
-            <span style="font-size:10.5px;color:#a3a299;display:flex;align-items:center;justify-content:flex-end;">Invested &middot; ${ciInvestPct.toFixed(0)}%<span style="width:7px;height:7px;border-radius:50%;background:#4da8f5;display:inline-block;margin-left:5px;"></span></span>
+            <span style="font-size:10.5px;color:#a3a299;display:flex;align-items:center;justify-content:flex-end;">Invested &middot; ${ciInvestPct.toFixed(0)}%<span style="width:7px;height:7px;border-radius:50%;background:#a78bfa;display:inline-block;margin-left:5px;"></span></span>
             <p style="font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:#f0efe8;margin:3px 0 2px;">${fmt(investVal)}</p>
             <p style="font-family:'DM Mono',monospace;font-size:10px;color:${ciInvestMom.col};margin:0;">${ciInvestMom.str}</p>
           </div>
