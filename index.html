@@ -1889,8 +1889,7 @@ function buildSplitDatasets(modeOverride) {
   if (mode === 'pct') {
     inkOut = inkVals.map((v, i) => {
       const f = fangAligned[i];
-      if (f === null) return null; // no meaningful "share" until both people have tracked data
-      const tot = v + f;
+      const tot = v + (f || 0);
       return tot > 0 ? +(v / tot * 100).toFixed(1) : null;
     });
     fangOut = inkVals.map((v, i) => {
@@ -2305,11 +2304,11 @@ function renderSplitChart() {
       labels,
       datasets: [
         { label: 'Ink', data: sliced[0].data, borderColor: '#4da8f5',
-          backgroundColor: makeGradient(ctx2d, '#4da8f5', 0.4, 0.15),
-          borderWidth: 1.5, fill: true, stack: 'a', tension: 0.3, pointRadius: 0, spanGaps: false },
+          backgroundColor: makeGradient(ctx2d, '#4da8f5', 0.45, 0.18),
+          borderWidth: 2, fill: true, stack: 'a', tension: 0.3, pointRadius: 0, spanGaps: false },
         { label: 'Fang', data: sliced[1].data, borderColor: '#5ce0a8',
-          backgroundColor: makeGradient(ctx2d, '#5ce0a8', 0.4, 0.15),
-          borderWidth: 1.5, fill: true, stack: 'a', tension: 0.3, pointRadius: 0, spanGaps: false },
+          backgroundColor: makeGradient(ctx2d, '#5ce0a8', 0.45, 0.18),
+          borderWidth: 2, fill: true, stack: 'a', tension: 0.3, pointRadius: 0, spanGaps: false },
       ]
     },
     options: {
@@ -4364,8 +4363,8 @@ function captureSplitChartForExport() {
       data: {
         labels: raw.labels,
         datasets: [
-          { data: raw.ink, borderColor: '#4da8f5', backgroundColor: makeGradient(ctx2d, '#4da8f5', 0.4, 0.15), borderWidth: 1.5, fill: true, stack: 'a', tension: 0.3, pointRadius: 0 },
-          { data: raw.fang, borderColor: '#5ce0a8', backgroundColor: makeGradient(ctx2d, '#5ce0a8', 0.4, 0.15), borderWidth: 1.5, fill: true, stack: 'a', tension: 0.3, pointRadius: 0 },
+          { data: raw.ink, borderColor: '#4da8f5', backgroundColor: makeGradient(ctx2d, '#4da8f5', 0.45, 0.18), borderWidth: 2, fill: true, stack: 'a', tension: 0.3, pointRadius: 0 },
+          { data: raw.fang, borderColor: '#5ce0a8', backgroundColor: makeGradient(ctx2d, '#5ce0a8', 0.45, 0.18), borderWidth: 2, fill: true, stack: 'a', tension: 0.3, pointRadius: 0 },
         ]
       },
       options: {
