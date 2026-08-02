@@ -85,6 +85,8 @@
   .metric-sub { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: var(--font-mono); }
   .metric-sub.pos { color: var(--green); }
   .metric-sub.neg { color: var(--red); }
+  .metric-card.combined-share { grid-column: 1 / -1; transition: background .15s; }
+  .metric-card.combined-share:hover { background: #1a1a1a; }
 
   /* GOAL SECTION */
   .goal-section { margin-bottom: 36px; }
@@ -445,7 +447,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v14.5</p>
+      <p class="gate-version">v14.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -466,7 +468,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v14.5</span>
+      <span class="version-badge">v14.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -549,36 +551,6 @@
       <div id="allocation-bar-container"></div>
     </div>
     </div><!-- /sticky-zone -->
-
-    <div id="household-charts-section" style="display:none;margin-top:36px;">
-      <div style="margin-bottom:36px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
-          <p class="donut-section-title" style="margin:0;padding:0;border:none;">Contribution Split</p>
-          <div class="filter-bar" style="margin:0;">
-            <div style="display:flex;gap:6px;">
-              <button class="filter-pill active" id="split-mode-pct" onclick="setSplitMode('pct')">% Share</button>
-              <button class="filter-pill" id="split-mode-abs" onclick="setSplitMode('abs')">$ Absolute</button>
-            </div>
-          </div>
-        </div>
-        <div class="range-bar" id="split-range-bar">
-          <button class="range-btn active" data-range="all" onclick="setSplitRange('all')">All</button>
-          <button class="range-btn" data-range="12" onclick="setSplitRange('12')">12M</button>
-          <button class="range-btn" data-range="6" onclick="setSplitRange('6')">6M</button>
-          <button class="range-btn" data-range="3" onclick="setSplitRange('3')">3M</button>
-        </div>
-        <div class="chart-wrap" style="height:240px;">
-          <canvas id="split-chart"></canvas>
-          <div class="chart-crosshair" id="split-crosshair"></div>
-          <div class="chart-tooltip" id="split-tooltip"></div>
-        </div>
-        <div class="legend">
-          <span class="legend-item"><span class="legend-dot" style="background:#4da8f5"></span>Ink</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#5ce0a8"></span>Fang</span>
-        </div>
-      </div>
-
-    </div>
 
     <div class="donut-section" id="donut-section" style="display:none;">
       <div class="sticky-zone">
@@ -672,7 +644,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v14.5';
+const VERSION  = 'v14.6';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1730,12 +1702,41 @@ function renderMetrics(tab) {
     const hhYtdVal = hhYtd
       ? (hhYtd.diff >= 0 ? '+' : '') + fmtM(hhYtd.diff) + ' (' + (hhYtd.pct >= 0 ? '+' : '') + hhYtd.pct.toFixed(1) + '%)'
       : '—';
+    const inkPct  = tot > 0 ? (iL / tot * 100) : 0;
+    const fangPct = 100 - inkPct;
+    const shareCardHtml = `
+      <div class="metric-card combined-share" id="share-metric-card" style="cursor:pointer;">
+        <p class="metric-label">Ink vs Fang Share</p>
+        <div class="ratio-bar-wrap" style="margin:10px 0 12px;">
+          <div class="ratio-bar">
+            <div class="ratio-seg-cash" style="width:${inkPct}%;background:#4da8f5;"></div>
+            <div class="ratio-seg-invest" style="width:${fangPct}%;background:#5ce0a8;"></div>
+          </div>
+        </div>
+        <div class="ratio-legend">
+          <div class="ratio-leg-item">
+            <span class="ratio-leg-label"><span class="ratio-leg-dot" style="background:#4da8f5;"></span>Ink &middot; ${inkPct.toFixed(0)}%</span>
+            <span class="ratio-leg-val">${mask(fmtM(iL))}</span>
+            <span class="ratio-leg-mom" style="color:${momShareInkColor};">${momShareInk} vs last mo.</span>
+          </div>
+          <div class="ratio-leg-item">
+            <span class="ratio-leg-label">Fang &middot; ${fangPct.toFixed(0)}%<span class="ratio-leg-dot" style="background:#5ce0a8;"></span></span>
+            <span class="ratio-leg-val">${mask(fmtM(fL))}</span>
+            <span class="ratio-leg-mom" style="color:${momShareFangColor};">${momShareFang} vs last mo.</span>
+          </div>
+        </div>
+        <div class="ratio-view-history">View history &amp; split <span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></div>
+      </div>`;
     cards=[
       {label:'Household net worth', val:mask(fmtM(tot)),                       sub:mom+' MoM',             cls:parseFloat(mom)>=0?'pos':'neg'},
-      {label:"Ink's share",         val:tot>0?(iL/tot*100).toFixed(1)+'%':'—', sub:mask(fmtM(iL))+' · <span style="color:'+momShareInkColor+'">'+momShareInk+' MoM</span>',   cls:''},
-      {label:"Fang's share",        val:tot>0?(fL/tot*100).toFixed(1)+'%':'—', sub:mask(fmtM(fL))+' · <span style="color:'+momShareFangColor+'">'+momShareFang+' MoM</span>', cls:''},
       {label: hhYtd ? hhYtd.label : 'YTD', val: hhYtd ? mask(hhYtdVal) : '—', sub: hhYtd ? 'vs '+mask(fmtM(hhYtd.janVal))+' Jan' : 'No Jan in range', cls: hhYtd ? (hhYtd.diff >= 0 ? 'pos' : 'neg') : ''},
     ];
+    document.getElementById('metric-grid').innerHTML =
+      `<div class="metric-card"><p class="metric-label">${cards[0].label}</p><p class="metric-val">${cards[0].val}</p><p class="metric-sub ${cards[0].cls}">${cards[0].sub}</p></div>`
+      + shareCardHtml
+      + `<div class="metric-card"><p class="metric-label">${cards[1].label}</p><p class="metric-val">${cards[1].val}</p><p class="metric-sub ${cards[1].cls}">${cards[1].sub}</p></div>`;
+    document.getElementById('share-metric-card').onclick = () => openContributionSplitDrill();
+    return;
   }
   document.getElementById('metric-grid').innerHTML = cards.map(c =>
     `<div class="metric-card"><p class="metric-label">${c.label}</p><p class="metric-val">${c.val}</p><p class="metric-sub ${c.cls}">${c.sub}</p></div>`
@@ -1856,7 +1857,8 @@ function buildDatasets(tab) {
 let splitMode = 'pct'; // 'pct' | 'abs'
 let splitChartInst = null;
 
-function buildSplitDatasets() {
+function buildSplitDatasets(modeOverride) {
+  const mode = modeOverride || splitMode;
   const active = getActiveData('household');
   const inkS = active.ink, fangS = active.fang;
   const im = inkS.months;
@@ -1868,7 +1870,7 @@ function buildSplitDatasets() {
   const inkVals = inkS.totals;
 
   let inkOut, fangOut;
-  if (splitMode === 'pct') {
+  if (mode === 'pct') {
     inkOut = inkVals.map((v, i) => {
       const f = fangAligned[i];
       const tot = v + (f || 0);
@@ -2305,12 +2307,123 @@ function renderSplitChart() {
   });
 }
 
-function renderHouseholdCharts(tab) {
-  const section = document.getElementById('household-charts-section');
-  if (!section) return;
-  if (tab !== 'household') { section.style.display = 'none'; return; }
-  section.style.display = 'block';
+// ─── CONTRIBUTION SPLIT DRILLDOWN (Household only) ──────────────────────────
+let csDrillBarRange = 'all';
+let csDrillBarChartInst = null;
+
+function openContributionSplitDrill() {
+  csDrillBarRange = 'all';
+  splitMode = 'pct';
+  splitRange = 'all';
+
+  document.getElementById('drill-port-title').textContent = 'Contribution Split — Household';
+
+  const exportBtn = document.getElementById('drill-port-export-btn');
+  if (exportBtn) exportBtn.style.display = 'none';
+  const viewingBar = document.getElementById('port-viewing-bar');
+  if (viewingBar) viewingBar.style.display = 'none';
+
+  renderContributionSplitDrillContent();
+
+  pushDrillNav();
+  const overlay = document.getElementById('drill-overlay');
+  const panel   = document.getElementById('drill-panel');
+  overlay.style.display = 'block';
+  panel.style.display   = 'flex';
+  requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
+  document.body.style.overflow = 'hidden';
+}
+
+function renderContributionSplitDrillContent() {
+  const content = document.getElementById('drill-port-content');
+  if (!content) return;
+  content.innerHTML = `
+    <div style="margin-bottom:28px;">
+      <p class="donut-section-title" style="margin-bottom:14px;">History</p>
+      <div class="range-bar" id="cs-drill-bar-range-bar">
+        <button class="range-btn active" data-range="all" onclick="setCsDrillBarRange('all')">All</button>
+        <button class="range-btn" data-range="12" onclick="setCsDrillBarRange('12')">12M</button>
+        <button class="range-btn" data-range="6" onclick="setCsDrillBarRange('6')">6M</button>
+        <button class="range-btn" data-range="3" onclick="setCsDrillBarRange('3')">3M</button>
+      </div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="cs-drill-bar-chart"></canvas>
+        <div class="chart-crosshair" id="cs-drill-bar-crosshair"></div>
+        <div class="chart-tooltip" id="cs-drill-bar-tooltip"></div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#4da8f5"></span>Ink</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#5ce0a8"></span>Fang</span>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <p class="donut-section-title" style="margin:0;padding:0;border:none;">Contribution Split</p>
+        <div class="filter-bar" style="margin:0;">
+          <div style="display:flex;gap:6px;">
+            <button class="filter-pill active" id="split-mode-pct" onclick="setSplitMode('pct')">% Share</button>
+            <button class="filter-pill" id="split-mode-abs" onclick="setSplitMode('abs')">$ Absolute</button>
+          </div>
+        </div>
+      </div>
+      <div class="range-bar" id="split-range-bar">
+        <button class="range-btn active" data-range="all" onclick="setSplitRange('all')">All</button>
+        <button class="range-btn" data-range="12" onclick="setSplitRange('12')">12M</button>
+        <button class="range-btn" data-range="6" onclick="setSplitRange('6')">6M</button>
+        <button class="range-btn" data-range="3" onclick="setSplitRange('3')">3M</button>
+      </div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="split-chart"></canvas>
+        <div class="chart-crosshair" id="split-crosshair"></div>
+        <div class="chart-tooltip" id="split-tooltip"></div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#4da8f5"></span>Ink</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#5ce0a8"></span>Fang</span>
+      </div>
+    </div>`;
+
+  renderContributionSplitDrillBar();
   renderSplitChart();
+}
+
+function renderContributionSplitDrillBar() {
+  const canvas = document.getElementById('cs-drill-bar-chart');
+  if (!canvas) return;
+  if (csDrillBarChartInst) { csDrillBarChartInst.destroy(); csDrillBarChartInst = null; }
+  const raw = buildSplitDatasets('abs'); // always absolute $ for the stacked bar, like Cash vs Invested's History
+  const { months: labels, datasets: sliced } = sliceByRangeGeneric(raw.labels, [
+    { data: raw.ink }, { data: raw.fang }
+  ], csDrillBarRange);
+  const ctx2d = canvas.getContext('2d');
+  csDrillBarChartInst = new Chart(ctx2d, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Ink', data: sliced[0].data, backgroundColor: '#4da8f5', stack: 'a', borderRadius: 2 },
+        { label: 'Fang', data: sliced[1].data, backgroundColor: '#5ce0a8', stack: 'a', borderRadius: 2 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { enabled: false, external: (c) => extTooltipGeneric(c, 'cs-drill-bar-tooltip', 'cs-drill-bar-crosshair', () => csDrillBarChartInst, false) } },
+      scales: {
+        x: { stacked: true, grid: { display: false, drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, border: { color: 'rgba(255,255,255,0.06)' } },
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => mask(fmtM(v)) }, border: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function setCsDrillBarRange(r) {
+  csDrillBarRange = r;
+  document.querySelectorAll('#cs-drill-bar-range-bar .range-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === r);
+  });
+  renderContributionSplitDrillBar();
 }
 
 function setSplitMode(mode) {
@@ -3573,6 +3686,8 @@ function closeDrillAll() {
   if (ciDrillBarChartInst)   { ciDrillBarChartInst.destroy();   ciDrillBarChartInst   = null; }
   if (ciDrillSplitChartInst) { ciDrillSplitChartInst.destroy(); ciDrillSplitChartInst = null; }
   ciDrillTab = null;
+  if (csDrillBarChartInst) { csDrillBarChartInst.destroy(); csDrillBarChartInst = null; }
+  if (splitChartInst)      { splitChartInst.destroy();      splitChartInst      = null; }
 }
 
 // Keep old closeDrill alias so any existing references still work
@@ -4126,7 +4241,6 @@ function renderAll(tab) {
   renderLegend(tab);
   renderChart(tab);
   renderDonuts(tab);
-  renderHouseholdCharts(tab);
 }
 
 document.getElementById('refresh-btn').addEventListener('click', async () => {
@@ -4210,6 +4324,48 @@ function captureCanvas(canvasEl) {
   try { return canvasEl.toDataURL('image/png'); } catch(e) { return null; }
 }
 
+// Contribution Split now only exists in the DOM while its drilldown panel is
+// open. For exports (which can happen from the household tab any time), fall
+// back to rendering a throwaway off-screen copy with animation disabled so it
+// paints synchronously — mirrors the drilldown's default view (% Share, All time).
+function captureSplitChartForExport() {
+  const liveCanvas = document.getElementById('split-chart');
+  if (liveCanvas) return captureCanvas(liveCanvas);
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = 900; tempCanvas.height = 400;
+  tempCanvas.style.position = 'fixed';
+  tempCanvas.style.top = '-9999px';
+  document.body.appendChild(tempCanvas);
+  let url = null;
+  try {
+    const raw = buildSplitDatasets('pct');
+    const ctx2d = tempCanvas.getContext('2d');
+    const tempChart = new Chart(ctx2d, {
+      type: 'line',
+      data: {
+        labels: raw.labels,
+        datasets: [
+          { data: raw.ink, borderColor: '#4da8f5', backgroundColor: makeGradient(ctx2d, '#4da8f5', 0.4, 0.15), borderWidth: 1.5, fill: true, stack: 'a', tension: 0.3, pointRadius: 0 },
+          { data: raw.fang, borderColor: '#5ce0a8', backgroundColor: makeGradient(ctx2d, '#5ce0a8', 0.4, 0.15), borderWidth: 1.5, fill: true, stack: 'a', tension: 0.3, pointRadius: 0 },
+        ]
+      },
+      options: {
+        responsive: false, animation: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, border: { color: 'rgba(255,255,255,0.06)' } },
+          y: { stacked: true, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => v + '%' }, border: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true, max: 100 }
+        }
+      }
+    });
+    url = captureCanvas(tempCanvas);
+    tempChart.destroy();
+  } catch (e) { /* leave url as null on failure */ }
+  document.body.removeChild(tempCanvas);
+  return url;
+}
+
 // ── Build a clean off-screen summary card (with live chart + donut images) ──
 function buildSummaryCard(tab, maskVals) {
   const active = getActiveData(tab);
@@ -4251,8 +4407,7 @@ function buildSummaryCard(tab, maskVals) {
   // ── Household-only chart: Contribution Split ──
   let householdChartsSection = '';
   if (tab === 'household') {
-    const splitCanvas = document.getElementById('split-chart');
-    const splitDataUrl = splitCanvas ? captureCanvas(splitCanvas) : null;
+    const splitDataUrl = captureSplitChartForExport();
 
     const splitModeLabel = splitMode === 'pct' ? '% Share' : '$ Absolute';
     const splitRangeLabel = splitRange === 'all' ? 'All time' : splitRange + ' months';
