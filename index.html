@@ -1889,7 +1889,8 @@ function buildSplitDatasets(modeOverride) {
   if (mode === 'pct') {
     inkOut = inkVals.map((v, i) => {
       const f = fangAligned[i];
-      const tot = v + (f || 0);
+      if (f === null) return null; // no meaningful "share" until both people have tracked data
+      const tot = v + f;
       return tot > 0 ? +(v / tot * 100).toFixed(1) : null;
     });
     fangOut = inkVals.map((v, i) => {
