@@ -137,7 +137,8 @@
   .goal-card-mom.pos { color: var(--green); }
   .goal-card-mom.neg { color: var(--red); }
   .goal-card-mom.flat { color: var(--text3); }
-  .goal-card--condo { }
+  .goal-card--condo { transition: background .15s; }
+  .goal-card--condo:hover { background: #1a1a1a; }
   .condo-detail-row { display: flex; gap: 8px; margin-top: 4px; }
   .condo-detail-item { flex: 1; background: var(--surface2); border-radius: var(--radius); padding: 8px 10px; min-width: 0; }
   .condo-detail-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); display: block; margin-bottom: 3px; }
@@ -448,7 +449,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v14.8</p>
+      <p class="gate-version">v14.9</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -469,7 +470,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v14.8</span>
+      <span class="version-badge">v14.9</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -650,7 +651,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v14.8';
+const VERSION  = 'v14.9';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1342,6 +1343,30 @@ function renderCashInvestRatio(tab) {
     <div class="ratio-view-history">View history &amp; split <span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></div>`;
 }
 
+// Resolve the condo entry matching the currently viewed month (Ink tab's month
+// filter). Shared by the live goal card and the drilldown.
+function resolveCondoViewedEntry() {
+  if (!condoData) return null;
+  const fullCost = condoData.fullCost || CONDO_FULL_COST;
+  const fi = filterState['ink'];
+  const inkMonths = inkData.months;
+  const viewedMonthLabel = fi < 0 ? inkMonths[inkMonths.length - 1] : inkMonths[fi];
+
+  function normLabel(s) { return s.replace(/\s+/g,' ').trim().toLowerCase(); }
+  const entry = condoData.entries.find(e => normLabel(e.label) === normLabel(viewedMonthLabel))
+             ?? condoData.entries.find(e => {
+                  // fallback: match just the 3-letter month + year digits
+                  const eMon = e.month.slice(0,3).toLowerCase();
+                  const eYr  = e.year.slice(-2);
+                  const vMon = viewedMonthLabel.slice(0,3).toLowerCase();
+                  const vYr  = viewedMonthLabel.replace(/\D/g,'').slice(-2);
+                  return eMon === vMon && eYr === vYr;
+                });
+  const entryIdx = entry ? condoData.entries.indexOf(entry) : -1;
+  const prevEntry = entryIdx > 0 ? condoData.entries[entryIdx - 1] : null;
+  return { fullCost, viewedMonthLabel, entry, prevEntry };
+}
+
 function renderGoals(tab) {
   const grid = document.getElementById('goal-grid');
   const active = getActiveData(tab);
@@ -1468,30 +1493,12 @@ function renderGoals(tab) {
 
   // Condo card — ink tab only, month-aware
   const condoCard = (tab === 'ink' && condoData) ? (() => {
-    const fullCost = condoData.fullCost || CONDO_FULL_COST;
-
-    // Find the condo entry matching the currently viewed month
-    // filterState for ink: -1 = latest, otherwise index into inkData.months
-    const fi = filterState['ink'];
-    const inkMonths = inkData.months;
-    const viewedMonthLabel = fi < 0 ? inkMonths[inkMonths.length - 1] : inkMonths[fi];
-
-    // Match condo entry to viewed month — normalise both to "Mon 'YY" format
-    function normLabel(s) { return s.replace(/\s+/g,' ').trim().toLowerCase(); }
-    const entry = condoData.entries.find(e => normLabel(e.label) === normLabel(viewedMonthLabel))
-               ?? condoData.entries.find(e => {
-                    // fallback: match just the 3-letter month + year digits
-                    const eMon = e.month.slice(0,3).toLowerCase();
-                    const eYr  = e.year.slice(-2);
-                    const vMon = viewedMonthLabel.slice(0,3).toLowerCase();
-                    const vYr  = viewedMonthLabel.replace(/\D/g,'').slice(-2);
-                    return eMon === vMon && eYr === vYr;
-                  });
+    const { fullCost, viewedMonthLabel, entry, prevEntry } = resolveCondoViewedEntry();
 
     if (!entry) {
       // No condo data for this month
       return `
-        <div class="goal-card goal-card--condo">
+        <div class="goal-card goal-card--condo" style="cursor:pointer;" onclick="openCondoDrill()">
           <div class="goal-card-header">
             <span class="goal-card-title">KNB107 Condo Loan Payoff</span>
             <span class="goal-card-icon">&#127968;</span>
@@ -1504,15 +1511,12 @@ function renderGoals(tab) {
               <span class="condo-detail-val">${mask(fmtM(fullCost))}</span>
             </div>
           </div>
+          <div class="ratio-view-history">View history &amp; progress <span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></div>
         </div>`;
     }
 
     const pct = Math.min(entry.paid / fullCost * 100, 100);
     const col = goalColor(pct);
-
-    // MoM: find the previous entry in the entries array by index
-    const entryIdx = condoData.entries.indexOf(entry);
-    const prevEntry = entryIdx > 0 ? condoData.entries[entryIdx - 1] : null;
 
     // MoM #1 — progress % delta
     const momPctHTML = (() => {
@@ -1552,7 +1556,7 @@ function renderGoals(tab) {
     })();
 
     return `
-      <div class="goal-card goal-card--condo">
+      <div class="goal-card goal-card--condo" style="cursor:pointer;" onclick="openCondoDrill()">
         <div class="goal-card-header">
           <span class="goal-card-title">KNB107 Condo Loan Payoff</span>
           <span class="goal-card-icon">&#127968;</span>
@@ -1593,6 +1597,7 @@ function renderGoals(tab) {
             </div>
           </div>
         </div>
+        <div class="ratio-view-history">View history &amp; progress <span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></div>
       </div>`;
   })() : '';
 
@@ -2440,6 +2445,203 @@ function setCsDrillBarRange(r) {
     b.classList.toggle('active', b.dataset.range === r);
   });
   renderContributionSplitDrillBar();
+}
+
+// ─── CONDO PAYOFF DRILLDOWN (Ink only) ───────────────────────────────────────
+let condoDrillBarRange = 'all';
+let condoDrillTrendRange = 'all';
+let condoDrillBarChartInst = null;
+let condoDrillTrendChartInst = null;
+
+function openCondoDrill() {
+  if (!condoData) return;
+  condoDrillBarRange = 'all';
+  condoDrillTrendRange = 'all';
+
+  document.getElementById('drill-port-title').textContent = 'KNB107 Condo Loan Payoff — Ink';
+
+  const exportBtn = document.getElementById('drill-port-export-btn');
+  if (exportBtn) exportBtn.style.display = 'none';
+  const viewingBar = document.getElementById('port-viewing-bar');
+  if (viewingBar) viewingBar.style.display = 'none';
+
+  renderCondoDrillContent();
+
+  pushDrillNav();
+  const overlay = document.getElementById('drill-overlay');
+  const panel   = document.getElementById('drill-panel');
+  overlay.style.display = 'block';
+  panel.style.display   = 'flex';
+  requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
+  document.body.style.overflow = 'hidden';
+}
+
+function renderCondoDrillContent() {
+  const content = document.getElementById('drill-port-content');
+  if (!content || !condoData) return;
+
+  const { fullCost, entry, prevEntry } = resolveCondoViewedEntry();
+  if (!entry) {
+    content.innerHTML = `<div style="color:var(--text3);text-align:center;padding:40px 0;">No condo data available.</div>`;
+    return;
+  }
+
+  const pctPaid = Math.min(entry.paid / fullCost * 100, 100);
+  const thisMonthPaid = prevEntry ? entry.paid - prevEntry.paid : null;
+
+  const janEntry = condoData.entries.find(e => e.year === entry.year && e.month.slice(0,3).toLowerCase() === 'jan')
+                 ?? condoData.entries.find(e => e.year === entry.year);
+  const ytdPaid = janEntry ? entry.paid - janEntry.paid : null;
+
+  content.innerHTML = `
+    <div style="margin-bottom:28px;">
+      <div class="condo-detail-row">
+        <div class="condo-detail-item">
+          <span class="condo-detail-label">% Paid</span>
+          <span class="condo-detail-val pos" style="font-size:15px;">${pctPaid.toFixed(1)}%</span>
+        </div>
+        <div class="condo-detail-item">
+          <span class="condo-detail-label">Paid</span>
+          <span class="condo-detail-val pos" style="font-size:15px;">${mask(fmtM(entry.paid))}</span>
+        </div>
+      </div>
+      <div class="condo-detail-row" style="margin-top:8px;">
+        <div class="condo-detail-item">
+          <span class="condo-detail-label">Remaining</span>
+          <span class="condo-detail-val neg" style="font-size:15px;">${mask(fmtM(entry.outstanding))}</span>
+        </div>
+        <div class="condo-detail-item">
+          <span class="condo-detail-label">This Month</span>
+          <span class="condo-detail-val ${thisMonthPaid == null ? '' : (thisMonthPaid >= 0 ? 'pos' : 'neg')}" style="font-size:15px;">${thisMonthPaid == null ? '—' : (thisMonthPaid >= 0 ? '+' : '') + mask(fmtM(thisMonthPaid))}</span>
+        </div>
+      </div>
+      ${ytdPaid !== null ? `
+      <div class="condo-detail-row" style="margin-top:8px;">
+        <div class="condo-detail-item">
+          <span class="condo-detail-label">YTD Paid</span>
+          <span class="condo-detail-val ${ytdPaid >= 0 ? 'pos' : 'neg'}" style="font-size:15px;">${mask(fmtM(ytdPaid))}</span>
+        </div>
+      </div>` : ''}
+    </div>
+
+    <div style="margin-bottom:28px;">
+      <p class="donut-section-title" style="margin-bottom:14px;">History</p>
+      <div class="range-bar" id="condo-drill-bar-range-bar">
+        <button class="range-btn active" data-range="all" onclick="setCondoDrillBarRange('all')">All</button>
+        <button class="range-btn" data-range="12" onclick="setCondoDrillBarRange('12')">12M</button>
+        <button class="range-btn" data-range="6" onclick="setCondoDrillBarRange('6')">6M</button>
+        <button class="range-btn" data-range="3" onclick="setCondoDrillBarRange('3')">3M</button>
+      </div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="condo-drill-bar-chart"></canvas>
+        <div class="chart-crosshair" id="condo-drill-bar-crosshair"></div>
+        <div class="chart-tooltip" id="condo-drill-bar-tooltip"></div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#5ce0a8"></span>Paid</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f06b6b"></span>Remaining</span>
+      </div>
+    </div>
+
+    <div>
+      <p class="donut-section-title" style="margin-bottom:14px;">Payoff Progress</p>
+      <div class="range-bar" id="condo-drill-trend-range-bar">
+        <button class="range-btn active" data-range="all" onclick="setCondoDrillTrendRange('all')">All</button>
+        <button class="range-btn" data-range="12" onclick="setCondoDrillTrendRange('12')">12M</button>
+        <button class="range-btn" data-range="6" onclick="setCondoDrillTrendRange('6')">6M</button>
+        <button class="range-btn" data-range="3" onclick="setCondoDrillTrendRange('3')">3M</button>
+      </div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="condo-drill-trend-chart"></canvas>
+        <div class="chart-crosshair" id="condo-drill-trend-crosshair"></div>
+        <div class="chart-tooltip" id="condo-drill-trend-tooltip"></div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#5ce0a8"></span>% Paid off</span>
+      </div>
+    </div>`;
+
+  renderCondoDrillBar();
+  renderCondoDrillTrend();
+}
+
+function renderCondoDrillBar() {
+  const canvas = document.getElementById('condo-drill-bar-chart');
+  if (!canvas || !condoData) return;
+  if (condoDrillBarChartInst) { condoDrillBarChartInst.destroy(); condoDrillBarChartInst = null; }
+  const labels = condoData.entries.map(e => e.label);
+  const paidVals = condoData.entries.map(e => e.paid);
+  const remainVals = condoData.entries.map(e => e.outstanding);
+  const { months, datasets: sliced } = sliceByRangeGeneric(labels, [
+    { data: paidVals }, { data: remainVals }
+  ], condoDrillBarRange);
+  const ctx2d = canvas.getContext('2d');
+  condoDrillBarChartInst = new Chart(ctx2d, {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'Paid', data: sliced[0].data, backgroundColor: '#5ce0a8', borderColor: '#5ce0a8', stack: 'a', borderRadius: 2 },
+        { label: 'Remaining', data: sliced[1].data, backgroundColor: 'rgba(240,107,107,0.55)', borderColor: '#f06b6b', stack: 'a', borderRadius: 2 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { enabled: false, external: (c) => extTooltipGeneric(c, 'condo-drill-bar-tooltip', 'condo-drill-bar-crosshair', () => condoDrillBarChartInst, false) } },
+      scales: {
+        x: { stacked: true, grid: { display: false, drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, border: { color: 'rgba(255,255,255,0.06)' } },
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => mask(fmtM(v)) }, border: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function setCondoDrillBarRange(r) {
+  condoDrillBarRange = r;
+  document.querySelectorAll('#condo-drill-bar-range-bar .range-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === r);
+  });
+  renderCondoDrillBar();
+}
+
+function renderCondoDrillTrend() {
+  const canvas = document.getElementById('condo-drill-trend-chart');
+  if (!canvas || !condoData) return;
+  if (condoDrillTrendChartInst) { condoDrillTrendChartInst.destroy(); condoDrillTrendChartInst = null; }
+  const fullCost = condoData.fullCost || CONDO_FULL_COST;
+  const labels = condoData.entries.map(e => e.label);
+  const pctVals = condoData.entries.map(e => fullCost > 0 ? +(Math.min(e.paid / fullCost * 100, 100)).toFixed(1) : null);
+  const { months, datasets: sliced } = sliceByRangeGeneric(labels, [{ data: pctVals }], condoDrillTrendRange);
+  const ctx2d = canvas.getContext('2d');
+  condoDrillTrendChartInst = new Chart(ctx2d, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        { label: '% Paid off', data: sliced[0].data, borderColor: '#5ce0a8',
+          backgroundColor: makeGradient(ctx2d, '#5ce0a8', 0.45, 0.18),
+          borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0, spanGaps: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { enabled: false, external: (c) => extTooltipGeneric(c, 'condo-drill-trend-tooltip', 'condo-drill-trend-crosshair', () => condoDrillTrendChartInst, true) } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, border: { color: 'rgba(255,255,255,0.06)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false }, ticks: { color: '#555450', font: { family: "'DM Mono',monospace", size: 10 }, callback: v => v + '%' }, border: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+function setCondoDrillTrendRange(r) {
+  condoDrillTrendRange = r;
+  document.querySelectorAll('#condo-drill-trend-range-bar .range-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === r);
+  });
+  renderCondoDrillTrend();
 }
 
 function setSplitMode(mode) {
@@ -3704,6 +3906,8 @@ function closeDrillAll() {
   ciDrillTab = null;
   if (csDrillBarChartInst) { csDrillBarChartInst.destroy(); csDrillBarChartInst = null; }
   if (splitChartInst)      { splitChartInst.destroy();      splitChartInst      = null; }
+  if (condoDrillBarChartInst)   { condoDrillBarChartInst.destroy();   condoDrillBarChartInst   = null; }
+  if (condoDrillTrendChartInst) { condoDrillTrendChartInst.destroy(); condoDrillTrendChartInst = null; }
 }
 
 // Keep old closeDrill alias so any existing references still work
