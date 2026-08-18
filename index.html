@@ -385,12 +385,12 @@
     button, .filter-pill, .tab-btn { transition: none; transform: none !important; }
   }
 
-  /* PWA STANDALONE — reserve real clearance for the status bar/notch. (A prior attempt
-     removed this, assuming iOS already reserved the space with an opaque status bar —
-     that assumption was wrong; it caused the topbar to render under the status bar and
-     disappear. Back to using the real inset value.) */
+  /* PWA STANDALONE — reserve real clearance for the status bar/notch.
+     NOTE: apple-mobile-web-app-status-bar-style is baked into the home screen icon
+     at "Add to Home Screen" time and does NOT re-read on code updates — testing this
+     requires deleting the existing icon and re-adding it, or results here are unreliable. */
   @media (display-mode: standalone) {
-    .topbar { padding-top: max(env(safe-area-inset-top), 12px); }
+    .topbar { padding-top: max(env(safe-area-inset-top), 20px); }
   }
 
   /* RANGE BUTTONS */
