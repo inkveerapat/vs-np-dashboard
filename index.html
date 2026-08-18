@@ -385,13 +385,12 @@
     button, .filter-pill, .tab-btn { transition: none; transform: none !important; }
   }
 
-  /* PWA STANDALONE — with an opaque (non-translucent) status bar style, iOS reserves
-     the status bar area natively and starts the web content below it already, so we
-     must NOT also add env(safe-area-inset-top) here — doing so double-counts that
-     space on top of what iOS has already reserved, which is what caused the large
-     gap under the status bar. Only a small fixed breathing-room value is needed. */
+  /* PWA STANDALONE — reserve real clearance for the status bar/notch. (A prior attempt
+     removed this, assuming iOS already reserved the space with an opaque status bar —
+     that assumption was wrong; it caused the topbar to render under the status bar and
+     disappear. Back to using the real inset value.) */
   @media (display-mode: standalone) {
-    .topbar { padding-top: 8px; }
+    .topbar { padding-top: max(env(safe-area-inset-top), 12px); }
   }
 
   /* RANGE BUTTONS */
@@ -453,7 +452,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v15.1</p>
+      <p class="gate-version">v15.2</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -474,7 +473,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v15.1</span>
+      <span class="version-badge">v15.2</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -655,7 +654,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v15.1';
+const VERSION  = 'v15.2';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
