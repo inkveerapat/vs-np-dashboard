@@ -50,7 +50,7 @@
   /* APP */
   #app { display: none; min-height: 100vh; min-height: 100dvh; }
   #app.visible { display: block; }
-  .topbar { border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); box-shadow: 0 4px 10px rgba(0,0,0,0.45); gap: 8px; }
+  .topbar { border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: env(safe-area-inset-top); z-index: 10; background: #0e0e0e; box-shadow: 0 4px 10px rgba(0,0,0,0.45); gap: 8px; }
   .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 1; overflow: hidden; }
   .topbar-name { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; color: var(--text2); white-space: nowrap; }
   .topbar-sep { color: var(--text3); flex-shrink: 0; }
@@ -305,7 +305,7 @@
 
 
   @media (max-width: 480px) {
-    .topbar { padding: 0 14px; height: auto; min-height: 60px; flex-wrap: wrap; padding-top: max(env(safe-area-inset-top), 28px); padding-bottom: 8px; gap: 6px; }
+    .topbar { padding: 0 14px; height: auto; min-height: 60px; flex-wrap: wrap; padding-top: 12px; padding-bottom: 8px; gap: 6px; }
     .topbar-left { flex: 1 1 100%; justify-content: flex-start; }
     .topbar-right { flex: 1 1 100%; justify-content: flex-end; gap: 6px; }
     .topbar-sep { display: none; }
@@ -383,14 +383,6 @@
   @media (prefers-reduced-motion: reduce) {
     .tabs.stuck, .sticky-bar.stuck { backdrop-filter: none; }
     button, .filter-pill, .tab-btn { transition: none; transform: none !important; }
-  }
-
-  /* PWA STANDALONE — reserve real clearance for the status bar/notch.
-     NOTE: apple-mobile-web-app-status-bar-style is baked into the home screen icon
-     at "Add to Home Screen" time and does NOT re-read on code updates — testing this
-     requires deleting the existing icon and re-adding it, or results here are unreliable. */
-  @media (display-mode: standalone) {
-    .topbar { padding-top: max(env(safe-area-inset-top), 28px); }
   }
 
   /* RANGE BUTTONS */
