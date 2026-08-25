@@ -50,7 +50,7 @@
   /* APP */
   #app { display: none; min-height: 100vh; min-height: 100dvh; }
   #app.visible { display: block; }
-  .topbar { border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: env(safe-area-inset-top); z-index: 10; background: #0e0e0e; box-shadow: 0 4px 10px rgba(0,0,0,0.45); gap: 8px; }
+  .topbar { border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; background: #0e0e0e; box-shadow: 0 4px 10px rgba(0,0,0,0.45); gap: 8px; }
   .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 1; overflow: hidden; }
   .topbar-name { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; color: var(--text2); white-space: nowrap; }
   .topbar-sep { color: var(--text3); flex-shrink: 0; }
@@ -305,7 +305,7 @@
 
 
   @media (max-width: 480px) {
-    .topbar { padding: 0 14px; height: auto; min-height: 60px; flex-wrap: wrap; padding-top: calc(env(safe-area-inset-top) + 12px); padding-bottom: 8px; gap: 6px; }
+    .topbar { padding: 0 14px; height: auto; min-height: 60px; flex-wrap: wrap; padding-top: 12px; padding-bottom: 8px; gap: 6px; }
     .topbar-left { flex: 1 1 100%; justify-content: flex-start; }
     .topbar-right { flex: 1 1 100%; justify-content: flex-end; gap: 6px; }
     .topbar-sep { display: none; }
@@ -378,7 +378,7 @@
 
   /* SAFE AREA — bottom inset only; top inset is handled per-breakpoint above so it can't
      clobber the mobile 8px floor (that was the cause of the topbar hugging iOS's chrome) */
-  body { padding-bottom: env(safe-area-inset-bottom); }
+  body { padding-bottom: env(safe-area-inset-bottom); padding-top: env(safe-area-inset-top); }
 
   @media (prefers-reduced-motion: reduce) {
     .tabs.stuck, .sticky-bar.stuck { backdrop-filter: none; }
@@ -444,7 +444,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v15.7</p>
+      <p class="gate-version">v15.8</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -465,7 +465,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v15.7</span>
+      <span class="version-badge">v15.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -646,7 +646,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v15.7';
+const VERSION  = 'v15.8';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
