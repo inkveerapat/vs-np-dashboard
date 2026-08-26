@@ -444,7 +444,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v15.8</p>
+      <p class="gate-version">v15.9</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -465,7 +465,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v15.8</span>
+      <span class="version-badge">v15.9</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -581,7 +581,7 @@
     </div><!-- /page-content -->
 
     <!-- DRILL-DOWN PANELS -->
-    <div id="drill-overlay" onclick="navBackAll()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:90;"></div>
+    <div id="drill-overlay" onclick="dismissAllDrills()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:90;"></div>
 
     <!-- Layer 1: Portfolio drill-down -->
     <div id="drill-panel" style="display:none;position:fixed;bottom:0;left:0;right:0;max-height:88vh;max-height:88dvh;background:var(--surface);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:91;overflow:hidden;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);">
@@ -596,7 +596,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <button id="drill-port-export-btn" onclick="openPortfolioDrillExportModal()" class="export-btn">&#8681; Export</button>
-            <button onclick="navBackAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
+            <button onclick="dismissAllDrills()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
           </div>
         </div>
         <div id="port-viewing-bar" style="display:none;padding-bottom:10px;">
@@ -623,7 +623,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <button id="drill-export-btn" onclick="openDrillExportModal()" class="export-btn">&#8681; Export</button>
-            <button onclick="navBackAll()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
+            <button onclick="dismissAllDrills()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0;line-height:1;">×</button>
           </div>
         </div>
         <div id="drill-viewing-bar" style="display:none;padding-bottom:10px;">
@@ -646,7 +646,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v15.8';
+const VERSION  = 'v15.9';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3485,6 +3485,22 @@ function navBack() {
 
 function navBackAll() {
   if (_drillNavDepth > 0) { history.go(-_drillNavDepth); }
+}
+
+// Direct, reliable dismiss for tap-outside-to-close and the × button. Doesn't
+// depend on popstate firing correctly for every step of history.go(-N) — which
+// has been unreliable specifically in iOS standalone PWA mode, occasionally
+// leaving a drill panel (and the body scroll lock) stuck open. This closes
+// everything immediately, then syncs the history stack to match.
+function dismissAllDrills() {
+  if (document.getElementById('export-modal')) closeExportModal();
+  closeAssetDrill();
+  closeDrillAll();
+  if (_drillNavDepth > 0) {
+    const depth = _drillNavDepth;
+    _drillNavDepth = 0;
+    history.go(-depth);
+  }
 }
 
 window.addEventListener('popstate', function() {
