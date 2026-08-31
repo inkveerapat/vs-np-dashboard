@@ -444,7 +444,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v15.9</p>
+      <p class="gate-version">v16.0</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -465,7 +465,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v15.9</span>
+      <span class="version-badge">v16.0</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -557,7 +557,7 @@
     <div class="donut-section" id="donut-section" style="display:none;">
       <div class="sticky-zone">
       <div class="sticky-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
-        <p class="donut-section-title" style="margin:0;padding:0;border:none;">Asset Allocation Breakdown</p>
+        <p class="donut-section-title" id="donut-section-heading" style="margin:0;padding:0;border:none;">Asset Allocation Breakdown</p>
         <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;flex:1 1 auto;min-width:0;">
           <div class="filter-bar" id="donut-sort-bar" style="margin:0;flex:0 0 auto;">
             <span class="filter-label">Sort</span>
@@ -646,7 +646,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v15.9';
+const VERSION  = 'v16.0';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -718,6 +718,12 @@ const FANG_DONUTS = [
   { title:'Thai stocks portfolio',   url:csv(748123998),  assetRowStart:3,  assetRowEnd:21, currencyRow:23 },
   { title:'US stocks portfolio',     url:csv(672939154),  assetRowStart:3,  assetRowEnd:21, currencyRow:23 },
   { title:'Provident fund portfolio', url:csv(753946380),  assetRowStart:3,  assetRowEnd:9,  currencyRow:11  },
+];
+
+// Household-only, standalone section — not folded into any net worth/allocation/
+// goal totals anywhere. Same data shape as Ink's Growth portfolio (USD-denominated).
+const SECONDARY_DONUTS = [
+  { title:'Secondary Accounts', url:csv(96759096), assetRowStart:3, assetRowEnd:20, currencyRow:21 },
 ];
 
 const PALETTE = [
@@ -909,11 +915,17 @@ function extractDonutAllMonths(rows, config) {
 
 // STATE
 let inkData=null, fangData=null, condoData=null;
-let inkDonutData=[], fangDonutData=[];
+let inkDonutData=[], fangDonutData=[], secondaryDonutData=[];
 let donutInstances={};
-const donutFilterState = { ink: null, fang: null };
-const donutSortState   = { ink: 'value', fang: 'value' }; // 'value' | 'uplPct' | 'uplVal'
+const donutFilterState = { ink: null, fang: null, household: null };
+const donutSortState   = { ink: 'value', fang: 'value', household: 'value' }; // 'value' | 'uplPct' | 'uplVal'
 const filterState = { ink: -1, fang: -1, household: -1 };
+
+function getDonutList(tab) {
+  if (tab === 'ink') return inkDonutData;
+  if (tab === 'fang') return fangDonutData;
+  return secondaryDonutData;
+}
 
 // CONDO LOAN PARSER
 // Sheet layout (1-indexed rows as described):
@@ -1106,9 +1118,20 @@ async function loadData() {
     ]);
     inkDonutData  = INK_DONUTS.map((d,i)  => ({ title:d.title, ...extractDonutAllMonths(inkDRows[i],  d) }));
     fangDonutData = FANG_DONUTS.map((d,i) => ({ title:d.title, ...extractDonutAllMonths(fangDRows[i], d) }));
-    
+
     donutFilterState.ink  = null;
     donutFilterState.fang = null;
+
+    // Secondary Accounts — Household-only, standalone. Non-fatal: a failure here
+    // never breaks the main dashboard, same treatment as condo data.
+    try {
+      const secRows = await Promise.all(SECONDARY_DONUTS.map(d => fetchCSV(d.url)));
+      secondaryDonutData = SECONDARY_DONUTS.map((d,i) => ({ title:d.title, ...extractDonutAllMonths(secRows[i], d) }));
+    } catch(se) {
+      console.warn('Secondary Accounts data failed to load:', se.message);
+      secondaryDonutData = [];
+    }
+    donutFilterState.household = null;
 
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'Live \u00b7 Google Sheets \u00b7 ' + VERSION + ' \u00b7 Auto-updates on refresh');
@@ -2784,7 +2807,7 @@ function toggleS(name) {
 
 // DONUT CHARTS LOGIC
 function getDonutMonths(tab) {
-  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  const list = getDonutList(tab);
   const monthSet = new Set();
   list.forEach(d => d.months.forEach(m => monthSet.add(m)));
   let refMonths = [];
@@ -2849,7 +2872,7 @@ function selectDonutFilter(tab, month) {
 }
 
 function resolveDonutAssetsForPortfolio(tab, title) {
-  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  const list = getDonutList(tab);
   const dData = list.find(d => d.title === title);
   if (!dData) return { assets: [], currency: 'THB' };
   const allMonths = getDonutMonths(tab);
@@ -2921,7 +2944,7 @@ function renderAllocationBar(tab) {
     const pct = (p.value / total) * 100;
     const { assets, currency } = resolveDonutAssetsForPortfolio(tab, p.title);
     const isCashPortfolio = p.title.toLowerCase().includes('cash');
-    const donutList = tab === 'ink' ? inkDonutData : fangDonutData;
+    const donutList = getDonutList(tab);
     const cardIdx = donutList.findIndex(dd => dd.title === p.title);
 
     const holdingsHtml = assets.length ? assets.map((a, ai) => {
@@ -3015,16 +3038,23 @@ function renderDonuts(tab) {
   renderAllocationBar(tab); // called unconditionally so it can hide itself for household —
                             // it used to sit after the household early-return below, so
                             // switching to Household never hid a bar left over from Ink/Fang
-  if (tab==='household') { section.style.display='none'; return; }
   section.style.display='block';
 
-  const list = tab==='ink' ? inkDonutData : fangDonutData;
+  const heading = document.getElementById('donut-section-heading');
+  if (heading) heading.textContent = tab === 'household' ? 'Secondary Accounts' : 'Asset Allocation Breakdown';
+
+  const list = getDonutList(tab);
   const allMonths = getDonutMonths(tab);
   const latest    = allMonths[allMonths.length - 1];
   const activeMonth = donutFilterState[tab] || latest;
 
   renderDonutFilter(tab);
   syncSortPills(tab);
+
+  if (!list.length) {
+    grid.innerHTML = '<div class="donut-empty">Secondary Accounts data unavailable</div>';
+    return;
+  }
 
   const resolvedList = list.map(d => {
     let assets = d.byMonth[activeMonth];
@@ -3326,7 +3356,7 @@ function donutLegHover(el, tab, cardIdx, assetIdx, entering) {
     const hNameEl = center.querySelector('.donut-center-hover-name');
     if (!totalEl) return;
 
-    const list = tab === 'ink' ? inkDonutData : fangDonutData;
+    const list = getDonutList(tab);
     const allM  = getDonutMonths(tab);
     const latestM = allM[allM.length - 1];
     const activeM = donutFilterState[tab] || latestM;
@@ -3563,7 +3593,7 @@ initSwipeToDismiss('drill-panel-handle', 'drill-panel');
 initSwipeToDismiss('drill-panel-2-handle', 'drill-panel-2');
 
 function openPortfolioDrill(tab, cardIdx) {
-  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  const list = getDonutList(tab);
   const d = list[cardIdx];
   if (!d) return;
   _portD = d; _portTab = tab; _portCardIdx = cardIdx;
@@ -3846,7 +3876,7 @@ function switchPortChart(mode) {
 
 // ── Layer 2: Asset drill (pushed over portfolio drill) ─────────────────────────
 function openAssetFromPortfolio(tab, cardIdx, assetName, assetIdx) {
-  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  const list = getDonutList(tab);
   const d = list[cardIdx];
   if (!d) return;
   const isCash     = d.title.toLowerCase().includes('cash');
@@ -3866,7 +3896,7 @@ function openAssetFromPortfolio(tab, cardIdx, assetName, assetIdx) {
 
 // Called from donut card directly (no portfolio layer beneath)
 function openDrill(tab, cardIdx, assetName, assetIdx) {
-  const list = tab === 'ink' ? inkDonutData : fangDonutData;
+  const list = getDonutList(tab);
   const d = list[cardIdx];
   if (!d) return;
   const isCash     = d.title.toLowerCase().includes('cash');
@@ -4724,7 +4754,7 @@ function buildSummaryCard(tab, maskVals) {
   let allocBarSection = '';
   let donutSection = '';
   if (tab !== 'household') {
-    const list = tab === 'ink' ? inkDonutData : fangDonutData;
+    const list = getDonutList(tab);
     const config = tab === 'ink' ? INK_CONFIG : FANG_CONFIG;
     const allM = getDonutMonths(tab);
     const latest = allM[allM.length - 1];
