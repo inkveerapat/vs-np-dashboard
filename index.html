@@ -14,7 +14,7 @@
 <meta name="theme-color" content="#0d0d0d">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" defer></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -444,7 +444,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v16.3</p>
+      <p class="gate-version">v16.4</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -465,7 +465,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v16.3</span>
+      <span class="version-badge">v16.4</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -646,7 +646,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v16.3';
+const VERSION  = 'v16.4';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1086,6 +1086,10 @@ function updateStickyOffsets() {
 window.addEventListener('resize', updateStickyOffsets);
 window.addEventListener('orientationchange', updateStickyOffsets);
 
+async function safeFetchCSV(url) {
+  try { return await fetchCSV(url); } catch(e) { console.warn('Non-fatal fetch failed:', url, e.message); return null; }
+}
+
 async function loadData() {
   setStatus('loading','Fetching from Google Sheets\u2026');
   const skelEl = document.getElementById('skeleton-screen');
@@ -1095,27 +1099,31 @@ async function loadData() {
   document.getElementById('chart-loading').style.display = 'flex';
   document.getElementById('error-box').classList.remove('show');
   try {
-    const [inkRows, fangRows] = await Promise.all([
+    // Every CSV this page needs is independent of every other — fire all of them
+    // at once instead of in sequential stages. Non-fatal sources (condo, secondary)
+    // use safeFetchCSV so one flaky sheet can't hold up or break the required data.
+    const [inkRows, fangRows, condoRows, inkDRows, fangDRows, secRows] = await Promise.all([
       fetchCSV(INK_CSV_URL),
       fetchCSV(FANG_CSV_URL),
+      safeFetchCSV(CONDO_CSV_URL),
+      Promise.all(INK_DONUTS.map(d  => fetchCSV(d.url))),
+      Promise.all(FANG_DONUTS.map(d => fetchCSV(d.url))),
+      Promise.all(SECONDARY_DONUTS.map(d => safeFetchCSV(d.url))),
     ]);
+
     inkData  = extractData(inkRows,  INK_CONFIG);
     fangData = extractData(fangRows, FANG_CONFIG);
-    // Condo is non-fatal — load separately so failure doesn't break the dashboard
+
     try {
-      const condoRows = await fetchCSV(CONDO_CSV_URL);
-      condoData = extractCondoData(condoRows);
+      condoData = condoRows ? extractCondoData(condoRows) : null;
     } catch(ce) {
-      console.warn('Condo data failed to load:', ce.message);
+      console.warn('Condo data failed to parse:', ce.message);
       condoData = null;
     }
+
     if (!inkData.months.length || !fangData.months.length)
       throw new Error('No data found \u2014 check sheet is published');
 
-    const [inkDRows, fangDRows] = await Promise.all([
-      Promise.all(INK_DONUTS.map(d  => fetchCSV(d.url))),
-      Promise.all(FANG_DONUTS.map(d => fetchCSV(d.url))),
-    ]);
     inkDonutData  = INK_DONUTS.map((d,i)  => ({ title:d.title, ...extractDonutAllMonths(inkDRows[i],  d) }));
     fangDonutData = FANG_DONUTS.map((d,i) => ({ title:d.title, ...extractDonutAllMonths(fangDRows[i], d) }));
 
@@ -1125,10 +1133,11 @@ async function loadData() {
     // Secondary Accounts — Household-only, standalone. Non-fatal: a failure here
     // never breaks the main dashboard, same treatment as condo data.
     try {
-      const secRows = await Promise.all(SECONDARY_DONUTS.map(d => fetchCSV(d.url)));
-      secondaryDonutData = SECONDARY_DONUTS.map((d,i) => ({ title:d.title, ...extractDonutAllMonths(secRows[i], d) }));
+      secondaryDonutData = secRows.every(r => r) 
+        ? SECONDARY_DONUTS.map((d,i) => ({ title:d.title, ...extractDonutAllMonths(secRows[i], d) }))
+        : [];
     } catch(se) {
-      console.warn('Secondary Accounts data failed to load:', se.message);
+      console.warn('Secondary Accounts data failed to parse:', se.message);
       secondaryDonutData = [];
     }
     donutFilterState.household = null;
