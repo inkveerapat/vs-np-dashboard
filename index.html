@@ -444,7 +444,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v16.2</p>
+      <p class="gate-version">v16.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -465,7 +465,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v16.2</span>
+      <span class="version-badge">v16.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -646,7 +646,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v16.2';
+const VERSION  = 'v16.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -4467,11 +4467,39 @@ async function runPortfolioDrillExport() {
 }
 
 // Shared canvas save helper
+// Save or share a file. iOS standalone PWAs don't have a download manager, so
+// <a download> silently does nothing there — the Web Share API (native share
+// sheet, with a "Save Image"/"Save to Files" option) is the reliable path on
+// iOS, in both Safari and standalone mode. Desktop browsers generally don't
+// support sharing files, so they fall back to the traditional download link.
+async function saveOrShareBlob(blob, filename, mimeType, prog) {
+  const file = new File([blob], filename, { type: mimeType });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      if (prog) prog.textContent = '✓ Saved!';
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        // User dismissed the share sheet without choosing an action — not a failure.
+        if (prog) prog.textContent = 'Cancelled';
+        return;
+      }
+      // Any other error: fall through to the download-link fallback below.
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  if (prog) prog.textContent = '✓ Downloaded!';
+}
+
 async function _saveExportCanvas(canvas, filename, goBtn, prog) {
   if (exportFmt === 'jpg') {
     prog.textContent = 'Saving JPG…';
-    const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/jpeg', 0.93); a.download = filename+'.jpg'; a.click();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.93));
+    await saveOrShareBlob(blob, filename + '.jpg', 'image/jpeg', prog);
   } else {
     prog.textContent = 'Loading PDF library…';
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -4480,9 +4508,9 @@ async function _saveExportCanvas(canvas, filename, goBtn, prog) {
     const pdfW = 794, pdfH = Math.round(canvas.height/canvas.width*pdfW);
     const pdf = new jsPDF({ orientation: pdfH>pdfW?'p':'l', unit:'px', format:[pdfW,pdfH] });
     pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,pdfW,pdfH);
-    pdf.save(filename+'.pdf');
+    const pdfBlob = pdf.output('blob');
+    await saveOrShareBlob(pdfBlob, filename + '.pdf', 'application/pdf', prog);
   }
-  prog.textContent = '✓ Downloaded!';
   goBtn.textContent = 'Done ✓';
   setTimeout(navBack, 1200);
 }
@@ -4695,17 +4723,8 @@ function buildSummaryCard(tab, maskVals) {
   // ── Condo section (ink tab only) ──
   let condoSection = '';
   if (tab === 'ink' && condoData) {
-    const fullCost = condoData.latest.fullCost;
-    function normLabel(s) { return s.replace(/\s+/g,' ').trim().toLowerCase(); }
-    const c = condoData.entries.find(e => normLabel(e.label) === normLabel(viewingLabel))
-           ?? condoData.entries.find(e => {
-                const eMon = e.month.slice(0,3).toLowerCase();
-                const eYr  = e.year.slice(-2);
-                const vMon = viewingLabel.slice(0,3).toLowerCase();
-                const vYr  = viewingLabel.replace(/\D/g,'').slice(-2);
-                return eMon === vMon && eYr === vYr;
-              })
-           ?? condoData.latest;
+    const { fullCost, entry: c } = resolveCondoViewedEntry();
+    if (c) {
     const pct = Math.min(c.paid / fullCost * 100, 100);
     const col = goalColor(pct);
 
@@ -4730,7 +4749,7 @@ function buildSummaryCard(tab, maskVals) {
           <div style="display:flex;gap:8px;margin-bottom:8px;">
             <div style="flex:1;background:#1e1e1e;border-radius:8px;padding:8px 10px;">
               <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#555450;margin-bottom:3px;">Original Cost</p>
-              <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;">${maskVals ? '••••••' : fmtM(c.fullCost)}</p>
+              <p style="font-family:'DM Mono',monospace;font-size:11px;color:#888780;">${maskVals ? '••••••' : fmtM(fullCost)}</p>
             </div>
             <div style="flex:1;background:#1e1e1e;border-radius:8px;padding:8px 10px;">
               <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#555450;margin-bottom:3px;">Paid</p>
@@ -4747,9 +4766,10 @@ function buildSummaryCard(tab, maskVals) {
           <div style="height:6px;background:#222;border-radius:99px;overflow:hidden;">
             <div style="width:${pct}%;height:100%;background:${col};border-radius:99px;"></div>
           </div>
-          <div style="text-align:right;font-size:10px;color:#555450;font-family:'DM Mono',monospace;margin-top:4px;">Target: ${maskVals ? '••••••' : fmtM(c.fullCost)}</div>
+          <div style="text-align:right;font-size:10px;color:#555450;font-family:'DM Mono',monospace;margin-top:4px;">Target: ${maskVals ? '••••••' : fmtM(fullCost)}</div>
         </div>
       </div>`;
+    }
   }
   let allocBarSection = '';
   let donutSection = '';
@@ -4968,6 +4988,7 @@ function buildSummaryCard(tab, maskVals) {
 
   // ── 3. Metric values (mirrors renderMetrics exactly) ──
   let metricRows = [];
+  let iL, fL, momShareInk, momShareFang, momShareInkColor, momShareFangColor;
   if (tab === 'ink') {
     const d = active.ink;
     const last = d.totals[d.totals.length-1], prev = d.totals[d.totals.length-2] ?? last, first = d.totals[0];
@@ -4998,8 +5019,8 @@ function buildSummaryCard(tab, maskVals) {
     ];
   } else {
     const inkS = active.ink, fangS = active.fang;
-    const iL = inkS.totals[inkS.totals.length-1];
-    const fL = fangS.totals.length ? fangS.totals[fangS.totals.length-1] : 0;
+    iL = inkS.totals[inkS.totals.length-1];
+    fL = fangS.totals.length ? fangS.totals[fangS.totals.length-1] : 0;
     const tot = iL + fL;
     const iP = inkS.totals[inkS.totals.length-2] ?? iL;
     const fP = fangS.totals.length > 1 ? fangS.totals[fangS.totals.length-2] : fL;
@@ -5016,10 +5037,10 @@ function buildSummaryCard(tab, maskVals) {
       const d = now - prev;
       return (d>=0?'+':'')+d.toFixed(1)+'%';
     }
-    const momShareInk  = shareMoM(shareInkNow,  shareInkPrev);
-    const momShareFang = shareMoM(shareFangNow, shareFangPrev);
-    const momShareInkColor  = momShareInk==='—'  ? '#555450' : (parseFloat(momShareInk)>=0  ? '#5ce0a8' : '#f06b6b');
-    const momShareFangColor = momShareFang==='—' ? '#555450' : (parseFloat(momShareFang)>=0 ? '#5ce0a8' : '#f06b6b');
+    momShareInk  = shareMoM(shareInkNow,  shareInkPrev);
+    momShareFang = shareMoM(shareFangNow, shareFangPrev);
+    momShareInkColor  = momShareInk==='—'  ? '#555450' : (parseFloat(momShareInk)>=0  ? '#5ce0a8' : '#f06b6b');
+    momShareFangColor = momShareFang==='—' ? '#555450' : (parseFloat(momShareFang)>=0 ? '#5ce0a8' : '#f06b6b');
     // Household YTD (same logic as renderMetrics)
     let hhJanIdx = -1;
     for (let i = inkS.totals.length - 1; i >= 0; i--) {
@@ -5042,8 +5063,6 @@ function buildSummaryCard(tab, maskVals) {
       : '—';
     metricRows = [
       { label: 'Household Net Worth', val: fmt(tot),                          sub: mom + ' MoM',           pos: parseFloat(mom) >= 0 },
-      { label: "Ink's Share",         val: tot > 0 ? (iL/tot*100).toFixed(1) + '%' : '—', sub: fmt(iL) + ' · <span style="color:' + momShareInkColor + '">' + momShareInk + ' MoM</span>',   pos: null },
-      { label: "Fang's Share",        val: tot > 0 ? (fL/tot*100).toFixed(1) + '%' : '—', sub: fmt(fL) + ' · <span style="color:' + momShareFangColor + '">' + momShareFang + ' MoM</span>', pos: null },
       { label: hhYtd ? hhYtd.label : 'YTD', val: hhYtd ? (maskVals ? '••••••' : hhYtdVal) : '—',
         sub: hhYtd ? 'vs ' + fmt(hhYtd.janVal) + ' Jan' : 'No Jan in range',                              pos: hhYtd ? hhYtd.diff >= 0 : null },
     ];
@@ -5209,6 +5228,36 @@ function buildSummaryCard(tab, maskVals) {
       </div>
     </div>`;
 
+  // Ink vs Fang Share — mirrors the live dashboard's standalone section (Household only)
+  let inkFangShareSection = '';
+  if (tab === 'household') {
+    const ifTotal = iL + fL;
+    const ifInkPct = ifTotal > 0 ? (iL / ifTotal * 100) : 0;
+    const ifFangPct = 100 - ifInkPct;
+    inkFangShareSection = `
+      <div style="margin-bottom:24px;">
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:14px;">Ink vs Fang Share</p>
+        <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 18px;">
+          <div style="display:flex;height:20px;border-radius:6px;overflow:hidden;background:#1e1e1e;margin-bottom:12px;">
+            <div style="width:${ifInkPct}%;background:#4da8f5;"></div>
+            <div style="width:${ifFangPct}%;background:#5ce0a8;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <div>
+              <span style="font-size:10.5px;color:#a3a299;display:flex;align-items:center;"><span style="width:7px;height:7px;border-radius:50%;background:#4da8f5;display:inline-block;margin-right:5px;"></span>Ink &middot; ${ifInkPct.toFixed(0)}%</span>
+              <p style="font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:#f0efe8;margin:3px 0 2px;">${fmt(iL)}</p>
+              <p style="font-family:'DM Mono',monospace;font-size:10px;color:${momShareInkColor};margin:0;">${momShareInk} vs last mo.</p>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:10.5px;color:#a3a299;display:flex;align-items:center;justify-content:flex-end;">Fang &middot; ${ifFangPct.toFixed(0)}%<span style="width:7px;height:7px;border-radius:50%;background:#5ce0a8;display:inline-block;margin-left:5px;"></span></span>
+              <p style="font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:#f0efe8;margin:3px 0 2px;">${fmt(fL)}</p>
+              <p style="font-family:'DM Mono',monospace;font-size:10px;color:${momShareFangColor};margin:0;">${momShareFang} vs last mo.</p>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
   // ── 5. Assemble card ──
   const now = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
   const card = document.createElement('div');
@@ -5229,7 +5278,7 @@ function buildSummaryCard(tab, maskVals) {
     </div>
 
     <!-- Metrics -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;">
+    <div style="display:grid;grid-template-columns:repeat(${metricRows.length},1fr);gap:10px;margin-bottom:24px;">
       ${metricRows.map(c => `
         <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;">
           <p style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;font-family:'DM Mono',monospace;margin-bottom:5px;">${c.label}</p>
@@ -5237,6 +5286,9 @@ function buildSummaryCard(tab, maskVals) {
           <p style="font-size:10px;font-family:'DM Mono',monospace;color:${c.pos === true ? '#5ce0a8' : c.pos === false ? '#f06b6b' : '#555450'};">${c.sub}</p>
         </div>`).join('')}
     </div>
+
+    <!-- Ink vs Fang Share -->
+    ${inkFangShareSection}
 
     <!-- Cash vs Invested -->
     ${cashInvestRatioSection}
@@ -5344,10 +5396,8 @@ async function runExport() {
 
     if (exportFmt === 'jpg') {
       prog.textContent = 'Saving JPG…';
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
-      const a = document.createElement('a');
-      a.href = dataUrl; a.download = filename + '.jpg'; a.click();
-      prog.textContent = '✓ Downloaded!';
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.93));
+      await saveOrShareBlob(blob, filename + '.jpg', 'image/jpeg', prog);
     } else {
       prog.textContent = 'Loading PDF library…';
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -5357,8 +5407,8 @@ async function runExport() {
       const pdfH = Math.round(canvas.height / canvas.width * pdfW);
       const pdf = new jsPDF({ orientation: pdfH > pdfW ? 'p' : 'l', unit: 'px', format: [pdfW, pdfH] });
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, pdfH);
-      pdf.save(filename + '.pdf');
-      prog.textContent = '✓ Downloaded!';
+      const pdfBlob = pdf.output('blob');
+      await saveOrShareBlob(pdfBlob, filename + '.pdf', 'application/pdf', prog);
     }
 
     goBtn.textContent = 'Done ✓';
