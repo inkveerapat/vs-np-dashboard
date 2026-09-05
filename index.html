@@ -444,7 +444,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v16.4</p>
+      <p class="gate-version">v17.0</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -465,7 +465,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v16.4</span>
+      <span class="version-badge">v17.0</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -554,8 +554,32 @@
     </div>
     </div><!-- /sticky-zone -->
 
+    <div class="donut-section" id="hh-assetclass-section" style="display:none;">
+      <div class="sticky-zone">
+      <div class="sticky-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <p class="donut-section-title" style="margin:0;padding:0;border:none;">Household Asset Allocation</p>
+      </div>
+      <div class="filter-bar">
+        <span class="filter-label">Sort</span>
+        <div class="filter-scroll">
+          <button class="filter-pill active" id="hh-ac-sort-value"  onclick="setHHAssetClassSort('value')">Holding Value</button>
+          <button class="filter-pill"        id="hh-ac-sort-uplPct" onclick="setHHAssetClassSort('uplPct')">Unrealised P/L %</button>
+          <button class="filter-pill"        id="hh-ac-sort-uplVal" onclick="setHHAssetClassSort('uplVal')">Unrealised P/L</button>
+        </div>
+      </div>
+      </div>
+      <div class="donut-grid" id="hh-assetclass-grid"></div>
+    </div>
+
     <div class="donut-section" id="donut-section" style="display:none;">
       <div class="sticky-zone">
+      <div class="filter-bar" id="donut-view-bar" style="display:none;margin-bottom:12px;">
+        <span class="filter-label">View</span>
+        <div style="display:flex;gap:6px;">
+          <button class="filter-pill active" id="view-portfolio"  onclick="setDonutViewMode(currentTab,'portfolio')">By Portfolio</button>
+          <button class="filter-pill"        id="view-assetClass" onclick="setDonutViewMode(currentTab,'assetClass')">By Asset Class</button>
+        </div>
+      </div>
       <div class="sticky-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
         <p class="donut-section-title" id="donut-section-heading" style="margin:0;padding:0;border:none;">Asset Allocation Breakdown</p>
         <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;flex:1 1 auto;min-width:0;">
@@ -646,7 +670,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v16.4';
+const VERSION  = 'v17.0';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -876,7 +900,20 @@ function findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHeaderRowIdx) {
   return result;
 }
 
-function extractAssetsForCol(rows, config, col, currency, uplCol, sharesCol, avgCostCol, avgPriceCol, costCol) {
+// Asset Class / Subclass are per-holding static properties (unlike shares/cost/market
+// value, which repeat once per month-block) — scanned once across the whole header row.
+// Matches by header text so column position can shift freely without breaking this.
+function findAssetClassCols(headerRow) {
+  let assetClassCol = null, subclassCol = null;
+  for (let c = 1; c < headerRow.length; c++) {
+    const hdr = (headerRow[c] || '').trim().toLowerCase();
+    if (subclassCol === null && hdr.includes('sub') && hdr.includes('class')) { subclassCol = c; continue; }
+    if (assetClassCol === null && hdr.includes('asset') && hdr.includes('class')) { assetClassCol = c; continue; }
+  }
+  return { assetClassCol, subclassCol };
+}
+
+function extractAssetsForCol(rows, config, col, currency, uplCol, sharesCol, avgCostCol, avgPriceCol, costCol, assetClassCol, subclassCol) {
   const assets = [];
   for (let r = config.assetRowStart; r <= Math.min(config.assetRowEnd, rows.length-1); r++) {
     const row  = rows[r] || [];
@@ -885,12 +922,14 @@ function extractAssetsForCol(rows, config, col, currency, uplCol, sharesCol, avg
     if (!name || !raw) continue;
     const val  = numVal(raw);
     if (val <= 0) continue;
-    const upl      = (uplCol      != null) ? numVal((row[uplCol]      || '').trim()) : null;
-    const shares   = (sharesCol   != null) ? numVal((row[sharesCol]   || '').trim()) : null;
-    const avgCost  = (avgCostCol  != null) ? numVal((row[avgCostCol]  || '').trim()) : null;
-    const avgPrice = (avgPriceCol != null) ? numVal((row[avgPriceCol] || '').trim()) : null;
-    const cost     = (costCol     != null) ? numVal((row[costCol]     || '').trim()) : null;
-    assets.push({ name, value: val, currency, upl, shares, avgCost, avgPrice, cost });
+    const upl        = (uplCol      != null) ? numVal((row[uplCol]      || '').trim()) : null;
+    const shares      = (sharesCol   != null) ? numVal((row[sharesCol]   || '').trim()) : null;
+    const avgCost     = (avgCostCol  != null) ? numVal((row[avgCostCol]  || '').trim()) : null;
+    const avgPrice     = (avgPriceCol != null) ? numVal((row[avgPriceCol] || '').trim()) : null;
+    const cost         = (costCol     != null) ? numVal((row[costCol]     || '').trim()) : null;
+    const assetClass  = (assetClassCol != null ? (row[assetClassCol] || '').trim() : '') || 'Uncategorized';
+    const subclass    = (subclassCol   != null ? (row[subclassCol]   || '').trim() : '') || 'Other';
+    assets.push({ name, value: val, currency, upl, shares, avgCost, avgPrice, cost, assetClass, subclass });
   }
   const total = assets.reduce((s,a) => s+a.value, 0);
   return assets.map(a => ({ ...a, pct: total>0 ? a.value/total*100 : 0 }));
@@ -902,10 +941,11 @@ function extractDonutAllMonths(rows, config) {
   const monthRowIdx = config.monthRowIdx !== undefined ? config.monthRowIdx : 1;
   const mvHdrIdx    = config.mvHeaderRowIdx !== undefined ? config.mvHeaderRowIdx : 2;
   const mvCols      = findMarketValueCols(rows, yearRowIdx, monthRowIdx, mvHdrIdx);
+  const { assetClassCol, subclassCol } = findAssetClassCols(rows[mvHdrIdx] || []);
   const byMonth  = {};
   const months   = [];
   for (const { col, monthLabel, uplCol, sharesCol, avgCostCol, avgPriceCol, costCol } of mvCols) {
-    const assets = extractAssetsForCol(rows, config, col, currency, uplCol, sharesCol, avgCostCol, avgPriceCol, costCol);
+    const assets = extractAssetsForCol(rows, config, col, currency, uplCol, sharesCol, avgCostCol, avgPriceCol, costCol, assetClassCol, subclassCol);
     if (assets.length === 0) continue;
     byMonth[monthLabel] = assets;
     if (!months.includes(monthLabel)) months.push(monthLabel);
@@ -919,6 +959,7 @@ let inkDonutData=[], fangDonutData=[], secondaryDonutData=[];
 let donutInstances={};
 const donutFilterState = { ink: null, fang: null, household: null };
 const donutSortState   = { ink: 'value', fang: 'value', household: 'value' }; // 'value' | 'uplPct' | 'uplVal'
+const donutViewMode    = { ink: 'portfolio', fang: 'portfolio' }; // 'portfolio' | 'assetClass' — Ink/Fang only
 const filterState = { ink: -1, fang: -1, household: -1 };
 
 function getDonutList(tab) {
@@ -2900,6 +2941,99 @@ function resolveDonutAssetsForPortfolio(tab, title) {
   return { assets, currency: dData.currency };
 }
 
+// ─── ASSET CLASS AGGREGATION ─────────────────────────────────────────────────
+// Combines every portfolio's holdings into { assetClass -> { subclass -> {...} } },
+// expressed entirely via % of net worth (never raw dollar sums) so portfolios
+// tracked in different currencies (e.g. US stocks in USD vs THB accounts) never
+// need live FX conversion — same percent-composition technique the allocation
+// bar already uses for its per-holding % of net worth.
+function buildAssetClassBreakdown(tab) {
+  const config = tab === 'ink' ? INK_CONFIG : FANG_CONFIG;
+  const active = getActiveData(tab);
+  const d = tab === 'ink' ? active.ink : active.fang;
+  if (!d || !d.totals.length) return { classes: [], totalNetWorth: 0 };
+  const idx = d.totals.length - 1;
+  const totalNetWorth = d.totals[idx];
+
+  const classMap = {};
+  config.componentNames.forEach((name, i) => {
+    const portfolioValueTHB = d.components[i].values[idx];
+    if (!(portfolioValueTHB > 0)) return;
+    const portfolioPctOfNW = totalNetWorth > 0 ? (portfolioValueTHB / totalNetWorth * 100) : 0;
+    const { assets } = resolveDonutAssetsForPortfolio(tab, name);
+
+    assets.forEach(a => {
+      const assetPctOfNW = (a.pct / 100) * portfolioPctOfNW;
+      const cls = a.assetClass || 'Uncategorized';
+      const sub = a.subclass || 'Other';
+      if (!classMap[cls]) classMap[cls] = { name: cls, pct: 0, uplWeighted: 0, subclasses: {} };
+      classMap[cls].pct += assetPctOfNW;
+      if (a.upl != null && a.value) classMap[cls].uplWeighted += (a.upl / a.value) * assetPctOfNW;
+
+      if (!classMap[cls].subclasses[sub]) classMap[cls].subclasses[sub] = { name: sub, pct: 0, uplWeighted: 0, holdings: [] };
+      const sObj = classMap[cls].subclasses[sub];
+      sObj.pct += assetPctOfNW;
+      if (a.upl != null && a.value) sObj.uplWeighted += (a.upl / a.value) * assetPctOfNW;
+      sObj.holdings.push({ name: a.name, portfolio: name, value: a.value, currency: a.currency, upl: a.upl, pctOfNW: assetPctOfNW });
+    });
+  });
+
+  const classes = Object.values(classMap).map(c => ({
+    name: c.name,
+    pct: c.pct,
+    valueTHB: totalNetWorth * (c.pct / 100),
+    uplPct: c.pct > 0 ? (c.uplWeighted / c.pct * 100) : null,
+    subclasses: Object.values(c.subclasses).map(s => ({
+      name: s.name,
+      pct: s.pct,
+      valueTHB: totalNetWorth * (s.pct / 100),
+      uplPct: s.pct > 0 ? (s.uplWeighted / s.pct * 100) : null,
+      holdings: s.holdings.sort((a,b) => b.pctOfNW - a.pctOfNW),
+    })).sort((a,b) => b.pct - a.pct),
+  })).sort((a,b) => b.pct - a.pct);
+
+  return { classes, totalNetWorth };
+}
+
+// Household combined — same shape as buildAssetClassBreakdown, but every class and
+// subclass also carries inkPct/fangPct so the two contributions stay distinguishable.
+function buildAssetClassBreakdownHousehold() {
+  const ink = buildAssetClassBreakdown('ink');
+  const fang = buildAssetClassBreakdown('fang');
+  const totalNetWorth = ink.totalNetWorth + fang.totalNetWorth; // both already THB
+  const classMap = {};
+
+  function fold(result, personKey) {
+    const scale = totalNetWorth > 0 ? (result.totalNetWorth / totalNetWorth) : 0;
+    result.classes.forEach(c => {
+      const hhPct = c.pct * scale;
+      if (!classMap[c.name]) classMap[c.name] = { name: c.name, pct: 0, inkPct: 0, fangPct: 0, subclasses: {} };
+      classMap[c.name].pct += hhPct;
+      classMap[c.name][personKey + 'Pct'] += hhPct;
+
+      c.subclasses.forEach(s => {
+        const hhSubPct = s.pct * scale;
+        if (!classMap[c.name].subclasses[s.name]) classMap[c.name].subclasses[s.name] = { name: s.name, pct: 0, inkPct: 0, fangPct: 0 };
+        const so = classMap[c.name].subclasses[s.name];
+        so.pct += hhSubPct;
+        so[personKey + 'Pct'] += hhSubPct;
+      });
+    });
+  }
+  fold(ink, 'ink');
+  fold(fang, 'fang');
+
+  const classes = Object.values(classMap).map(c => ({
+    ...c,
+    valueTHB: totalNetWorth * (c.pct / 100),
+    subclasses: Object.values(c.subclasses)
+      .map(s => ({ ...s, valueTHB: totalNetWorth * (s.pct / 100) }))
+      .sort((a,b) => b.pct - a.pct),
+  })).sort((a,b) => b.pct - a.pct);
+
+  return { classes, totalNetWorth };
+}
+
 function renderAllocationBar(tab) {
   const barSection = document.getElementById('allocation-bar-section');
   const barContainer = document.getElementById('allocation-bar-container');
@@ -3039,6 +3173,111 @@ function allocHover(tab, i, entering) {
   }
 }
 
+function sortAssetClassArray(arr, mode) {
+  const sorted = [...arr];
+  if (mode === 'uplPct') sorted.sort((a,b) => (b.uplPct ?? -Infinity) - (a.uplPct ?? -Infinity));
+  else if (mode === 'uplVal') sorted.sort((a,b) => (b.valueTHB*(b.uplPct||0)/100) - (a.valueTHB*(a.uplPct||0)/100));
+  else sorted.sort((a,b) => b.pct - a.pct);
+  return sorted;
+}
+
+function setDonutViewMode(tab, mode) {
+  if (donutViewMode[tab] === mode) return;
+  donutViewMode[tab] = mode;
+  document.getElementById('view-portfolio').classList.toggle('active', mode === 'portfolio');
+  document.getElementById('view-assetClass').classList.toggle('active', mode === 'assetClass');
+  renderDonuts(tab);
+}
+
+// "By Asset Class" rendering — same card/donut/legend grammar as the portfolio view,
+// but the main layer is Asset Class (donut per class) and the inner layer is
+// Subclass (legend rows within each class's donut), aggregated across every
+// portfolio. Entry points: card title -> class drill, legend row -> subclass drill.
+function renderAssetClassView(tab) {
+  const grid = document.getElementById('donut-grid');
+  const { classes } = buildAssetClassBreakdown(tab);
+  syncSortPills(tab);
+
+  if (!classes.length) {
+    grid.innerHTML = '<div class="donut-empty">No asset class data for this period</div>';
+    return;
+  }
+  const sorted = sortAssetClassArray(classes, donutSortState[tab] || 'value');
+
+  grid.innerHTML = sorted.map((c, classIdx) => {
+    const hasUPL = c.uplPct !== null;
+    const uplStr = hasUPL ? `${c.uplPct >= 0 ? '+' : ''}${c.uplPct.toFixed(1)}%` : '';
+    const uplValTHB = hasUPL ? c.valueTHB * c.uplPct / 100 : null;
+    const uplValStr = hasUPL ? `(${uplValTHB >= 0 ? '+' : ''}${fmtMC(uplValTHB, 'THB')})` : '';
+
+    const legItems = c.subclasses.map((s, subIdx) => {
+      const sHasUPL = s.uplPct !== null;
+      const sUplStr = sHasUPL ? `${s.uplPct >= 0 ? '+' : ''}${s.uplPct.toFixed(1)}%` : '';
+      const sUplVal = sHasUPL ? s.valueTHB * s.uplPct / 100 : null;
+      const sUplValStr = sHasUPL ? `(${sUplVal >= 0 ? '+' : ''}${fmtMC(sUplVal, 'THB')})` : '';
+      const subRow = sHasUPL ? `
+        <div class="donut-leg-sub">
+          <span class="donut-leg-mv">${mask(fmtMC1(s.valueTHB, 'THB'))}</span>
+          <span class="donut-leg-upl" style="color:${sUplVal >= 0 ? '#5ce0a8' : '#f06b6b'};">${sUplStr} <span class="donut-leg-upl-val">${mask(sUplValStr)}</span></span>
+        </div>` : `
+        <div class="donut-leg-sub">
+          <span class="donut-leg-mv">${mask(fmtMC1(s.valueTHB, 'THB'))}</span>
+        </div>`;
+      const subPctOfClass = c.pct > 0 ? (s.pct / c.pct * 100) : 0;
+      return `
+        <div class="donut-leg-item drill-leg-item-clickable" data-idx="${subIdx}"
+          onclick="openSubclassDrill('${tab}',${classIdx},${subIdx})">
+          <div class="donut-leg-main">
+            <span class="donut-leg-dot" style="background:${PALETTE[subIdx%PALETTE.length]}"></span>
+            <span class="donut-leg-name" title="${s.name}"><span class="donut-leg-name-text">${s.name}</span><span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></span>
+            <span class="donut-leg-pct">${subPctOfClass.toFixed(1)}%</span>
+          </div>
+          ${subRow}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="donut-card">
+        <p class="donut-card-title" onclick="openAssetClassDrill('${tab}',${classIdx})" style="cursor:pointer;display:flex;align-items:center;gap:6px;">${c.name} <span style="font-size:9px;color:var(--text3);font-family:var(--font-mono);">&#8599;&#xFE0E;</span></p>
+        <div class="donut-card-body">
+          <div class="donut-canvas-wrap">
+            <canvas id="dc-${tab}-cls-${classIdx}"></canvas>
+            <div class="donut-center">
+              <span class="donut-center-total">${mask(fmtMC(c.valueTHB, 'THB'))}</span>
+              <span class="donut-center-label">
+                <span style="display:block;color:${hasUPL && uplStr.startsWith('-') ? '#f06b6b' : '#5ce0a8'};font-size:8px;line-height:1.3;white-space:nowrap;">${uplStr}</span>
+                <span style="display:block;color:${hasUPL && uplValTHB >= 0 ? '#5ce0a8' : '#f06b6b'};font-size:7px;line-height:1.3;white-space:nowrap;">${mask(uplValStr)}</span>
+              </span>
+            </div>
+          </div>
+          <div class="donut-leg">${legItems}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  requestAnimationFrame(() => {
+    sorted.forEach((c, classIdx) => {
+      const canvas = document.getElementById(`dc-${tab}-cls-${classIdx}`);
+      if (!canvas) return;
+      const wrap = canvas.parentElement;
+      const SZ = wrap.offsetWidth || 100;
+      canvas.width = SZ; canvas.height = SZ;
+      canvas.style.width = SZ+'px'; canvas.style.height = SZ+'px';
+      const colors = c.subclasses.map((_,si) => PALETTE[si % PALETTE.length]);
+      const chart = new Chart(canvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: c.subclasses.map(s=>s.name),
+          datasets: [{ data: c.subclasses.map(s => c.pct > 0 ? s.pct/c.pct*100 : 0), backgroundColor: colors, borderColor:'#161616', borderWidth:2, hoverOffset:6 }]
+        },
+        options: { responsive:false, cutout:'68%', animation:{duration:400}, plugins:{legend:{display:false},tooltip:{enabled:false}} }
+      });
+      donutInstances[`dc-${tab}-cls-${classIdx}`] = chart;
+    });
+  });
+}
+
+
 function renderDonuts(tab) {
   const section=document.getElementById('donut-section');
   const grid=document.getElementById('donut-grid');
@@ -3051,6 +3290,22 @@ function renderDonuts(tab) {
 
   const heading = document.getElementById('donut-section-heading');
   if (heading) heading.textContent = tab === 'household' ? 'Secondary Accounts' : 'Asset Allocation Breakdown';
+
+  const viewBar = document.getElementById('donut-view-bar');
+  if (viewBar) {
+    if (tab === 'household') {
+      viewBar.style.display = 'none';
+    } else {
+      viewBar.style.display = 'flex';
+      document.getElementById('view-portfolio').classList.toggle('active', donutViewMode[tab] === 'portfolio');
+      document.getElementById('view-assetClass').classList.toggle('active', donutViewMode[tab] === 'assetClass');
+    }
+  }
+  if (tab !== 'household' && donutViewMode[tab] === 'assetClass') {
+    renderDonutFilter(tab);
+    renderAssetClassView(tab);
+    return;
+  }
 
   const list = getDonutList(tab);
   const allMonths = getDonutMonths(tab);
@@ -3965,6 +4220,334 @@ function closeDrillAll() {
 // Keep old closeDrill alias so any existing references still work
 function closeDrill() { closeDrillAll(); }
 
+// ─── ASSET CLASS / SUBCLASS DRILLDOWN (Ink / Fang) ───────────────────────────
+// Simpler than the full portfolio drill (no per-holding history/sparklines) —
+// a clean breakdown of what makes up this class or subclass, since these are
+// derived aggregates spanning multiple portfolios rather than a single sheet.
+function openAssetClassDrill(tab, classIdx) {
+  const { classes } = buildAssetClassBreakdown(tab);
+  const c = sortAssetClassArray(classes, donutSortState[tab] || 'value')[classIdx];
+  if (!c) return;
+  const exportBtn = document.getElementById('drill-port-export-btn');
+  if (exportBtn) exportBtn.style.display = 'none';
+  const viewingBar = document.getElementById('port-viewing-bar');
+  if (viewingBar) viewingBar.style.display = 'none';
+
+  document.getElementById('drill-port-title').textContent = c.name;
+  renderAssetClassDrillContent(tab, c, classIdx);
+
+  pushDrillNav();
+  const overlay = document.getElementById('drill-overlay');
+  const panel   = document.getElementById('drill-panel');
+  overlay.style.display = 'block';
+  panel.style.display   = 'flex';
+  requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
+  document.body.style.overflow = 'hidden';
+}
+
+function renderAssetClassDrillContent(tab, c, classIdx) {
+  const content = document.getElementById('drill-port-content');
+  if (!content) return;
+  const hasUPL = c.uplPct !== null;
+  const uplValTHB = hasUPL ? c.valueTHB * c.uplPct / 100 : null;
+
+  const rows = c.subclasses.map((s, subIdx) => {
+    const sHasUPL = s.uplPct !== null;
+    const sUplValTHB = sHasUPL ? s.valueTHB * s.uplPct / 100 : null;
+    const subPctOfClass = c.pct > 0 ? (s.pct / c.pct * 100) : 0;
+    return `
+      <div class="donut-leg-item drill-leg-item-clickable" onclick="openSubclassDrill('${tab}',${classIdx},${subIdx})">
+        <div class="donut-leg-main">
+          <span class="donut-leg-dot" style="background:${PALETTE[subIdx % PALETTE.length]}"></span>
+          <span class="donut-leg-name"><span class="donut-leg-name-text">${s.name}</span><span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></span>
+          <span class="donut-leg-pct">${subPctOfClass.toFixed(1)}%</span>
+        </div>
+        <div class="donut-leg-sub">
+          <span class="donut-leg-mv">${mask(fmtMC1(s.valueTHB, 'THB'))}</span>
+          ${sHasUPL ? `<span class="donut-leg-upl" style="color:${sUplValTHB >= 0 ? '#5ce0a8' : '#f06b6b'};">${sUplValTHB >= 0 ? '+' : ''}${s.uplPct.toFixed(1)}% <span class="donut-leg-upl-val">${mask('(' + (sUplValTHB >= 0 ? '+' : '') + fmtMC(sUplValTHB, 'THB') + ')')}</span></span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div style="margin-bottom:20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="condo-detail-item"><span class="condo-detail-label">Total Value</span><span class="condo-detail-val" style="font-size:15px;">${mask(fmtMC(c.valueTHB, 'THB'))}</span></div>
+        <div class="condo-detail-item"><span class="condo-detail-label">% of Net Worth</span><span class="condo-detail-val" style="font-size:15px;">${c.pct.toFixed(1)}%</span></div>
+      </div>
+      ${hasUPL ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+        <div class="condo-detail-item"><span class="condo-detail-label">Unrealised P/L %</span><span class="condo-detail-val ${c.uplPct>=0?'pos':'neg'}" style="font-size:15px;">${c.uplPct>=0?'+':''}${c.uplPct.toFixed(1)}%</span></div>
+        <div class="condo-detail-item"><span class="condo-detail-label">Unrealised P/L</span><span class="condo-detail-val ${uplValTHB>=0?'pos':'neg'}" style="font-size:15px;">${uplValTHB>=0?'+':''}${mask(fmtMC(uplValTHB,'THB'))}</span></div>
+      </div>` : ''}
+    </div>
+    <p class="donut-section-title" style="margin-bottom:10px;">Subclasses</p>
+    <div class="donut-leg">${rows}</div>`;
+}
+
+function openSubclassDrill(tab, classIdx, subIdx) {
+  const { classes } = buildAssetClassBreakdown(tab);
+  const c = sortAssetClassArray(classes, donutSortState[tab] || 'value')[classIdx];
+  const s = c ? c.subclasses[subIdx] : null;
+  if (!s) return;
+  const exportBtn = document.getElementById('drill-port-export-btn');
+  if (exportBtn) exportBtn.style.display = 'none';
+  const viewingBar = document.getElementById('port-viewing-bar');
+  if (viewingBar) viewingBar.style.display = 'none';
+
+  document.getElementById('drill-port-title').textContent = `${s.name} (${c.name})`;
+  renderSubclassDrillContent(s);
+
+  pushDrillNav();
+  const overlay = document.getElementById('drill-overlay');
+  const panel   = document.getElementById('drill-panel');
+  overlay.style.display = 'block';
+  panel.style.display   = 'flex';
+  requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
+  document.body.style.overflow = 'hidden';
+}
+
+function renderSubclassDrillContent(s) {
+  const content = document.getElementById('drill-port-content');
+  if (!content) return;
+  const hasUPL = s.uplPct !== null;
+  const uplValTHB = hasUPL ? s.valueTHB * s.uplPct / 100 : null;
+
+  const rows = s.holdings.map((h, i) => {
+    const hHasUPL = h.upl !== null && h.upl !== undefined;
+    return `
+      <div class="donut-leg-item" style="cursor:default;">
+        <div class="donut-leg-main">
+          <span class="donut-leg-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>
+          <span class="donut-leg-name"><span class="donut-leg-name-text">${h.name}</span></span>
+          <span class="donut-leg-pct" style="font-size:9px;color:var(--text3);">${h.portfolio}</span>
+        </div>
+        <div class="donut-leg-sub">
+          <span class="donut-leg-mv">${mask(fmtMC1(h.value, h.currency))}</span>
+          ${hHasUPL ? `<span class="donut-leg-upl" style="color:${h.upl>=0?'#5ce0a8':'#f06b6b'};">${h.upl>=0?'+':''}${mask(fmtMC1(h.upl, h.currency))}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div style="margin-bottom:20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="condo-detail-item"><span class="condo-detail-label">Total Value</span><span class="condo-detail-val" style="font-size:15px;">${mask(fmtMC(s.valueTHB, 'THB'))}</span></div>
+        <div class="condo-detail-item"><span class="condo-detail-label">% of Net Worth</span><span class="condo-detail-val" style="font-size:15px;">${s.pct.toFixed(1)}%</span></div>
+      </div>
+      ${hasUPL ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+        <div class="condo-detail-item"><span class="condo-detail-label">Unrealised P/L %</span><span class="condo-detail-val ${s.uplPct>=0?'pos':'neg'}" style="font-size:15px;">${s.uplPct>=0?'+':''}${s.uplPct.toFixed(1)}%</span></div>
+        <div class="condo-detail-item"><span class="condo-detail-label">Unrealised P/L</span><span class="condo-detail-val ${uplValTHB>=0?'pos':'neg'}" style="font-size:15px;">${uplValTHB>=0?'+':''}${mask(fmtMC(uplValTHB,'THB'))}</span></div>
+      </div>` : ''}
+    </div>
+    <p class="donut-section-title" style="margin-bottom:10px;">Holdings</p>
+    <div class="donut-leg">${rows}</div>`;
+}
+
+// ─── HOUSEHOLD COMBINED ASSET CLASS SECTION ──────────────────────────────────
+let hhAssetClassSort = 'value';
+let hhAssetClassChartInstances = {};
+
+function setHHAssetClassSort(mode) {
+  if (hhAssetClassSort === mode) return;
+  hhAssetClassSort = mode;
+  ['value','uplPct','uplVal'].forEach(m => {
+    const btn = document.getElementById('hh-ac-sort-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+  renderHouseholdAssetClassSection();
+}
+
+function renderHouseholdAssetClassSection() {
+  const section = document.getElementById('hh-assetclass-section');
+  const grid = document.getElementById('hh-assetclass-grid');
+  if (!section || !grid) return;
+  if (currentTab !== 'household') { section.style.display = 'none'; return; }
+
+  const { classes } = buildAssetClassBreakdownHousehold();
+  if (!classes.length) {
+    section.style.display = 'block';
+    grid.innerHTML = '<div class="donut-empty">No asset class data for this period</div>';
+    return;
+  }
+  section.style.display = 'block';
+  Object.values(hhAssetClassChartInstances).forEach(c => c.destroy());
+  hhAssetClassChartInstances = {};
+  const sorted = sortAssetClassArray(classes, hhAssetClassSort);
+
+  grid.innerHTML = sorted.map((c, classIdx) => {
+    const hasUPL = c.uplPct !== null && c.uplPct !== undefined;
+    const uplStr = hasUPL ? `${c.uplPct >= 0 ? '+' : ''}${c.uplPct.toFixed(1)}%` : '';
+    const uplValTHB = hasUPL ? c.valueTHB * c.uplPct / 100 : null;
+    const uplValStr = hasUPL ? `(${uplValTHB >= 0 ? '+' : ''}${fmtMC(uplValTHB, 'THB')})` : '';
+    const cInkPct = c.pct > 0 ? (c.inkPct / c.pct * 100) : 0;
+    const cFangPct = 100 - cInkPct;
+
+    const legItems = c.subclasses.map((s, subIdx) => {
+      const subPctOfClass = c.pct > 0 ? (s.pct / c.pct * 100) : 0;
+      const sInkPct = s.pct > 0 ? (s.inkPct / s.pct * 100) : 0;
+      const sFangPct = 100 - sInkPct;
+      return `
+        <div class="donut-leg-item drill-leg-item-clickable" onclick="openHHSubclassDrill(${classIdx},${subIdx})">
+          <div class="donut-leg-main">
+            <span class="donut-leg-dot" style="background:${PALETTE[subIdx%PALETTE.length]}"></span>
+            <span class="donut-leg-name" title="${s.name}"><span class="donut-leg-name-text">${s.name}</span><span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></span>
+            <span class="donut-leg-pct">${subPctOfClass.toFixed(1)}%</span>
+          </div>
+          <div class="donut-leg-sub">
+            <span class="donut-leg-mv">${mask(fmtMC1(s.valueTHB, 'THB'))}</span>
+            <span style="font-size:9px;color:var(--text3);text-align:right;">Ink ${sInkPct.toFixed(0)}% &middot; Fang ${sFangPct.toFixed(0)}%</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="donut-card">
+        <p class="donut-card-title" onclick="openHHAssetClassDrill(${classIdx})" style="cursor:pointer;display:flex;align-items:center;gap:6px;justify-content:space-between;">
+          <span>${c.name} <span style="font-size:9px;color:var(--text3);font-family:var(--font-mono);">&#8599;&#xFE0E;</span></span>
+          <span style="font-size:9px;color:var(--text3);font-weight:400;font-family:var(--font-mono);white-space:nowrap;">Ink ${cInkPct.toFixed(0)}% &middot; Fang ${cFangPct.toFixed(0)}%</span>
+        </p>
+        <div class="donut-card-body">
+          <div class="donut-canvas-wrap">
+            <canvas id="dc-hh-cls-${classIdx}"></canvas>
+            <div class="donut-center">
+              <span class="donut-center-total">${mask(fmtMC(c.valueTHB, 'THB'))}</span>
+              <span class="donut-center-label">
+                ${hasUPL ? `<span style="display:block;color:${uplValTHB>=0?'#5ce0a8':'#f06b6b'};font-size:8px;line-height:1.3;white-space:nowrap;">${uplStr}</span>
+                <span style="display:block;color:${hasUPL && uplValTHB >= 0 ? '#5ce0a8' : '#f06b6b'};font-size:7px;line-height:1.3;white-space:nowrap;">${mask(uplValStr)}</span>` : ''}
+              </span>
+            </div>
+          </div>
+          <div class="donut-leg">${legItems}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  requestAnimationFrame(() => {
+    sorted.forEach((c, classIdx) => {
+      const canvas = document.getElementById(`dc-hh-cls-${classIdx}`);
+      if (!canvas) return;
+      const wrap = canvas.parentElement;
+      const SZ = wrap.offsetWidth || 100;
+      canvas.width = SZ; canvas.height = SZ;
+      canvas.style.width = SZ+'px'; canvas.style.height = SZ+'px';
+      const colors = c.subclasses.map((_,si) => PALETTE[si % PALETTE.length]);
+      const chart = new Chart(canvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: c.subclasses.map(s=>s.name),
+          datasets: [{ data: c.subclasses.map(s => c.pct > 0 ? s.pct/c.pct*100 : 0), backgroundColor: colors, borderColor:'#161616', borderWidth:2, hoverOffset:6 }]
+        },
+        options: { responsive:false, cutout:'68%', animation:{duration:400}, plugins:{legend:{display:false},tooltip:{enabled:false}} }
+      });
+      hhAssetClassChartInstances[`dc-hh-cls-${classIdx}`] = chart;
+    });
+  });
+}
+
+function openHHAssetClassDrill(classIdx) {
+  const { classes } = buildAssetClassBreakdownHousehold();
+  const c = sortAssetClassArray(classes, hhAssetClassSort)[classIdx];
+  if (!c) return;
+  const exportBtn = document.getElementById('drill-port-export-btn');
+  if (exportBtn) exportBtn.style.display = 'none';
+  const viewingBar = document.getElementById('port-viewing-bar');
+  if (viewingBar) viewingBar.style.display = 'none';
+
+  document.getElementById('drill-port-title').textContent = c.name + ' — Household';
+  renderHHAssetClassDrillContent(c, classIdx);
+
+  pushDrillNav();
+  const overlay = document.getElementById('drill-overlay');
+  const panel   = document.getElementById('drill-panel');
+  overlay.style.display = 'block';
+  panel.style.display   = 'flex';
+  requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
+  document.body.style.overflow = 'hidden';
+}
+
+function renderHHAssetClassDrillContent(c, classIdx) {
+  const content = document.getElementById('drill-port-content');
+  if (!content) return;
+  const cInkPct = c.pct > 0 ? (c.inkPct / c.pct * 100) : 0;
+  const cFangPct = 100 - cInkPct;
+
+  const rows = c.subclasses.map((s, subIdx) => {
+    const subPctOfClass = c.pct > 0 ? (s.pct / c.pct * 100) : 0;
+    const sInkPct = s.pct > 0 ? (s.inkPct / s.pct * 100) : 0;
+    const sFangPct = 100 - sInkPct;
+    return `
+      <div class="donut-leg-item drill-leg-item-clickable" onclick="openHHSubclassDrill(${classIdx},${subIdx})">
+        <div class="donut-leg-main">
+          <span class="donut-leg-dot" style="background:${PALETTE[subIdx % PALETTE.length]}"></span>
+          <span class="donut-leg-name"><span class="donut-leg-name-text">${s.name}</span><span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></span>
+          <span class="donut-leg-pct">${subPctOfClass.toFixed(1)}%</span>
+        </div>
+        <div class="donut-leg-sub">
+          <span class="donut-leg-mv">${mask(fmtMC1(s.valueTHB, 'THB'))}</span>
+          <span style="font-size:9px;color:var(--text3);text-align:right;">Ink ${sInkPct.toFixed(0)}% &middot; Fang ${sFangPct.toFixed(0)}%</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div style="margin-bottom:20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="condo-detail-item"><span class="condo-detail-label">Total Value</span><span class="condo-detail-val" style="font-size:15px;">${mask(fmtMC(c.valueTHB, 'THB'))}</span></div>
+        <div class="condo-detail-item"><span class="condo-detail-label">% of Household</span><span class="condo-detail-val" style="font-size:15px;">${c.pct.toFixed(1)}%</span></div>
+      </div>
+      <div class="condo-detail-item" style="margin-top:8px;">
+        <span class="condo-detail-label">Ink vs Fang</span>
+        <span class="condo-detail-val" style="font-size:15px;">Ink ${cInkPct.toFixed(0)}% &middot; Fang ${cFangPct.toFixed(0)}%</span>
+      </div>
+    </div>
+    <p class="donut-section-title" style="margin-bottom:10px;">Subclasses</p>
+    <div class="donut-leg">${rows}</div>`;
+}
+
+function openHHSubclassDrill(classIdx, subIdx) {
+  const { classes } = buildAssetClassBreakdownHousehold();
+  const c = sortAssetClassArray(classes, hhAssetClassSort)[classIdx];
+  const s = c ? c.subclasses[subIdx] : null;
+  if (!s) return;
+  const exportBtn = document.getElementById('drill-port-export-btn');
+  if (exportBtn) exportBtn.style.display = 'none';
+  const viewingBar = document.getElementById('port-viewing-bar');
+  if (viewingBar) viewingBar.style.display = 'none';
+
+  document.getElementById('drill-port-title').textContent = `${s.name} (${c.name}) — Household`;
+  renderHHSubclassDrillContent(s);
+
+  pushDrillNav();
+  const overlay = document.getElementById('drill-overlay');
+  const panel   = document.getElementById('drill-panel');
+  overlay.style.display = 'block';
+  panel.style.display   = 'flex';
+  requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
+  document.body.style.overflow = 'hidden';
+}
+
+function renderHHSubclassDrillContent(s) {
+  const content = document.getElementById('drill-port-content');
+  if (!content) return;
+  const sInkPct = s.pct > 0 ? (s.inkPct / s.pct * 100) : 0;
+  const sFangPct = 100 - sInkPct;
+
+  content.innerHTML = `
+    <div style="margin-bottom:20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="condo-detail-item"><span class="condo-detail-label">Total Value</span><span class="condo-detail-val" style="font-size:15px;">${mask(fmtMC(s.valueTHB, 'THB'))}</span></div>
+        <div class="condo-detail-item"><span class="condo-detail-label">% of Household</span><span class="condo-detail-val" style="font-size:15px;">${s.pct.toFixed(1)}%</span></div>
+      </div>
+      <div class="condo-detail-item" style="margin-top:8px;">
+        <span class="condo-detail-label">Ink vs Fang</span>
+        <span class="condo-detail-val" style="font-size:15px;">Ink ${sInkPct.toFixed(0)}% &middot; Fang ${sFangPct.toFixed(0)}%</span>
+      </div>
+    </div>
+    <p class="donut-section-title" style="margin-bottom:10px;color:var(--text3);">Individual holdings aren't broken out at this level — this subclass combines holdings from both Ink's and Fang's portfolios.</p>`;
+}
+
 function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed, viewingM) {
   const allM    = getDonutMonths(tab);
   const latestM = allM[allM.length - 1];
@@ -4541,6 +5124,7 @@ function renderAll(tab) {
   renderGoals(tab);
   renderLegend(tab);
   renderChart(tab);
+  renderHouseholdAssetClassSection();
   renderDonuts(tab);
 }
 
