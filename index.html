@@ -455,7 +455,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v17.3</p>
+      <p class="gate-version">v17.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -476,7 +476,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v17.3</span>
+      <span class="version-badge">v17.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -688,7 +688,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v17.3';
+const VERSION  = 'v17.5';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3048,11 +3048,13 @@ function buildAssetClassBreakdown(tab, overrideMonth) {
     pct: c.pct,
     valueTHB: totalNetWorth * (c.pct / 100),
     uplPct: c.pct > 0 ? (c.uplWeighted / c.pct * 100) : null,
+    uplWeighted: c.uplWeighted,
     subclasses: Object.values(c.subclasses).map(s => ({
       name: s.name,
       pct: s.pct,
       valueTHB: totalNetWorth * (s.pct / 100),
       uplPct: s.pct > 0 ? (s.uplWeighted / s.pct * 100) : null,
+      uplWeighted: s.uplWeighted,
       holdings: s.holdings.sort((a,b) => b.pctOfNW - a.pctOfNW),
     })).sort((a,b) => b.pct - a.pct),
   })).sort((a,b) => b.pct - a.pct);
@@ -3073,16 +3075,19 @@ function buildAssetClassBreakdownHousehold() {
     const scale = totalNetWorth > 0 ? (result.totalNetWorth / totalNetWorth) : 0;
     result.classes.forEach(c => {
       const hhPct = c.pct * scale;
-      if (!classMap[c.name]) classMap[c.name] = { name: c.name, pct: 0, inkPct: 0, fangPct: 0, subclasses: {} };
+      if (!classMap[c.name]) classMap[c.name] = { name: c.name, pct: 0, inkPct: 0, fangPct: 0, uplWeighted: 0, subclasses: {} };
       classMap[c.name].pct += hhPct;
       classMap[c.name][personKey + 'Pct'] += hhPct;
+      classMap[c.name].uplWeighted += (c.uplWeighted || 0) * scale;
 
       c.subclasses.forEach(s => {
         const hhSubPct = s.pct * scale;
-        if (!classMap[c.name].subclasses[s.name]) classMap[c.name].subclasses[s.name] = { name: s.name, pct: 0, inkPct: 0, fangPct: 0 };
+        if (!classMap[c.name].subclasses[s.name]) classMap[c.name].subclasses[s.name] = { name: s.name, pct: 0, inkPct: 0, fangPct: 0, uplWeighted: 0, inkHoldings: [], fangHoldings: [] };
         const so = classMap[c.name].subclasses[s.name];
         so.pct += hhSubPct;
         so[personKey + 'Pct'] += hhSubPct;
+        so.uplWeighted += (s.uplWeighted || 0) * scale;
+        so[personKey + 'Holdings'] = s.holdings;
       });
     });
   }
@@ -3092,8 +3097,9 @@ function buildAssetClassBreakdownHousehold() {
   const classes = Object.values(classMap).map(c => ({
     ...c,
     valueTHB: totalNetWorth * (c.pct / 100),
+    uplPct: c.pct > 0 ? (c.uplWeighted / c.pct * 100) : null,
     subclasses: Object.values(c.subclasses)
-      .map(s => ({ ...s, valueTHB: totalNetWorth * (s.pct / 100) }))
+      .map(s => ({ ...s, valueTHB: totalNetWorth * (s.pct / 100), uplPct: s.pct > 0 ? (s.uplWeighted / s.pct * 100) : null }))
       .sort((a,b) => b.pct - a.pct),
   })).sort((a,b) => b.pct - a.pct);
 
@@ -3368,6 +3374,11 @@ function renderHouseholdCurrentAllocation() {
       const subPctOfClass = c.pct > 0 ? (s.pct / c.pct * 100) : 0;
       const sInkPct = s.pct > 0 ? (s.inkPct / s.pct * 100) : 0;
       const sFangPct = 100 - sInkPct;
+      const hasUPL = s.uplPct !== null && s.uplPct !== undefined;
+      const sUplValTHB = hasUPL ? s.valueTHB * s.uplPct / 100 : null;
+      const uplStr = hasUPL
+        ? `${s.uplPct >= 0 ? '+' : ''}${s.uplPct.toFixed(1)}% (${sUplValTHB >= 0 ? '+' : ''}${mask(fmtMC1(sUplValTHB, 'THB'))})`
+        : '';
       const drillAttr = (classIdx >= 0 && subIdx >= 0) ? `onclick="openHHSubclassDrill(${classIdx},${subIdx})"` : '';
       return `
         <div class="alloc-holding-row" ${drillAttr}>
@@ -3376,6 +3387,7 @@ function renderHouseholdCurrentAllocation() {
         </div>
         <div class="alloc-holding-sub">
           <span class="alloc-holding-mv">${mask(fmtMC1(s.valueTHB, 'THB'))}</span>
+          ${hasUPL ? `<span class="alloc-holding-chg" style="color:${sUplValTHB>=0?'#5ce0a8':'#f06b6b'};">${uplStr}</span>` : ''}
         </div>
         <div class="hh-split-row">
           <span class="hh-split-chip hh-split-ink"><span class="hh-split-dot"></span>Ink ${sInkPct.toFixed(0)}%</span>
@@ -4711,11 +4723,15 @@ function renderHHAssetClassDrillContent(c, classIdx) {
   if (!content) return;
   const cInkPct = c.pct > 0 ? (c.inkPct / c.pct * 100) : 0;
   const cFangPct = 100 - cInkPct;
+  const hasUPL = c.uplPct !== null && c.uplPct !== undefined;
+  const uplValTHB = hasUPL ? c.valueTHB * c.uplPct / 100 : null;
 
   const rows = c.subclasses.map((s, subIdx) => {
     const subPctOfClass = c.pct > 0 ? (s.pct / c.pct * 100) : 0;
     const sInkPct = s.pct > 0 ? (s.inkPct / s.pct * 100) : 0;
     const sFangPct = 100 - sInkPct;
+    const sHasUPL = s.uplPct !== null && s.uplPct !== undefined;
+    const sUplValTHB = sHasUPL ? s.valueTHB * s.uplPct / 100 : null;
     return `
       <div class="donut-leg-item drill-leg-item-clickable" onclick="openHHSubclassDrill(${classIdx},${subIdx})">
         <div class="donut-leg-main">
@@ -4725,6 +4741,7 @@ function renderHHAssetClassDrillContent(c, classIdx) {
         </div>
         <div class="donut-leg-sub">
           <span class="donut-leg-mv">${mask(fmtMC1(s.valueTHB, 'THB'))}</span>
+          ${sHasUPL ? `<span class="donut-leg-upl" style="color:${sUplValTHB >= 0 ? '#5ce0a8' : '#f06b6b'};">${sUplValTHB >= 0 ? '+' : ''}${s.uplPct.toFixed(1)}% <span class="donut-leg-upl-val">${mask('(' + (sUplValTHB >= 0 ? '+' : '') + fmtMC(sUplValTHB, 'THB') + ')')}</span></span>` : ''}
           <span style="font-size:9px;color:var(--text3);text-align:right;">Ink ${sInkPct.toFixed(0)}% &middot; Fang ${sFangPct.toFixed(0)}%</span>
         </div>
       </div>`;
@@ -4736,6 +4753,11 @@ function renderHHAssetClassDrillContent(c, classIdx) {
         <div class="condo-detail-item"><span class="condo-detail-label">Total Value</span><span class="condo-detail-val" style="font-size:15px;">${mask(fmtMC(c.valueTHB, 'THB'))}</span></div>
         <div class="condo-detail-item"><span class="condo-detail-label">% of Household</span><span class="condo-detail-val" style="font-size:15px;">${c.pct.toFixed(1)}%</span></div>
       </div>
+      ${hasUPL ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+        <div class="condo-detail-item"><span class="condo-detail-label">Unrealised P/L %</span><span class="condo-detail-val ${c.uplPct>=0?'pos':'neg'}" style="font-size:15px;">${c.uplPct>=0?'+':''}${c.uplPct.toFixed(1)}%</span></div>
+        <div class="condo-detail-item"><span class="condo-detail-label">Unrealised P/L</span><span class="condo-detail-val ${uplValTHB>=0?'pos':'neg'}" style="font-size:15px;">${uplValTHB>=0?'+':''}${mask(fmtMC(uplValTHB,'THB'))}</span></div>
+      </div>` : ''}
       <div class="condo-detail-item" style="margin-top:8px;">
         <span class="condo-detail-label">Ink vs Fang</span>
         <span class="condo-detail-val" style="font-size:15px;">Ink ${cInkPct.toFixed(0)}% &middot; Fang ${cFangPct.toFixed(0)}%</span>
@@ -4772,6 +4794,26 @@ function renderHHSubclassDrillContent(s) {
   if (!content) return;
   const sInkPct = s.pct > 0 ? (s.inkPct / s.pct * 100) : 0;
   const sFangPct = 100 - sInkPct;
+  const hasUPL = s.uplPct !== null && s.uplPct !== undefined;
+  const uplValTHB = hasUPL ? s.valueTHB * s.uplPct / 100 : null;
+
+  // Same holding-row markup as Ink/Fang's own subclass drill (renderSubclassDrillContent):
+  // native currency per holding (THB stays THB, USD stays USD), UPL in that same currency.
+  const renderHoldingRows = (holdings) => (holdings && holdings.length ? holdings.map((h, i) => {
+    const hHasUPL = h.upl !== null && h.upl !== undefined;
+    return `
+      <div class="donut-leg-item" style="cursor:default;">
+        <div class="donut-leg-main">
+          <span class="donut-leg-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>
+          <span class="donut-leg-name"><span class="donut-leg-name-text">${h.name}</span></span>
+          <span class="donut-leg-pct" style="font-size:9px;color:var(--text3);">${h.portfolio}</span>
+        </div>
+        <div class="donut-leg-sub">
+          <span class="donut-leg-mv">${mask(fmtMC1(h.value, h.currency))}</span>
+          ${hHasUPL ? `<span class="donut-leg-upl" style="color:${h.upl>=0?'#5ce0a8':'#f06b6b'};">${h.upl>=0?'+':''}${mask(fmtMC1(h.upl, h.currency))}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('') : `<div class="alloc-holdings-empty">No holdings for this period</div>`);
 
   content.innerHTML = `
     <div style="margin-bottom:20px;">
@@ -4779,12 +4821,20 @@ function renderHHSubclassDrillContent(s) {
         <div class="condo-detail-item"><span class="condo-detail-label">Total Value</span><span class="condo-detail-val" style="font-size:15px;">${mask(fmtMC(s.valueTHB, 'THB'))}</span></div>
         <div class="condo-detail-item"><span class="condo-detail-label">% of Household</span><span class="condo-detail-val" style="font-size:15px;">${s.pct.toFixed(1)}%</span></div>
       </div>
+      ${hasUPL ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+        <div class="condo-detail-item"><span class="condo-detail-label">Unrealised P/L %</span><span class="condo-detail-val ${s.uplPct>=0?'pos':'neg'}" style="font-size:15px;">${s.uplPct>=0?'+':''}${s.uplPct.toFixed(1)}%</span></div>
+        <div class="condo-detail-item"><span class="condo-detail-label">Unrealised P/L</span><span class="condo-detail-val ${uplValTHB>=0?'pos':'neg'}" style="font-size:15px;">${uplValTHB>=0?'+':''}${mask(fmtMC(uplValTHB,'THB'))}</span></div>
+      </div>` : ''}
       <div class="condo-detail-item" style="margin-top:8px;">
         <span class="condo-detail-label">Ink vs Fang</span>
         <span class="condo-detail-val" style="font-size:15px;">Ink ${sInkPct.toFixed(0)}% &middot; Fang ${sFangPct.toFixed(0)}%</span>
       </div>
     </div>
-    <p class="donut-section-title" style="margin-bottom:10px;color:var(--text3);">Individual holdings aren't broken out at this level — this subclass combines holdings from both Ink's and Fang's portfolios.</p>`;
+    <p class="donut-section-title" style="margin-bottom:10px;">Ink's Holdings</p>
+    <div class="donut-leg">${renderHoldingRows(s.inkHoldings)}</div>
+    <p class="donut-section-title" style="margin:16px 0 10px;">Fang's Holdings</p>
+    <div class="donut-leg">${renderHoldingRows(s.fangHoldings)}</div>`;
 }
 
 function renderDrillContent(d, assetName, assetIdx, tab, isCash, isDetailed, viewingM) {
