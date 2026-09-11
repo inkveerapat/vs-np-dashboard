@@ -455,7 +455,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v17.1</p>
+      <p class="gate-version">v17.2</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -476,7 +476,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v17.1</span>
+      <span class="version-badge">v17.2</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -688,7 +688,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v17.1';
+const VERSION  = 'v17.2';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3124,7 +3124,15 @@ function renderAllocationBar(tab) {
 
   // Pull straight from the same per-month component values that drive the net worth
   // chart and its tooltip — this is the source of truth, so the bar can never disagree with it.
-  const idx = d.totals.length - 1;
+  // Respect the Viewing month filter (donutFilterState) the same way the per-portfolio
+  // holdings breakdown below already does, so the segment sizes/values move together
+  // with the holdings when the user changes the viewing month.
+  const overrideMonthForIdx = donutFilterState[tab];
+  let idx = d.totals.length - 1;
+  if (overrideMonthForIdx) {
+    const foundIdx = d.months.indexOf(overrideMonthForIdx);
+    if (foundIdx !== -1) idx = foundIdx;
+  }
   const portfolios = config.componentNames.map((name, i) => ({
     title: name,
     value: d.components[i].values[idx],
@@ -3207,7 +3215,8 @@ function renderAllocationBar(tab) {
 // segments are asset classes (THB, via % composition) and expanding a segment
 // shows subclasses instead of individual holdings.
 function renderAllocationBarAssetClass(tab, barContainer) {
-  const { classes } = buildAssetClassBreakdown(tab);
+  const overrideMonth = donutFilterState[tab];
+  const { classes } = buildAssetClassBreakdown(tab, overrideMonth);
   if (!classes.length) {
     barContainer.innerHTML = '<div class="alloc-holdings-empty">No asset class data for this period</div>';
     return;
@@ -3225,7 +3234,7 @@ function renderAllocationBarAssetClass(tab, barContainer) {
   let legendHtml = '';
   sorted.forEach((c, i) => {
     const pct = total > 0 ? (c.pct / total * 100) : 0;
-    const classes2 = buildAssetClassBreakdown(tab).classes; // stable order re-fetch for drill index lookup
+    const classes2 = buildAssetClassBreakdown(tab, overrideMonth).classes; // stable order re-fetch for drill index lookup
     const classIdx = sortAssetClassArray(classes2, donutSortState[tab] || 'value').findIndex(cc => cc.name === c.name);
 
     const holdingsHtml = c.subclasses.length ? c.subclasses.map((s, si) => {
@@ -3715,9 +3724,9 @@ function selectFilter(tab, fi) {
   filterState[tab] = (fi >= months.length - 1) ? -1 : fi;
 
   // ── Sync asset allocation filter (one-way: net worth → donut only) ──────
-  if (tab === 'ink' || tab === 'fang') {
+  if (tab === 'ink' || tab === 'fang' || tab === 'household') {
     const resolvedIdx = filterState[tab] < 0 ? months.length - 1 : filterState[tab];
-    const donutMonths = getDonutMonths(tab);
+    const donutMonths = tab === 'household' ? getDonutMonths('ink') : getDonutMonths(tab);
 
     if (donutMonths.length === 0) {
       // No donut data yet — nothing to sync
