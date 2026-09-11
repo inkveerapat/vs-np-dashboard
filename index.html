@@ -93,6 +93,10 @@
   .ratio-bar { display: flex; height: 20px; border-radius: 6px; overflow: hidden; background: var(--surface2); }
   .ratio-seg-cash { background: var(--accent); transition: width .4s ease; }
   .ratio-seg-invest { background: #a78bfa; transition: width .4s ease; }
+  .ratio-seg-ink { background: linear-gradient(135deg, #6dc0ff, #4da8f5); transition: width .4s ease; }
+  .ratio-seg-fang { background: linear-gradient(135deg, #7aeac0, #5ce0a8); transition: width .4s ease; }
+  .ratio-leg-val.ink-tint { color: #6dc0ff; }
+  .ratio-leg-val.fang-tint { color: #7aeac0; }
   .ratio-legend { display: flex; justify-content: space-between; }
   .ratio-leg-item { display: flex; flex-direction: column; min-width: 0; }
   .ratio-leg-item:last-child { text-align: right; align-items: flex-end; }
@@ -233,6 +237,13 @@
   .donut-leg-pct { font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; min-width: 60px; text-align: right; }
   .donut-leg-main { display: grid; grid-template-columns: auto 1fr 60px; align-items: center; gap: 5px; width: 100%; min-width: 0; }
   .donut-leg-sub { display: grid; grid-template-columns: 1fr 60px; align-items: center; padding-left: 12px; margin-top: 1px; min-width: 0; gap: 4px; }
+  .hh-split-row { display: flex; gap: 6px; padding-left: 12px; margin-top: 3px; }
+  .hh-split-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 8.5px; font-family: var(--font-mono); padding: 1px 6px; border-radius: 20px; background: rgba(255,255,255,0.04); }
+  .hh-split-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .hh-split-ink { color: #6dc0ff; }
+  .hh-split-ink .hh-split-dot { background: #4da8f5; }
+  .hh-split-fang { color: #7aeac0; }
+  .hh-split-fang .hh-split-dot { background: #5ce0a8; }
   .donut-leg-mv { font-family: var(--font-mono); font-size: 9px; color: var(--text2); white-space: nowrap; grid-column: 1; }
   .donut-leg-upl { font-family: var(--font-mono); font-size: 9px; text-align: right; grid-column: 2; }
   .donut-leg-upl-val { font-size: 8px; opacity: .75; display: block; }
@@ -444,7 +455,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v17.0</p>
+      <p class="gate-version">v17.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -465,7 +476,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v17.0</span>
+      <span class="version-badge">v17.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -550,9 +561,29 @@
 
     <div id="allocation-bar-section" style="margin-top:36px;margin-bottom:36px;display:none;">
       <p class="donut-section-title">Current Allocation</p>
+      <div class="filter-bar" id="donut-view-bar" style="display:none;margin-bottom:12px;">
+        <span class="filter-label">View</span>
+        <div style="display:flex;gap:6px;">
+          <button class="filter-pill active" id="view-portfolio"  onclick="setDonutViewMode(currentTab,'portfolio')">By Portfolio</button>
+          <button class="filter-pill"        id="view-assetClass" onclick="setDonutViewMode(currentTab,'assetClass')">By Asset Class</button>
+        </div>
+      </div>
+      <div class="filter-bar" id="donut-filter-bar" style="margin-bottom:14px;">
+        <span class="filter-label" style="white-space:nowrap;">Viewing</span>
+        <div class="filter-scroll" id="donut-filter-scroll"></div>
+      </div>
       <div id="allocation-bar-container"></div>
     </div>
     </div><!-- /sticky-zone -->
+
+    <div id="hh-current-allocation-section" style="margin-top:36px;margin-bottom:36px;display:none;">
+      <p class="donut-section-title">Household Current Allocation</p>
+      <div class="filter-bar" id="hh-donut-filter-bar" style="margin-bottom:14px;">
+        <span class="filter-label" style="white-space:nowrap;">Viewing</span>
+        <div class="filter-scroll" id="hh-donut-filter-scroll"></div>
+      </div>
+      <div id="hh-current-allocation-container"></div>
+    </div>
 
     <div class="donut-section" id="hh-assetclass-section" style="display:none;">
       <div class="sticky-zone">
@@ -573,27 +604,14 @@
 
     <div class="donut-section" id="donut-section" style="display:none;">
       <div class="sticky-zone">
-      <div class="filter-bar" id="donut-view-bar" style="display:none;margin-bottom:12px;">
-        <span class="filter-label">View</span>
-        <div style="display:flex;gap:6px;">
-          <button class="filter-pill active" id="view-portfolio"  onclick="setDonutViewMode(currentTab,'portfolio')">By Portfolio</button>
-          <button class="filter-pill"        id="view-assetClass" onclick="setDonutViewMode(currentTab,'assetClass')">By Asset Class</button>
-        </div>
-      </div>
       <div class="sticky-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);">
         <p class="donut-section-title" id="donut-section-heading" style="margin:0;padding:0;border:none;">Asset Allocation Breakdown</p>
-        <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;flex:1 1 auto;min-width:0;">
-          <div class="filter-bar" id="donut-sort-bar" style="margin:0;flex:0 0 auto;">
-            <span class="filter-label">Sort</span>
-            <div style="display:flex;gap:6px;">
-              <button class="filter-pill active" id="sort-value"  onclick="setDonutSort(currentTab,'value')">Holding Value</button>
-              <button class="filter-pill"        id="sort-uplPct" onclick="setDonutSort(currentTab,'uplPct')">Unrealised P/L %</button>
-              <button class="filter-pill"        id="sort-uplVal" onclick="setDonutSort(currentTab,'uplVal')">Unrealised P/L</button>
-            </div>
-          </div>
-          <div class="filter-bar" id="donut-filter-bar" style="margin:0;flex:1 1 100%;min-width:0;max-width:100%;">
-            <span class="filter-label" style="white-space:nowrap;">Viewing</span>
-            <div class="filter-scroll" id="donut-filter-scroll"></div>
+        <div class="filter-bar" id="donut-sort-bar" style="margin:0;">
+          <span class="filter-label">Sort</span>
+          <div style="display:flex;gap:6px;">
+            <button class="filter-pill active" id="sort-value"  onclick="setDonutSort(currentTab,'value')">Holding Value</button>
+            <button class="filter-pill"        id="sort-uplPct" onclick="setDonutSort(currentTab,'uplPct')">Unrealised P/L %</button>
+            <button class="filter-pill"        id="sort-uplVal" onclick="setDonutSort(currentTab,'uplVal')">Unrealised P/L</button>
           </div>
         </div>
       </div>
@@ -670,7 +688,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v17.0';
+const VERSION  = 'v17.1';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -1815,19 +1833,19 @@ function renderInkFangShare(tab) {
   card.innerHTML = `
     <div class="ratio-bar-wrap">
       <div class="ratio-bar">
-        <div class="ratio-seg-cash" style="width:${inkPct}%;background:#4da8f5;"></div>
-        <div class="ratio-seg-invest" style="width:${fangPct}%;background:#5ce0a8;"></div>
+        <div class="ratio-seg-ink" style="width:${inkPct}%;"></div>
+        <div class="ratio-seg-fang" style="width:${fangPct}%;"></div>
       </div>
     </div>
     <div class="ratio-legend">
       <div class="ratio-leg-item">
         <span class="ratio-leg-label"><span class="ratio-leg-dot" style="background:#4da8f5;"></span>Ink &middot; ${inkPct.toFixed(0)}%</span>
-        <span class="ratio-leg-val">${mask(fmtM(iL))}</span>
+        <span class="ratio-leg-val ink-tint">${mask(fmtM(iL))}</span>
         <span class="ratio-leg-mom" style="color:${momShareInkColor};">${momShareInk} vs last mo.</span>
       </div>
       <div class="ratio-leg-item">
         <span class="ratio-leg-label">Fang &middot; ${fangPct.toFixed(0)}%<span class="ratio-leg-dot" style="background:#5ce0a8;"></span></span>
-        <span class="ratio-leg-val">${mask(fmtM(fL))}</span>
+        <span class="ratio-leg-val fang-tint">${mask(fmtM(fL))}</span>
         <span class="ratio-leg-mom" style="color:${momShareFangColor};">${momShareFang} vs last mo.</span>
       </div>
     </div>
@@ -2901,8 +2919,8 @@ function applyDonutSort(assets, mode, isCash) {
   return sorted;
 }
 
-function renderDonutFilter(tab) {
-  const scroll = document.getElementById('donut-filter-scroll');
+function renderDonutFilter(tab, targetId) {
+  const scroll = document.getElementById(targetId || 'donut-filter-scroll');
   if (!scroll) return;
   const months = getDonutMonths(tab);
   if (!months.length) { scroll.innerHTML = ''; return; }
@@ -2918,16 +2936,44 @@ function renderDonutFilter(tab) {
 
 function selectDonutFilter(tab, month) {
   donutFilterState[tab] = month;
-  renderDonuts(tab);
+  if (tab === 'household') {
+    renderHouseholdDonutFilter();
+    renderHouseholdCurrentAllocation();
+    renderHouseholdAssetClassSection();
+    renderDonuts('household');
+  } else {
+    renderAllocationBar(tab);
+    renderDonuts(tab);
+  }
 }
 
-function resolveDonutAssetsForPortfolio(tab, title) {
+// Household's shared Viewing control — uses Ink's donut month range as the
+// household-wide reference (Secondary Accounts and the combined asset-class
+// features have different native month ranges; this unifies them under one
+// control, relying on resolveDonutAssetsForPortfolio's existing fallback-to-
+// nearest-available logic for sheets that don't have that exact month).
+function renderHouseholdDonutFilter() {
+  const scroll = document.getElementById('hh-donut-filter-scroll');
+  if (!scroll) return;
+  const months = getDonutMonths('ink');
+  if (!months.length) { scroll.innerHTML = ''; return; }
+  const latest = months[months.length - 1];
+  const active = donutFilterState.household || latest;
+  scroll.innerHTML = [...months].reverse().map(m => {
+    const isLatest = m === latest;
+    const isActive = m === active;
+    return `<button class="filter-pill ${isActive ? 'active' : ''}"
+      onclick="selectDonutFilter('household','${m}')">${m}${isLatest ? ' ✦' : ''}</button>`;
+  }).join('');
+}
+
+function resolveDonutAssetsForPortfolio(tab, title, overrideMonth) {
   const list = getDonutList(tab);
   const dData = list.find(d => d.title === title);
   if (!dData) return { assets: [], currency: 'THB' };
   const allMonths = getDonutMonths(tab);
   const latest = allMonths[allMonths.length - 1];
-  const activeMonth = donutFilterState[tab] || latest;
+  const activeMonth = overrideMonth || donutFilterState[tab] || latest;
   let assets = dData.byMonth[activeMonth];
   if (!assets || !assets.length) {
     const available = dData.months.filter(m => {
@@ -2947,12 +2993,16 @@ function resolveDonutAssetsForPortfolio(tab, title) {
 // tracked in different currencies (e.g. US stocks in USD vs THB accounts) never
 // need live FX conversion — same percent-composition technique the allocation
 // bar already uses for its per-holding % of net worth.
-function buildAssetClassBreakdown(tab) {
+function buildAssetClassBreakdown(tab, overrideMonth) {
   const config = tab === 'ink' ? INK_CONFIG : FANG_CONFIG;
   const active = getActiveData(tab);
   const d = tab === 'ink' ? active.ink : active.fang;
   if (!d || !d.totals.length) return { classes: [], totalNetWorth: 0 };
-  const idx = d.totals.length - 1;
+  let idx = d.totals.length - 1;
+  if (overrideMonth) {
+    const foundIdx = d.months.indexOf(overrideMonth);
+    if (foundIdx !== -1) idx = foundIdx;
+  }
   const totalNetWorth = d.totals[idx];
 
   const classMap = {};
@@ -2960,7 +3010,7 @@ function buildAssetClassBreakdown(tab) {
     const portfolioValueTHB = d.components[i].values[idx];
     if (!(portfolioValueTHB > 0)) return;
     const portfolioPctOfNW = totalNetWorth > 0 ? (portfolioValueTHB / totalNetWorth * 100) : 0;
-    const { assets } = resolveDonutAssetsForPortfolio(tab, name);
+    const { assets } = resolveDonutAssetsForPortfolio(tab, name, overrideMonth);
 
     assets.forEach(a => {
       const assetPctOfNW = (a.pct / 100) * portfolioPctOfNW;
@@ -2998,8 +3048,9 @@ function buildAssetClassBreakdown(tab) {
 // Household combined — same shape as buildAssetClassBreakdown, but every class and
 // subclass also carries inkPct/fangPct so the two contributions stay distinguishable.
 function buildAssetClassBreakdownHousehold() {
-  const ink = buildAssetClassBreakdown('ink');
-  const fang = buildAssetClassBreakdown('fang');
+  const overrideMonth = donutFilterState.household;
+  const ink = buildAssetClassBreakdown('ink', overrideMonth);
+  const fang = buildAssetClassBreakdown('fang', overrideMonth);
   const totalNetWorth = ink.totalNetWorth + fang.totalNetWorth; // both already THB
   const classMap = {};
 
@@ -3045,6 +3096,23 @@ function renderAllocationBar(tab) {
     return;
   }
 
+  barSection.style.display = 'block';
+
+  // View toggle + Viewing month bar now live here (shared with Asset Allocation
+  // Breakdown below) — sync their state regardless of which mode is active.
+  const viewBar = document.getElementById('donut-view-bar');
+  if (viewBar) {
+    viewBar.style.display = 'flex';
+    document.getElementById('view-portfolio').classList.toggle('active', donutViewMode[tab] === 'portfolio');
+    document.getElementById('view-assetClass').classList.toggle('active', donutViewMode[tab] === 'assetClass');
+  }
+  renderDonutFilter(tab);
+
+  if (donutViewMode[tab] === 'assetClass') {
+    renderAllocationBarAssetClass(tab, barContainer);
+    return;
+  }
+
   const config = tab === 'ink' ? INK_CONFIG : FANG_CONFIG;
   const active = getActiveData(tab);
   const d = tab === 'ink' ? active.ink : active.fang;
@@ -3070,8 +3138,6 @@ function renderAllocationBar(tab) {
 
   // Biggest to smallest
   portfolios.sort((a, b) => b.value - a.value);
-
-  barSection.style.display = 'block';
 
   const total = portfolios.reduce((s, p) => s + p.value, 0);
 
@@ -3137,11 +3203,77 @@ function renderAllocationBar(tab) {
   barContainer.innerHTML = `<div class="alloc-bar-track">${trackHtml}</div><div class="alloc-legend">${legendHtml}</div>`;
 }
 
+// "By Asset Class" mode for Current Allocation — same bar/legend grammar, but
+// segments are asset classes (THB, via % composition) and expanding a segment
+// shows subclasses instead of individual holdings.
+function renderAllocationBarAssetClass(tab, barContainer) {
+  const { classes } = buildAssetClassBreakdown(tab);
+  if (!classes.length) {
+    barContainer.innerHTML = '<div class="alloc-holdings-empty">No asset class data for this period</div>';
+    return;
+  }
+  const sorted = [...classes].sort((a,b) => b.pct - a.pct);
+  const total = sorted.reduce((s,c) => s + c.pct, 0);
+
+  let trackHtml = '';
+  sorted.forEach((c, i) => {
+    const pct = total > 0 ? (c.pct / total * 100) : 0;
+    trackHtml += `<div class="alloc-bar-seg" data-alloc-idx="${i}" style="width:${pct}%;background:${PALETTE[i%PALETTE.length]};"
+      onmouseenter="allocHover('${tab}',${i},true)" onmouseleave="allocHover('${tab}',${i},false)"></div>`;
+  });
+
+  let legendHtml = '';
+  sorted.forEach((c, i) => {
+    const pct = total > 0 ? (c.pct / total * 100) : 0;
+    const classes2 = buildAssetClassBreakdown(tab).classes; // stable order re-fetch for drill index lookup
+    const classIdx = sortAssetClassArray(classes2, donutSortState[tab] || 'value').findIndex(cc => cc.name === c.name);
+
+    const holdingsHtml = c.subclasses.length ? c.subclasses.map((s, si) => {
+      const subPctOfClass = c.pct > 0 ? (s.pct / c.pct * 100) : 0;
+      const ofNWPct = s.pct;
+      const hasUPL = s.uplPct !== null && s.uplPct !== undefined;
+      const sUplValTHB = hasUPL ? s.valueTHB * s.uplPct / 100 : null;
+      const uplStr = hasUPL
+        ? `${s.uplPct >= 0 ? '+' : ''}${s.uplPct.toFixed(1)}% (${sUplValTHB >= 0 ? '+' : ''}${mask(fmtMC1(sUplValTHB, 'THB'))})`
+        : '';
+      const drillAttr = classIdx >= 0 ? `onclick="openSubclassDrill('${tab}',${classIdx},${si})"` : '';
+      return `
+        <div class="alloc-holding-row" ${drillAttr}>
+          <span class="alloc-holding-name" title="${s.name}">${s.name}${classIdx >= 0 ? '<span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span>' : ''}</span>
+          <span class="alloc-holding-pcts"><span class="within">${subPctOfClass.toFixed(1)}%</span><span class="sep">·</span>${ofNWPct.toFixed(1)}% of net worth</span>
+        </div>
+        <div class="alloc-holding-sub">
+          <span class="alloc-holding-mv">${mask(fmtMC1(s.valueTHB, 'THB'))}</span>
+          ${hasUPL ? `<span class="alloc-holding-chg" style="color:${sUplValTHB>=0?'#5ce0a8':'#f06b6b'};">${uplStr}</span>` : ''}
+        </div>`;
+    }).join('') : `<div class="alloc-holdings-empty">No holdings data for this period</div>`;
+
+    legendHtml += `<div class="alloc-leg-item" data-alloc-idx="${i}">
+      <div class="alloc-leg-row" onclick="toggleAllocRow('${tab}',${i})"
+          onmouseenter="allocHover('${tab}',${i},true)" onmouseleave="allocHover('${tab}',${i},false)">
+        <div class="alloc-leg-name-wrap">
+          <span class="alloc-leg-dot" style="background:${PALETTE[i%PALETTE.length]};"></span>
+          <span class="alloc-leg-name" title="${c.name}">${c.name}</span>
+          <span class="alloc-chevron" id="alloc-chev-${tab}-${i}">&#9656;</span>
+        </div>
+        <span class="alloc-leg-pct">${pct.toFixed(1)}%</span>
+      </div>
+      <div class="alloc-holdings" id="alloc-holdings-${tab}-${i}">${holdingsHtml}</div>
+    </div>`;
+  });
+
+  barContainer.innerHTML = `<div class="alloc-bar-track">${trackHtml}</div><div class="alloc-legend">${legendHtml}</div>`;
+}
+
+function allocContainerId(tab) {
+  return tab === 'household' ? 'hh-current-allocation-container' : 'allocation-bar-container';
+}
+
 function toggleAllocRow(tab, i) {
   const holdings = document.getElementById(`alloc-holdings-${tab}-${i}`);
   const chev = document.getElementById(`alloc-chev-${tab}-${i}`);
   if (!holdings) return;
-  const container = document.getElementById('allocation-bar-container');
+  const container = document.getElementById(allocContainerId(tab));
   const item = container ? container.querySelector(`.alloc-leg-item[data-alloc-idx="${i}"]`) : null;
   const isOpen = holdings.classList.contains('open');
   if (isOpen) {
@@ -3158,7 +3290,7 @@ function toggleAllocRow(tab, i) {
 }
 
 function allocHover(tab, i, entering) {
-  const container = document.getElementById('allocation-bar-container');
+  const container = document.getElementById(allocContainerId(tab));
   if (!container) return;
   const seg = container.querySelector(`.alloc-bar-seg[data-alloc-idx="${i}"]`);
   const leg = container.querySelector(`.alloc-leg-item[data-alloc-idx="${i}"]`);
@@ -3171,6 +3303,81 @@ function allocHover(tab, i, entering) {
     allSegs.forEach(s => s.classList.remove('dim', 'hl'));
     if (leg) leg.classList.remove('hl');
   }
+}
+
+// Household Current Allocation — same bar/legend format as Ink/Fang's asset-class
+// mode, but combined across both people (THB), with an Ink vs Fang split shown
+// on every class and every subclass.
+function renderHouseholdCurrentAllocation() {
+  const section = document.getElementById('hh-current-allocation-section');
+  const container = document.getElementById('hh-current-allocation-container');
+  if (!section || !container) return;
+  if (currentTab !== 'household') { section.style.display = 'none'; return; }
+
+  const { classes } = buildAssetClassBreakdownHousehold();
+  if (!classes.length) {
+    section.style.display = 'block';
+    container.innerHTML = '<div class="alloc-holdings-empty">No asset class data for this period</div>';
+    return;
+  }
+  section.style.display = 'block';
+  const sorted = [...classes].sort((a,b) => b.pct - a.pct);
+  const total = sorted.reduce((s,c) => s + c.pct, 0);
+  // Match whatever order the Household Asset Allocation section's own sort is
+  // currently using, so clicking a segment here opens the right class/subclass
+  // regardless of that section's independent sort setting.
+  const drillOrder = sortAssetClassArray(classes, hhAssetClassSort);
+
+  let trackHtml = '';
+  sorted.forEach((c, i) => {
+    const pct = total > 0 ? (c.pct / total * 100) : 0;
+    trackHtml += `<div class="alloc-bar-seg" data-alloc-idx="${i}" style="width:${pct}%;background:${PALETTE[i%PALETTE.length]};"
+      onmouseenter="allocHover('household',${i},true)" onmouseleave="allocHover('household',${i},false)"></div>`;
+  });
+
+  let legendHtml = '';
+  sorted.forEach((c, i) => {
+    const pct = total > 0 ? (c.pct / total * 100) : 0;
+    const cInkPct = c.pct > 0 ? (c.inkPct / c.pct * 100) : 0;
+    const cFangPct = 100 - cInkPct;
+    const classIdx = drillOrder.findIndex(cc => cc.name === c.name);
+
+    const holdingsHtml = c.subclasses.length ? c.subclasses.map((s) => {
+      const drillClass = drillOrder[classIdx];
+      const subIdx = drillClass ? drillClass.subclasses.findIndex(ss => ss.name === s.name) : -1;
+      const subPctOfClass = c.pct > 0 ? (s.pct / c.pct * 100) : 0;
+      const sInkPct = s.pct > 0 ? (s.inkPct / s.pct * 100) : 0;
+      const sFangPct = 100 - sInkPct;
+      const drillAttr = (classIdx >= 0 && subIdx >= 0) ? `onclick="openHHSubclassDrill(${classIdx},${subIdx})"` : '';
+      return `
+        <div class="alloc-holding-row" ${drillAttr}>
+          <span class="alloc-holding-name" title="${s.name}">${s.name}${drillAttr ? '<span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span>' : ''}</span>
+          <span class="alloc-holding-pcts"><span class="within">${subPctOfClass.toFixed(1)}%</span><span class="sep">·</span>${s.pct.toFixed(1)}% of net worth</span>
+        </div>
+        <div class="alloc-holding-sub">
+          <span class="alloc-holding-mv">${mask(fmtMC1(s.valueTHB, 'THB'))}</span>
+        </div>
+        <div class="hh-split-row">
+          <span class="hh-split-chip hh-split-ink"><span class="hh-split-dot"></span>Ink ${sInkPct.toFixed(0)}%</span>
+          <span class="hh-split-chip hh-split-fang"><span class="hh-split-dot"></span>Fang ${sFangPct.toFixed(0)}%</span>
+        </div>`;
+    }).join('') : `<div class="alloc-holdings-empty">No holdings data for this period</div>`;
+
+    legendHtml += `<div class="alloc-leg-item" data-alloc-idx="${i}">
+      <div class="alloc-leg-row" onclick="toggleAllocRow('household',${i})"
+          onmouseenter="allocHover('household',${i},true)" onmouseleave="allocHover('household',${i},false)">
+        <div class="alloc-leg-name-wrap">
+          <span class="alloc-leg-dot" style="background:${PALETTE[i%PALETTE.length]};"></span>
+          <span class="alloc-leg-name" title="${c.name}">${c.name}</span>
+          <span class="alloc-chevron" id="alloc-chev-household-${i}">&#9656;</span>
+        </div>
+        <span class="alloc-leg-pct">${pct.toFixed(1)}% <span style="color:var(--text3);font-size:9px;font-weight:400;">(Ink ${cInkPct.toFixed(0)}% &middot; Fang ${cFangPct.toFixed(0)}%)</span></span>
+      </div>
+      <div class="alloc-holdings" id="alloc-holdings-household-${i}">${holdingsHtml}</div>
+    </div>`;
+  });
+
+  container.innerHTML = `<div class="alloc-bar-track">${trackHtml}</div><div class="alloc-legend">${legendHtml}</div>`;
 }
 
 function sortAssetClassArray(arr, mode) {
@@ -3186,6 +3393,7 @@ function setDonutViewMode(tab, mode) {
   donutViewMode[tab] = mode;
   document.getElementById('view-portfolio').classList.toggle('active', mode === 'portfolio');
   document.getElementById('view-assetClass').classList.toggle('active', mode === 'assetClass');
+  renderAllocationBar(tab);
   renderDonuts(tab);
 }
 
@@ -4356,6 +4564,7 @@ function setHHAssetClassSort(mode) {
     const btn = document.getElementById('hh-ac-sort-' + m);
     if (btn) btn.classList.toggle('active', m === mode);
   });
+  renderHouseholdCurrentAllocation();
   renderHouseholdAssetClassSection();
 }
 
@@ -4388,6 +4597,12 @@ function renderHouseholdAssetClassSection() {
       const subPctOfClass = c.pct > 0 ? (s.pct / c.pct * 100) : 0;
       const sInkPct = s.pct > 0 ? (s.inkPct / s.pct * 100) : 0;
       const sFangPct = 100 - sInkPct;
+      const sHasUPL = s.uplPct !== null && s.uplPct !== undefined;
+      const sUplValTHB = sHasUPL ? s.valueTHB * s.uplPct / 100 : null;
+      const sUplCol = sHasUPL ? (sUplValTHB >= 0 ? '#5ce0a8' : '#f06b6b') : '';
+      const sUplStr = sHasUPL
+        ? `${sUplValTHB >= 0 ? '+' : ''}${s.uplPct.toFixed(1)}% <span class="donut-leg-upl-val">(${sUplValTHB >= 0 ? '+' : ''}${mask(fmtMC1(sUplValTHB, 'THB'))})</span>`
+        : '';
       return `
         <div class="donut-leg-item drill-leg-item-clickable" onclick="openHHSubclassDrill(${classIdx},${subIdx})">
           <div class="donut-leg-main">
@@ -4397,7 +4612,11 @@ function renderHouseholdAssetClassSection() {
           </div>
           <div class="donut-leg-sub">
             <span class="donut-leg-mv">${mask(fmtMC1(s.valueTHB, 'THB'))}</span>
-            <span style="font-size:9px;color:var(--text3);text-align:right;">Ink ${sInkPct.toFixed(0)}% &middot; Fang ${sFangPct.toFixed(0)}%</span>
+            ${sHasUPL ? `<span class="donut-leg-upl" style="color:${sUplCol};">${sUplStr}</span>` : ''}
+          </div>
+          <div class="hh-split-row">
+            <span class="hh-split-chip hh-split-ink"><span class="hh-split-dot"></span>Ink ${sInkPct.toFixed(0)}%</span>
+            <span class="hh-split-chip hh-split-fang"><span class="hh-split-dot"></span>Fang ${sFangPct.toFixed(0)}%</span>
           </div>
         </div>`;
     }).join('');
@@ -5124,6 +5343,8 @@ function renderAll(tab) {
   renderGoals(tab);
   renderLegend(tab);
   renderChart(tab);
+  renderHouseholdDonutFilter();
+  renderHouseholdCurrentAllocation();
   renderHouseholdAssetClassSection();
   renderDonuts(tab);
 }
