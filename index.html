@@ -455,7 +455,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v17.5</p>
+      <p class="gate-version">v17.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -476,7 +476,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v17.5</span>
+      <span class="version-badge">v17.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -688,7 +688,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v17.5';
+const VERSION  = 'v17.6';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3143,16 +3143,20 @@ function renderAllocationBar(tab) {
     return;
   }
 
-  // Pull each portfolio's total from the same donut holdings data that drives the
-  // breakdown below (resolveDonutAssetsForPortfolio already respects donutFilterState),
-  // instead of indexing into the main tracker sheet by month label. The two sheets'
-  // month labels aren't guaranteed to match exactly (e.g. "Jan 2025" vs a differently
-  // formatted header cell), so label lookups there could silently miss and pin the
-  // segment values to the latest month even while the holdings below moved — summing
-  // the same holdings we're about to render guarantees the two views can never disagree.
+  // Portfolio totals must come from the main tracker sheet, which already stores every
+  // portfolio's value converted to THB — that's the only way segment sizes stay
+  // comparable across portfolios, since some (e.g. Growth, Dividend) are tracked
+  // natively in USD. Summing the raw per-holding values from the donut sheet instead
+  // (as this used to do) mixed currencies and made USD portfolios look far smaller
+  // than they are. The per-holding breakdown below still comes from the donut sheet
+  // and stays in each holding's native currency — only the portfolio-level total uses
+  // the THB figure. Month lookup uses mapDonutMonthToMainIndex since the two sheets'
+  // month labels aren't guaranteed to match exactly.
+  const overrideMonth = donutFilterState[tab];
+  const idx = overrideMonth ? mapDonutMonthToMainIndex(tab, overrideMonth, d.months) : d.totals.length - 1;
   const portfolios = config.componentNames.map((name, i) => {
+    const value = d.components[i].values[idx];
     const resolved = resolveDonutAssetsForPortfolio(tab, name);
-    const value = resolved.assets.reduce((s, a) => s + a.value, 0);
     return { title: name, value, color: config.colors[i], assets: resolved.assets, currency: resolved.currency };
   }).filter(p => p.value > 0);
 
