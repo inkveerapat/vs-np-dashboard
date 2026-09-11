@@ -455,7 +455,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v17.2</p>
+      <p class="gate-version">v17.3</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -476,7 +476,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v17.2</span>
+      <span class="version-badge">v17.3</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -688,7 +688,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v17.2';
+const VERSION  = 'v17.3';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -2993,16 +2993,31 @@ function resolveDonutAssetsForPortfolio(tab, title, overrideMonth) {
 // tracked in different currencies (e.g. US stocks in USD vs THB accounts) never
 // need live FX conversion — same percent-composition technique the allocation
 // bar already uses for its per-holding % of net worth.
+// Maps a donut-sheet month label (e.g. from donutFilterState) to the best matching
+// index in the main tracker sheet's month array. The two sheets' month labels aren't
+// guaranteed to be identical strings (different header formatting), so we try an
+// exact/normalised match first and fall back to proportional position within the
+// donut month timeline — same technique the top "Viewing" filter already uses when
+// syncing net worth month → donut month.
+function mapDonutMonthToMainIndex(tab, overrideMonth, mainMonths) {
+  if (!overrideMonth || !mainMonths.length) return mainMonths.length - 1;
+  const normTarget = overrideMonth.trim().toLowerCase();
+  const exact = mainMonths.findIndex(m => m.trim().toLowerCase() === normTarget);
+  if (exact !== -1) return exact;
+  const donutMonths = getDonutMonths(tab);
+  const donutIdx = donutMonths.indexOf(overrideMonth);
+  if (donutIdx === -1 || donutMonths.length <= 1 || mainMonths.length <= 1) return mainMonths.length - 1;
+  const prop = donutIdx / (donutMonths.length - 1);
+  const idx = Math.round(prop * (mainMonths.length - 1));
+  return Math.max(0, Math.min(mainMonths.length - 1, idx));
+}
+
 function buildAssetClassBreakdown(tab, overrideMonth) {
   const config = tab === 'ink' ? INK_CONFIG : FANG_CONFIG;
   const active = getActiveData(tab);
   const d = tab === 'ink' ? active.ink : active.fang;
   if (!d || !d.totals.length) return { classes: [], totalNetWorth: 0 };
-  let idx = d.totals.length - 1;
-  if (overrideMonth) {
-    const foundIdx = d.months.indexOf(overrideMonth);
-    if (foundIdx !== -1) idx = foundIdx;
-  }
+  const idx = overrideMonth ? mapDonutMonthToMainIndex(tab, overrideMonth, d.months) : d.totals.length - 1;
   const totalNetWorth = d.totals[idx];
 
   const classMap = {};
@@ -3122,22 +3137,18 @@ function renderAllocationBar(tab) {
     return;
   }
 
-  // Pull straight from the same per-month component values that drive the net worth
-  // chart and its tooltip — this is the source of truth, so the bar can never disagree with it.
-  // Respect the Viewing month filter (donutFilterState) the same way the per-portfolio
-  // holdings breakdown below already does, so the segment sizes/values move together
-  // with the holdings when the user changes the viewing month.
-  const overrideMonthForIdx = donutFilterState[tab];
-  let idx = d.totals.length - 1;
-  if (overrideMonthForIdx) {
-    const foundIdx = d.months.indexOf(overrideMonthForIdx);
-    if (foundIdx !== -1) idx = foundIdx;
-  }
-  const portfolios = config.componentNames.map((name, i) => ({
-    title: name,
-    value: d.components[i].values[idx],
-    color: config.colors[i],
-  })).filter(p => p.value > 0);
+  // Pull each portfolio's total from the same donut holdings data that drives the
+  // breakdown below (resolveDonutAssetsForPortfolio already respects donutFilterState),
+  // instead of indexing into the main tracker sheet by month label. The two sheets'
+  // month labels aren't guaranteed to match exactly (e.g. "Jan 2025" vs a differently
+  // formatted header cell), so label lookups there could silently miss and pin the
+  // segment values to the latest month even while the holdings below moved — summing
+  // the same holdings we're about to render guarantees the two views can never disagree.
+  const portfolios = config.componentNames.map((name, i) => {
+    const resolved = resolveDonutAssetsForPortfolio(tab, name);
+    const value = resolved.assets.reduce((s, a) => s + a.value, 0);
+    return { title: name, value, color: config.colors[i], assets: resolved.assets, currency: resolved.currency };
+  }).filter(p => p.value > 0);
 
   if (portfolios.length === 0) {
     barSection.style.display = 'none';
@@ -3159,7 +3170,7 @@ function renderAllocationBar(tab) {
   let legendHtml = '';
   portfolios.forEach((p, i) => {
     const pct = (p.value / total) * 100;
-    const { assets, currency } = resolveDonutAssetsForPortfolio(tab, p.title);
+    const { assets, currency } = p;
     const isCashPortfolio = p.title.toLowerCase().includes('cash');
     const donutList = getDonutList(tab);
     const cardIdx = donutList.findIndex(dd => dd.title === p.title);
