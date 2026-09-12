@@ -473,7 +473,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v18.5</p>
+      <p class="gate-version">v18.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -494,7 +494,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v18.5</span>
+      <span class="version-badge">v18.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -710,7 +710,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v18.5';
+const VERSION  = 'v18.6';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3517,16 +3517,25 @@ async function renderSunburst(tab) {
     y0: initialRemapY(d.y0), y1: initialRemapY(d.y1),
   });
 
-  // radius is fixed so the outermost ring always lands exactly on the canvas edge
-  // (no overflow/clipping) — independent of how many rings are visible after a zoom.
-  const radius = size / 2 / (H + 1);
+  // Only one ring is ever shown at a time (see revealOneRing above), so the
+  // "hole" and the visible ring are the only two radial zones that matter.
+  // The old scale gave the hole a flat 1/(H+1) share of the radius; that's a
+  // needlessly large hole for a single-ring display. Shrinking the hole to a
+  // fixed 30% and letting the ring fill the rest gives the ring — and its
+  // two-line labels — much more room to breathe.
+  const holeR  = size / 2 * 0.3;
+  const outerR = size / 2;
+  function yToR(y) {
+    if (y <= 1) return holeR * y;
+    return holeR + (y - 1) / H * (outerR - holeR);
+  }
 
   const arc = d3.arc()
     .startAngle(d => d.x0).endAngle(d => d.x1)
-    .padAngle(d => isFullCircle(d) ? 0 : Math.min((d.x1 - d.x0) / 2, 0.004))
-    .padRadius(radius * 1.5)
-    .innerRadius(d => d.y0 * radius)
-    .outerRadius(d => Math.max(d.y0 * radius, d.y1 * radius - 1));
+    .padAngle(d => isFullCircle(d) ? 0 : Math.min((d.x1 - d.x0) / 2, 0.006))
+    .padRadius((outerR - holeR) * 0.3)
+    .innerRadius(d => yToR(d.y0))
+    .outerRadius(d => Math.max(yToR(d.y0), yToR(d.y1) - 1));
 
   const svg = d3.create('svg').attr('viewBox', [-size / 2, -size / 2, size, size]);
 
@@ -3553,7 +3562,7 @@ async function renderSunburst(tab) {
   function labelVisible(d) { return d.y1 <= (H + 1) && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.05; }
   function isFullCircle(d) { return (d.x1 - d.x0) >= 2 * Math.PI - 1e-6; }
   function labelTransform(d) {
-    const y = (d.y0 + d.y1) / 2 * radius;
+    const y = (yToR(d.y0) + yToR(d.y1)) / 2;
     if (isFullCircle(d)) {
       // A single child fills the whole ring — there's no angle to orient a
       // radial label toward, and forcing the normal rotation formula onto a
@@ -3573,9 +3582,47 @@ async function renderSunburst(tab) {
   function truncateForArc(d, name) {
     const arcLenPx = isFullCircle(d)
       ? size * 0.86
-      : ((d.x1 - d.x0) * ((d.y0 + d.y1) / 2 * radius));
+      : ((d.x1 - d.x0) * ((yToR(d.y0) + yToR(d.y1)) / 2));
     const maxChars = Math.max(3, Math.floor(arcLenPx / 5.3));
     return name.length > maxChars ? name.slice(0, Math.max(1, maxChars - 1)) + '…' : name;
+  }
+
+  // Percentage shown inside each ring segment is the share of its *parent*
+  // (e.g. within this portfolio, within this subclass) — matches the
+  // "Alloc%" language used everywhere else in the dashboard, not % of net
+  // worth (that figure still lives in the center label / tooltip only).
+  function pctOfParent(d) {
+    if (!d.parent || !d.parent.value) return null;
+    return d.value / d.parent.value * 100;
+  }
+  function arcThicknessPx(g) { return yToR(g.y1) - yToR(g.y0); }
+  // Renders each label as up to two lines — the name, and (space permitting)
+  // its %-of-parent underneath in a smaller, muted weight — instead of the
+  // old single-line name-only label that gave no sense of proportion.
+  function renderLabelTspans(sel, geomKey) {
+    sel.each(function (d) {
+      const g = d[geomKey];
+      const el = d3.select(this);
+      el.selectAll('tspan').remove();
+      const visible = labelVisible(g);
+      const thick = arcThicknessPx(g);
+      const pct = pctOfParent(d);
+      const showPct = visible && pct != null && thick > 15;
+      const name = truncateForArc(g, d.data.name);
+      el.append('tspan')
+        .attr('x', 0)
+        .attr('dy', showPct ? '-0.32em' : '0.32em')
+        .text(name);
+      if (showPct) {
+        el.append('tspan')
+          .attr('x', 0)
+          .attr('dy', '1.12em')
+          .style('font-size', '7.5px')
+          .style('font-weight', '400')
+          .style('opacity', 0.7)
+          .text(pct.toFixed(1) + '%');
+      }
+    });
   }
 
   const path = svg.append('g')
@@ -3609,19 +3656,23 @@ async function renderSunburst(tab) {
       .attr('pointer-events', 'none')
       .attr('text-anchor', 'middle')
       .style('user-select', 'none')
+      .style('paint-order', 'stroke')
+      .style('stroke', 'rgba(0,0,0,0.32)')
+      .style('stroke-width', '2.5px')
+      .style('stroke-linejoin', 'round')
     .selectAll('text')
     .data(partitionRoot.descendants().filter(d => d.depth))
     .join('text')
-      .style('font-size', '9px')
+      .style('font-size', d => d.depth === 1 ? '9.5px' : '9px')
+      .style('font-weight', d => d.depth === 1 ? '600' : '500')
       .style('fill', d => textColorFor(d))
-      .attr('dy', '0.32em')
       .attr('fill-opacity', d => +labelVisible(d.current))
       .attr('transform', d => labelTransform(d.current))
-      .text(d => truncateForArc(d.current, d.data.name));
+      .call(renderLabelTspans, 'current');
 
   const centerCircle = svg.append('circle')
       .datum(partitionRoot)
-      .attr('r', radius)
+      .attr('r', holeR)
       .attr('fill', 'none')
       .attr('pointer-events', 'all')
       .style('cursor', 'pointer')
@@ -3683,7 +3734,7 @@ async function renderSunburst(tab) {
     label.transition(t)
       .attr('fill-opacity', d => +labelVisible(d.target))
       .attrTween('transform', d => () => labelTransform(d.current));
-    label.text(d => truncateForArc(d.target, d.data.name));
+    label.call(renderLabelTspans, 'target');
 
     updateBreadcrumb(tab, p, partitionRoot);
   }
