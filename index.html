@@ -473,7 +473,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v18.5</p>
+      <p class="gate-version">v18.6</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -494,7 +494,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v18.5</span>
+      <span class="version-badge">v18.6</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -710,7 +710,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v18.5';
+const VERSION  = 'v18.6';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3517,16 +3517,25 @@ async function renderSunburst(tab) {
     y0: initialRemapY(d.y0), y1: initialRemapY(d.y1),
   });
 
-  // radius is fixed so the outermost ring always lands exactly on the canvas edge
-  // (no overflow/clipping) — independent of how many rings are visible after a zoom.
-  const radius = size / 2 / (H + 1);
+  // The center hole and the visible ring band are sized independently — since
+  // revealOneRing() only ever shows ONE ring at a time spanning y:[1, H+1], the
+  // hole only ever needs to fit y<=1 and the ring only ever needs y:[1, H+1].
+  // Tying the hole's radius to a per-depth band width (the old `size/2/(H+1)`)
+  // made it far too small for the center label to fit inside — bumping it up
+  // here is what actually fixes that, independent of how thick the ring is.
+  const holeRadius = size * 0.27;
+  const outerRadius = size / 2 - 1;
+  function radiusForY(y) {
+    if (y <= 1) return y * holeRadius;
+    return holeRadius + (y - 1) / H * (outerRadius - holeRadius);
+  }
 
   const arc = d3.arc()
     .startAngle(d => d.x0).endAngle(d => d.x1)
     .padAngle(d => isFullCircle(d) ? 0 : Math.min((d.x1 - d.x0) / 2, 0.004))
-    .padRadius(radius * 1.5)
-    .innerRadius(d => d.y0 * radius)
-    .outerRadius(d => Math.max(d.y0 * radius, d.y1 * radius - 1));
+    .padRadius(holeRadius * 1.5)
+    .innerRadius(d => radiusForY(d.y0))
+    .outerRadius(d => Math.max(radiusForY(d.y0), radiusForY(d.y1) - 1));
 
   const svg = d3.create('svg').attr('viewBox', [-size / 2, -size / 2, size, size]);
 
@@ -3553,7 +3562,7 @@ async function renderSunburst(tab) {
   function labelVisible(d) { return d.y1 <= (H + 1) && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.05; }
   function isFullCircle(d) { return (d.x1 - d.x0) >= 2 * Math.PI - 1e-6; }
   function labelTransform(d) {
-    const y = (d.y0 + d.y1) / 2 * radius;
+    const y = radiusForY((d.y0 + d.y1) / 2);
     if (isFullCircle(d)) {
       // A single child fills the whole ring — there's no angle to orient a
       // radial label toward, and forcing the normal rotation formula onto a
@@ -3573,7 +3582,7 @@ async function renderSunburst(tab) {
   function truncateForArc(d, name) {
     const arcLenPx = isFullCircle(d)
       ? size * 0.86
-      : ((d.x1 - d.x0) * ((d.y0 + d.y1) / 2 * radius));
+      : ((d.x1 - d.x0) * radiusForY((d.y0 + d.y1) / 2));
     const maxChars = Math.max(3, Math.floor(arcLenPx / 5.3));
     return name.length > maxChars ? name.slice(0, Math.max(1, maxChars - 1)) + '…' : name;
   }
@@ -3621,7 +3630,7 @@ async function renderSunburst(tab) {
 
   const centerCircle = svg.append('circle')
       .datum(partitionRoot)
-      .attr('r', radius)
+      .attr('r', holeRadius)
       .attr('fill', 'none')
       .attr('pointer-events', 'all')
       .style('cursor', 'pointer')
@@ -3630,26 +3639,59 @@ async function renderSunburst(tab) {
   const centerLabel = svg.append('text')
       .attr('class', 'sunburst-center-label')
       .attr('text-anchor', 'middle')
-      .attr('dy', '0.32em')
-      .style('font-size', '13px')
+      .style('font-size', '12px')
       .text('All');
   const centerSub = svg.append('text')
       .attr('class', 'sunburst-center-sub')
       .attr('text-anchor', 'middle')
-      .attr('dy', '1.3em')
-      .style('font-size', '10px')
+      .style('font-size', '9.5px')
       .text('');
+
+  // Wraps a center label into at most 2 lines that fit within the hole's own
+  // width, falling back to an ellipsis only if a single word alone still can't
+  // fit — this (plus the bigger hole above) is what keeps the label from
+  // spilling past the hole edge into the ring, regardless of name length.
+  function fitCenterLines(name, maxWidthPx, fontPx) {
+    const charW = fontPx * 0.58; // rough average glyph width for DM Sans bold
+    const maxChars = Math.max(4, Math.floor(maxWidthPx / charW));
+    if (name.length <= maxChars) return [name];
+    const words = name.split(' ');
+    if (words.length > 1) {
+      let line1 = '', line2 = '';
+      for (const w of words) {
+        if ((line1 ? line1 + ' ' + w : w).length <= maxChars) line1 = line1 ? line1 + ' ' + w : w;
+        else line2 = line2 ? line2 + ' ' + w : w;
+      }
+      if (line1 && line2) {
+        if (line2.length > maxChars) line2 = line2.slice(0, maxChars - 1) + '…';
+        return [line1, line2];
+      }
+    }
+    return [name.slice(0, maxChars - 1) + '…'];
+  }
 
   function updateCenter(p) {
     const subText = p === partitionRoot ? '' : (p.data.pct != null ? `${p.data.pct.toFixed(1)}% of net worth` : '');
-    // The -0.2em/1.3em pairing only lands centered as a two-line block when
-    // both lines are actually present — with no subtitle (root "All", or any
-    // node with no pct), that offset alone left the single line sitting well
-    // above true center. Recenter it as one line whenever there's no subtitle.
-    centerLabel.attr('dy', subText ? '-0.2em' : '0.32em');
-    centerLabel.text(p === partitionRoot ? 'All' : (p.data.name.length > 16 ? p.data.name.slice(0,15) + '…' : p.data.name));
-    centerSub.text(subText);
+    const nameRaw = p === partitionRoot ? 'All' : p.data.name;
+    const nameFont = 12, subFont = 9.5, nameLineH = 14, subLineH = 12;
+    const maxWidthPx = holeRadius * 2 * 0.82; // safety margin inside the hole's diameter
+    const nameLines = fitCenterLines(nameRaw, maxWidthPx, nameFont);
+
+    const totalH = nameLines.length * nameLineH + (subText ? subLineH + 3 : 0);
+    const firstLineY = -totalH / 2 + nameLineH * 0.78;
+
+    centerLabel.selectAll('tspan').remove();
+    nameLines.forEach((line, i) => {
+      centerLabel.append('tspan').attr('x', 0).attr('y', firstLineY + i * nameLineH).text(line);
+    });
+    if (subText) {
+      centerSub.attr('y', firstLineY + nameLines.length * nameLineH - nameLineH * 0.78 + subLineH * 0.9 + 3).text(subText);
+    } else {
+      centerSub.text('');
+    }
   }
+
+  updateCenter(partitionRoot);
 
   function clicked(p, event) {
     if (!p.children) { showSunburstTooltip(event || null, p, true); return; } // leaf: no zoom, just info
