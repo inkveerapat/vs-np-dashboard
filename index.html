@@ -473,7 +473,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v18.7</p>
+      <p class="gate-version">v18.8</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -494,7 +494,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v18.7</span>
+      <span class="version-badge">v18.8</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -710,7 +710,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v18.7';
+const VERSION  = 'v18.8';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3422,7 +3422,7 @@ async function ensureD3() {
 function getSunburstData(tab) {
   const leafFromHolding = (h, ownerTag) => ({
     name: ownerTag ? `${h.name} (${ownerTag})` : h.name,
-    pct: h.pctOfNW, value: h.value, currency: h.currency, upl: h.upl,
+    pct: h.pctOfNW, value: h.value, currency: h.currency, upl: h.upl, owner: ownerTag || null,
   });
 
   if (tab === 'household') {
@@ -3552,9 +3552,16 @@ async function renderSunburst(tab) {
   // than opacity (opacity over a dark page background still looks like "one ring"
   // once two adjacent bands land on the same effective shade).
   const RING_SHADE = { 1: 0, 2: 22, 3: 42 }; // % lightness lift per ring
+  // Household holdings (ring 3 only) carry an owner tag (Ink/Fang) — nudge hue in
+  // opposite directions for the two so they read as distinct within the same
+  // subclass, without breaking the depth-based lightness family the ring above
+  // it uses: same lightness lift as any other ring-3 wedge, only hue differs.
+  const OWNER_HUE_SHIFT = { Ink: -12, Fang: 12 };
   const shadedColorFor = (d) => {
     const base = d3.hsl(colorFor(d));
     base.l = Math.min(0.92, base.l + (RING_SHADE[d.depth] || 0) / 100);
+    const shift = d.depth === 3 && d.data && OWNER_HUE_SHIFT[d.data.owner];
+    if (shift) base.h = (base.h + shift + 360) % 360;
     return base.toString();
   };
   const textColorFor = (d) => (d3.hsl(shadedColorFor(d)).l > 0.6 ? '#15150f' : '#f5f4ee');
