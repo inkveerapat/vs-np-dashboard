@@ -312,7 +312,6 @@
   .sunburst-tooltip.show { opacity: 1; }
   .sunburst-tooltip .st-name { color: var(--text); font-weight: 600; margin-bottom: 3px; display: block; }
   .sunburst-tooltip .st-row { display: flex; justify-content: space-between; gap: 12px; font-family: var(--font-mono); font-size: 10.5px; }
-  .alloc-leg-item.sunburst-pulse { animation: sunburstPulse 1.4s ease; }
   @keyframes sunburstPulse { 0%,100% { background: transparent; } 20% { background: rgba(255,255,255,0.12); } }
 
   /* STATUS */
@@ -474,7 +473,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v18.0</p>
+      <p class="gate-version">v18.1</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -495,7 +494,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v18.0</span>
+      <span class="version-badge">v18.1</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -711,7 +710,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v18.0';
+const VERSION  = 'v18.1';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3491,14 +3490,22 @@ async function renderSunburst(tab) {
 
   wrap.innerHTML = '';
   const size = wrap.clientWidth || 320;
-  const radius = size / 6.2;
 
   const hierarchyRoot = d3.hierarchy(data)
     .sum(d => d.children && d.children.length ? 0 : (d.pct || 0))
     .sort((a, b) => b.value - a.value);
 
-  const partitionRoot = d3.partition().size([2 * Math.PI, hierarchyRoot.height + 1])(hierarchyRoot);
+  // H = number of *ring* levels below the (hidden) root — fixed at 3 for our data
+  // shape (Portfolio/Class → Subclass → Holding). d3.partition places every node's
+  // y0/y1 at exactly its integer depth, so the radial scale below can treat those
+  // as clean band indices: [0,1] is the hidden hole, [1,2]/[2,3]/[3,4] are rings 1-3.
+  const H = hierarchyRoot.height;
+  const partitionRoot = d3.partition().size([2 * Math.PI, H + 1])(hierarchyRoot);
   partitionRoot.each(d => d.current = d);
+
+  // radius is fixed so the outermost ring always lands exactly on the canvas edge
+  // (no overflow/clipping) — independent of how many rings are visible after a zoom.
+  const radius = size / 2 / (H + 1);
 
   const arc = d3.arc()
     .startAngle(d => d.x0).endAngle(d => d.x1)
@@ -3516,21 +3523,42 @@ async function renderSunburst(tab) {
     const idx = node.data.colorIdx != null ? node.data.colorIdx : 0;
     return PALETTE[idx % PALETTE.length];
   };
+  // Depth 1/2/3 share the same base hue (all belong to the same top-level branch)
+  // but need to read as visually distinct rings — vary lightness per depth rather
+  // than opacity (opacity over a dark page background still looks like "one ring"
+  // once two adjacent bands land on the same effective shade).
+  const RING_SHADE = { 1: 0, 2: 22, 3: 42 }; // % lightness lift per ring
+  const shadedColorFor = (d) => {
+    const base = d3.hsl(colorFor(d));
+    base.l = Math.min(0.92, base.l + (RING_SHADE[d.depth] || 0) / 100);
+    return base.toString();
+  };
+  const textColorFor = (d) => (d3.hsl(shadedColorFor(d)).l > 0.6 ? '#15150f' : '#f5f4ee');
 
-  function arcVisible(d) { return d.y1 <= 3 && d.y0 >= 1 && d.x1 > d.x0; }
-  function labelVisible(d) { return d.y1 <= 3 && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.045; }
+  function arcVisible(d) { return d.y1 <= (H + 1) && d.y0 >= 1 && d.x1 > d.x0; }
+  function labelVisible(d) { return d.y1 <= (H + 1) && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.05; }
   function labelTransform(d) {
     const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
     const y = (d.y0 + d.y1) / 2 * radius;
     return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
+  }
+  // Truncates a label so it doesn't run past its own wedge — the earlier version
+  // let long names spill outside the ring into empty space. Budget is the arc
+  // length at this label's radius, at ~5.3px per character for a 9px font.
+  function truncateForArc(d, name) {
+    const arcLenPx = ((d.x1 - d.x0) * ((d.y0 + d.y1) / 2 * radius));
+    const maxChars = Math.max(3, Math.floor(arcLenPx / 5.3));
+    return name.length > maxChars ? name.slice(0, Math.max(1, maxChars - 1)) + '…' : name;
   }
 
   const path = svg.append('g')
     .selectAll('path')
     .data(partitionRoot.descendants().filter(d => d.depth))
     .join('path')
-      .attr('fill', d => colorFor(d))
-      .attr('fill-opacity', d => arcVisible(d.current) ? (d.children ? 0.88 : 0.55) : 0)
+      .attr('fill', d => shadedColorFor(d))
+      .attr('stroke', 'var(--bg)')
+      .attr('stroke-width', 1.25)
+      .attr('fill-opacity', d => arcVisible(d.current) ? 1 : 0)
       .attr('pointer-events', d => arcVisible(d.current) ? 'auto' : 'none')
       .attr('d', d => arc(d.current));
 
@@ -3548,10 +3576,11 @@ async function renderSunburst(tab) {
     .data(partitionRoot.descendants().filter(d => d.depth))
     .join('text')
       .style('font-size', '9px')
+      .attr('fill', d => textColorFor(d))
       .attr('dy', '0.32em')
       .attr('fill-opacity', d => +labelVisible(d.current))
       .attr('transform', d => labelTransform(d.current))
-      .text(d => d.data.name);
+      .text(d => truncateForArc(d.current, d.data.name));
 
   const centerCircle = svg.append('circle')
       .datum(partitionRoot)
@@ -3584,26 +3613,39 @@ async function renderSunburst(tab) {
     if (!p.children) { showSunburstTooltip(null, p, true); return; } // leaf: no zoom, just info
     centerCircle.datum(p.parent || partitionRoot);
     updateCenter(p);
+
+    // Remap each descendant's y-band so the rings still visible below the new
+    // focus always stretch to fill the *entire* radius (from the hole edge at
+    // y=1 out to y=H+1), instead of keeping their original 1-unit thickness and
+    // just sliding toward the center — that's what made the holdings ring look
+    // like it "shrank" after zooming into a portfolio or subclass.
+    const k = p.depth;
+    const remaining = H - k; // ring levels still visible below this focus
+    const remapY = (y) => {
+      const rel = y - k;
+      if (rel <= 0) return 0;
+      return 1 + (rel - 1) * (H / remaining);
+    };
     partitionRoot.each(d => d.target = {
       x0: Math.max(0, Math.min(1, (d.x0 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
       x1: Math.max(0, Math.min(1, (d.x1 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
-      y0: Math.max(0, d.y0 - p.depth),
-      y1: Math.max(0, d.y1 - p.depth),
+      y0: remapY(d.y0),
+      y1: remapY(d.y1),
     });
 
     const t = svg.transition().duration(550);
     path.transition(t)
       .tween('data', d => { const i = d3.interpolate(d.current, d.target); return tt => d.current = i(tt); })
-      .attr('fill-opacity', d => arcVisible(d.target) ? (d.children ? 0.88 : 0.55) : 0)
+      .attr('fill-opacity', d => arcVisible(d.target) ? 1 : 0)
       .attr('pointer-events', d => arcVisible(d.target) ? 'auto' : 'none')
       .attrTween('d', d => () => arc(d.current));
 
     label.transition(t)
       .attr('fill-opacity', d => +labelVisible(d.target))
       .attrTween('transform', d => () => labelTransform(d.current));
+    label.text(d => truncateForArc(d.target, d.data.name));
 
     updateBreadcrumb(tab, p, partitionRoot);
-    if (p.depth <= 2) syncSelectionFromSunburst(tab, p.depth === 1 ? p.data.name : p.parent.data.name);
   }
 
   wrap.appendChild(svg.node());
@@ -3674,27 +3716,6 @@ function moveSunburstTooltip(event) {
 }
 function hideSunburstTooltip() {
   if (sunburstTooltipEl) sunburstTooltipEl.classList.remove('show');
-}
-
-// Cross-highlights the matching row in the Current Allocation legend below when a
-// Ring-1 (portfolio/class) or Ring-2 (subclass, via its parent's name) slice is
-// clicked — expands it if collapsed, scrolls it into view, and pulses it.
-function syncSelectionFromSunburst(tab, topLevelName) {
-  const container = document.getElementById(allocContainerId(tab));
-  if (!container) return;
-  const items = [...container.querySelectorAll('.alloc-leg-item')];
-  const idx = items.findIndex(item => {
-    const nameEl = item.querySelector('.alloc-leg-name');
-    return nameEl && nameEl.getAttribute('title') === topLevelName;
-  });
-  if (idx === -1) return;
-  const holdings = document.getElementById(`alloc-holdings-${tab}-${idx}`);
-  if (holdings && !holdings.classList.contains('open')) toggleAllocRow(tab, idx);
-  const item = items[idx];
-  item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  item.classList.remove('sunburst-pulse');
-  void item.offsetWidth; // restart animation if clicked twice in a row
-  item.classList.add('sunburst-pulse');
 }
 
 // Household Current Allocation — same bar/legend format as Ink/Fang's asset-class
