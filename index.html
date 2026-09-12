@@ -3561,29 +3561,30 @@ async function renderSunburst(tab) {
   // than opacity (opacity over a dark page background still looks like "one ring"
   // once two adjacent bands land on the same effective shade).
   const RING_SHADE = { 1: 0, 2: 22, 3: 42 }; // % lightness lift per ring
-  // Household holdings (ring 3 only) carry an owner tag (Ink/Fang). Rather than
-  // a barely-visible ±12° hue nudge (which read as near-identical, especially
-  // once several same-owner holdings landed in the same subclass), pull each
-  // holding's hue partway toward the same blue (Ink) / teal-green (Fang) family
-  // already used for these two elsewhere in the app (net worth chart, drill
-  // bars, legends: '#4da8f5' / '#5ce0a8'), and enforce a saturation floor so the
-  // pull doesn't wash out on pale base colors. Holdings keep their own distinct
-  // base hue (from colorFor's sibling index) so they're still individually
-  // distinguishable — they just read as belonging to their owner's color family.
-  const OWNER_ANCHOR_HUE = { Ink: 206, Fang: 155 };
-  const OWNER_HUE_PULL = 0.6; // 0 = no pull, 1 = fully the anchor hue
-  const pullHue = (h, targetH, amount) => {
-    const diff = ((targetH - h + 540) % 360) - 180; // shortest signed distance
-    return (h + diff * amount + 360) % 360;
+  // Household holdings (ring 3 only) carry an owner tag (Ink/Fang). A partial
+  // hue-pull toward the owner's color wasn't enough to read as two groups at a
+  // glance — individual holdings still dominated the impression. Ink and Fang
+  // holdings now draw from two fixed color families (blue / teal-green, matching
+  // '#4da8f5' and '#5ce0a8' used for these two elsewhere in the app), so every
+  // Ink wedge reads as "blue" and every Fang wedge reads as "green" on sight;
+  // holdings within the same owner still get a different shade of that family
+  // so they remain individually distinguishable from their siblings.
+  const OWNER_RAMPS = {
+    Ink:  ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#1d4ed8', '#0ea5e9', '#38bdf8', '#0284c7'],
+    Fang: ['#059669', '#10b981', '#34d399', '#6ee7b7', '#047857', '#14b8a6', '#2dd4bf', '#0d9488'],
   };
   const shadedColorFor = (d) => {
+    const owner = d.depth === 3 && d.data ? d.data.owner : null;
+    if (owner && OWNER_RAMPS[owner] && d.parent && d.parent.children) {
+      const ramp = OWNER_RAMPS[owner];
+      const ownerSiblings = d.parent.children.filter(c => c.data && c.data.owner === owner);
+      const idx = ownerSiblings.indexOf(d);
+      const hsl = d3.hsl(ramp[(idx >= 0 ? idx : 0) % ramp.length]);
+      hsl.l = Math.min(0.85, hsl.l + 0.05); // slight lift for legibility on the dark background, kept modest so the family stays obviously blue/green
+      return hsl.toString();
+    }
     const base = d3.hsl(colorFor(d));
     base.l = Math.min(0.92, base.l + (RING_SHADE[d.depth] || 0) / 100);
-    const anchorHue = d.depth === 3 && d.data ? OWNER_ANCHOR_HUE[d.data.owner] : null;
-    if (anchorHue != null) {
-      base.h = pullHue(base.h, anchorHue, OWNER_HUE_PULL);
-      base.s = Math.max(base.s, 0.55);
-    }
     return base.toString();
   };
   const textColorFor = (d) => (d3.hsl(shadedColorFor(d)).l > 0.6 ? '#15150f' : '#f5f4ee');
