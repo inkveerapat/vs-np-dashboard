@@ -475,7 +475,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v18.11</p>
+      <p class="gate-version">v18.12</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -496,7 +496,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v18.11</span>
+      <span class="version-badge">v18.12</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -712,7 +712,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v18.11';
+const VERSION  = 'v18.12';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3786,7 +3786,19 @@ async function renderSunburst(tab) {
   updateCenter(partitionRoot);
 
   function clicked(p, event) {
-    if (!p.children) { showSunburstTooltip(event || null, p, true); return; } // leaf: no zoom, just info
+    if (!p.children) {
+      // Leaf ring (a holding) — jump straight into its drilldown, same as
+      // tapping deeper into any other ring, instead of just showing a
+      // tooltip. Falls back to the tooltip if no matching panel resolves
+      // (e.g. data shape we can't map back to a portfolio/asset).
+      const leafChain = [];
+      let n = p;
+      while (n) { leafChain.unshift(n); n = n.parent; }
+      const drillInfo = sunburstDrillTarget(tab, leafChain);
+      if (drillInfo) { drillInfo.action(); return; }
+      showSunburstTooltip(event || null, p, true);
+      return;
+    }
     centerCircle.datum(p.parent || partitionRoot);
     updateCenter(p);
 
