@@ -473,7 +473,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v18.9</p>
+      <p class="gate-version">v18.10</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -494,7 +494,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v18.9</span>
+      <span class="version-badge">v18.10</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -710,7 +710,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v18.9';
+const VERSION  = 'v18.10';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -5119,9 +5119,9 @@ function renderAssetClassDrillContent(tab, c, classIdx, viewingM) {
         <div class="condo-detail-item"><span class="condo-detail-label">Unrealised P/L</span><span class="condo-detail-val ${uplValTHB>=0?'pos':'neg'}" style="font-size:15px;">${uplValTHB>=0?'+':''}${mask(fmtMC(uplValTHB,'THB'))}</span></div>
       </div>` : ''}
     </div>
-    <p class="donut-section-title" style="margin-bottom:10px;">Subclasses</p>
-    <div class="donut-leg" style="margin-bottom:20px;">${rows}</div>
-    ${classDrillHistoryBlockHtml(history, activeM)}`;
+    ${classDrillHistoryBlockHtml(history, activeM)}
+    <p class="donut-section-title" style="margin:20px 0 10px;">Subclasses</p>
+    <div class="donut-leg">${rows}</div>`;
 
   buildClassChart(history, activeM, 'value');
 }
@@ -5200,10 +5200,10 @@ function renderSubclassDrillContent(tab, className, subclassName, viewingM) {
   const rows = activeS.holdings.map((h, i) => {
     const hHasUPL = h.upl !== null && h.upl !== undefined;
     return `
-      <div class="donut-leg-item" style="cursor:default;">
+      <div class="donut-leg-item drill-leg-item-clickable" onclick="openHoldingFromClassDrill('${tab}','${h.portfolio.replace(/'/g,"\\'")}','${h.name.replace(/'/g,"\\'")}','${activeM}')">
         <div class="donut-leg-main">
           <span class="donut-leg-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>
-          <span class="donut-leg-name"><span class="donut-leg-name-text">${h.name}</span></span>
+          <span class="donut-leg-name"><span class="donut-leg-name-text">${h.name}</span><span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></span>
           <span class="donut-leg-pct" style="font-size:9px;color:var(--text3);">${h.portfolio}</span>
         </div>
         <div class="donut-leg-sub">
@@ -5228,11 +5228,35 @@ function renderSubclassDrillContent(tab, className, subclassName, viewingM) {
         <div class="condo-detail-item"><span class="condo-detail-label">Unrealised P/L</span><span class="condo-detail-val ${uplValTHB>=0?'pos':'neg'}" style="font-size:15px;">${uplValTHB>=0?'+':''}${mask(fmtMC(uplValTHB,'THB'))}</span></div>
       </div>` : ''}
     </div>
-    <p class="donut-section-title" style="margin-bottom:10px;">Holdings</p>
-    <div class="donut-leg" style="margin-bottom:20px;">${rows}</div>
-    ${classDrillHistoryBlockHtml(history, activeM)}`;
+    ${classDrillHistoryBlockHtml(history, activeM)}
+    <p class="donut-section-title" style="margin:20px 0 10px;">Holdings</p>
+    <div class="donut-leg">${rows}</div>`;
 
   buildClassChart(history, activeM, 'value');
+}
+
+// Opens the single-holding drill (panel 2) from inside a class/subclass drill
+// (panel 1). Holdings there only carry a portfolio display name + asset name,
+// not the card/asset indices openAssetFromPortfolio expects, so resolve those
+// by looking the holding back up in its portfolio's donut data for the same
+// viewed month (falling back the same way the drill panels do).
+function openHoldingFromClassDrill(tab, portfolioName, holdingName, viewingM) {
+  const list = getDonutList(tab);
+  const cardIdx = list.findIndex(d => d.title === portfolioName);
+  if (cardIdx < 0) return;
+  const d = list[cardIdx];
+  const allM = getDonutMonths(tab);
+  const latestM = allM[allM.length - 1];
+  const activeM = viewingM || latestM;
+  let assets = d.byMonth[activeM];
+  if (!assets || !assets.length) {
+    const available = d.months.filter(m => allM.indexOf(m) <= allM.indexOf(activeM));
+    const fallback = available[available.length - 1];
+    assets = fallback ? (d.byMonth[fallback] || []) : [];
+  }
+  const assetIdx = assets.findIndex(a => a.name === holdingName);
+  if (assetIdx < 0) return;
+  openAssetFromPortfolio(tab, cardIdx, holdingName, assetIdx);
 }
 
 // ─── HOUSEHOLD COMBINED ASSET CLASS SECTION ──────────────────────────────────
@@ -5434,9 +5458,9 @@ function renderHHAssetClassDrillContent(c, classIdx, viewingM) {
         <span class="condo-detail-val" style="font-size:15px;">Ink ${cInkPct.toFixed(0)}% &middot; Fang ${cFangPct.toFixed(0)}%</span>
       </div>
     </div>
-    <p class="donut-section-title" style="margin-bottom:10px;">Subclasses</p>
-    <div class="donut-leg" style="margin-bottom:20px;">${rows}</div>
-    ${classDrillHistoryBlockHtml(history, activeM)}`;
+    ${classDrillHistoryBlockHtml(history, activeM)}
+    <p class="donut-section-title" style="margin:20px 0 10px;">Subclasses</p>
+    <div class="donut-leg">${rows}</div>`;
 
   buildClassChart(history, activeM, 'value');
 }
@@ -5514,13 +5538,13 @@ function renderHHSubclassDrillContent(className, subclassName, viewingM) {
 
   // Same holding-row markup as Ink/Fang's own subclass drill (renderSubclassDrillContent):
   // native currency per holding (THB stays THB, USD stays USD), UPL in that same currency.
-  const renderHoldingRows = (holdings) => (holdings && holdings.length ? holdings.map((h, i) => {
+  const renderHoldingRows = (holdings, tab) => (holdings && holdings.length ? holdings.map((h, i) => {
     const hHasUPL = h.upl !== null && h.upl !== undefined;
     return `
-      <div class="donut-leg-item" style="cursor:default;">
+      <div class="donut-leg-item drill-leg-item-clickable" onclick="openHoldingFromClassDrill('${tab}','${h.portfolio.replace(/'/g,"\\'")}','${h.name.replace(/'/g,"\\'")}','${activeM}')">
         <div class="donut-leg-main">
           <span class="donut-leg-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>
-          <span class="donut-leg-name"><span class="donut-leg-name-text">${h.name}</span></span>
+          <span class="donut-leg-name"><span class="donut-leg-name-text">${h.name}</span><span class="donut-leg-name-arrow">&#8599;&#xFE0E;</span></span>
           <span class="donut-leg-pct" style="font-size:9px;color:var(--text3);">${h.portfolio}</span>
         </div>
         <div class="donut-leg-sub">
@@ -5549,11 +5573,11 @@ function renderHHSubclassDrillContent(className, subclassName, viewingM) {
         <span class="condo-detail-val" style="font-size:15px;">Ink ${sInkPct.toFixed(0)}% &middot; Fang ${sFangPct.toFixed(0)}%</span>
       </div>
     </div>
-    <p class="donut-section-title" style="margin-bottom:10px;">Ink's Holdings</p>
-    <div class="donut-leg">${renderHoldingRows(activeS.inkHoldings)}</div>
+    ${classDrillHistoryBlockHtml(history, activeM)}
+    <p class="donut-section-title" style="margin:20px 0 10px;">Ink's Holdings</p>
+    <div class="donut-leg">${renderHoldingRows(activeS.inkHoldings, 'ink')}</div>
     <p class="donut-section-title" style="margin:16px 0 10px;">Fang's Holdings</p>
-    <div class="donut-leg" style="margin-bottom:20px;">${renderHoldingRows(activeS.fangHoldings)}</div>
-    ${classDrillHistoryBlockHtml(history, activeM)}`;
+    <div class="donut-leg">${renderHoldingRows(activeS.fangHoldings, 'fang')}</div>`;
 
   buildClassChart(history, activeM, 'value');
 }
