@@ -3175,7 +3175,12 @@ function buildAssetClassBreakdownHousehold(overrideMonth) {
         so.pct += hhSubPct;
         so[personKey + 'Pct'] += hhSubPct;
         so.uplWeighted += (s.uplWeighted || 0) * scale;
-        so[personKey + 'Holdings'] = s.holdings;
+        // s.holdings' pctOfNW is relative to this person's OWN net worth (from
+        // their individual buildAssetClassBreakdown) — rescale by the same
+        // factor used for the class/subclass pct above, or every holding-ring
+        // percentage in the household sunburst comes out too large (an Ink
+        // holding's % of Ink's net worth, not of the household's).
+        so[personKey + 'Holdings'] = s.holdings.map(h => ({ ...h, pctOfNW: h.pctOfNW * scale }));
       });
     });
   }
