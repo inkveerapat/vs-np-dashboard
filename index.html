@@ -475,7 +475,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v18.15</p>
+      <p class="gate-version">v18.16</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -496,7 +496,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v18.15</span>
+      <span class="version-badge">v18.16</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -713,7 +713,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v18.15';
+const VERSION  = 'v18.16';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3709,6 +3709,15 @@ async function renderSunburst(tab) {
     return radialThicknessPx(d) >= 22 && arcLenPxFor(d) >= 24;
   }
   function fmtPctLabel(pct) { return `${pct.toFixed(1)}%`; }
+  // Percentages in the wedge labels are relative to whatever's currently
+  // focused (e.g. a subclass's share of its own class), not of net worth —
+  // every visible ring is always exactly one level below the focus node, so
+  // the focus's own pct (100 for the unfocused root) is the right denominator
+  // for all of them. Updated in clicked() each time the focus changes.
+  let focusPctBasis = 100;
+  function relPctOf(d) {
+    return focusPctBasis > 0 ? (d.data.pct / focusPctBasis * 100) : d.data.pct;
+  }
   // Rebuilds each label's tspans (name, plus a percent line when there's
   // room) from whichever layout — .current or .target — the caller passes,
   // so both the initial render and clicked()'s re-text after a zoom can share
@@ -3729,7 +3738,7 @@ async function renderSunburst(tab) {
           .attr('dy', '1.15em')
           .style('font-size', '7.5px')
           .style('opacity', 0.72)
-          .text(fmtPctLabel(d.data.pct));
+          .text(fmtPctLabel(relPctOf(d)));
       }
     });
   }
@@ -3859,6 +3868,10 @@ async function renderSunburst(tab) {
     }
     centerCircle.datum(p.parent || partitionRoot);
     updateCenter(p);
+    // Everything about to be revealed is one level below p, so p's own pct
+    // (100 if p is the unfocused root, which has no pct field) becomes the
+    // denominator the next set of wedge-label percentages is relative to.
+    focusPctBasis = (p.data && p.data.pct != null) ? p.data.pct : 100;
 
     // Reveal exactly ONE ring below the new focus, stretched to fill the
     // entire radius (from the hole edge at y=1 out to y=H+1) — not every
@@ -4871,8 +4884,16 @@ function renderPortfolioDrillContent(d, tab, cardIdx, viewingM) {
   const uplPctStr = totalUPLPct !== null ? `${totalUPL>=0?'+':''}${totalUPLPct.toFixed(1)}%` : null;
   const uplAbsStr = totalUPL !== null ? `${totalUPL>=0?'+':''}${fmtMC(totalUPL, currency)}` : null;
 
+  // ── % of Net Worth ── looked up from the portfolio breakdown (which already
+  // handles FX conversion to THB), rather than re-deriving it here, so it
+  // matches the same number shown in the sunburst/legend for this portfolio.
+  const { portfolios: nwPortfolios } = buildPortfolioBreakdown(tab, activeM);
+  const nwEntry = nwPortfolios.find(p => p.name === d.title);
+  const pctOfNW = nwEntry ? nwEntry.pct : null;
+
   const metricCards = [
     { label: 'Market Value', val: mask(fmtMC(totalMV, currency)), col: 'var(--text)' },
+    ...(pctOfNW !== null ? [{ label: '% of Net Worth', val: `${pctOfNW.toFixed(1)}%`, col: 'var(--text)' }] : []),
     ...(totalCost > 0 ? [{ label: 'Cost Basis', val: mask(fmtMC(totalCost, currency)), col: 'var(--text2)' }] : []),
     ...(uplPctStr ? [{ label: 'Unrealised P/L', val: uplPctStr, sub: mask(uplAbsStr), col: uplColor }] : []),
     { label: 'Holdings', val: assets.length, col: 'var(--text2)' },
@@ -6353,6 +6374,9 @@ function buildPortfolioDrillExportCard(maskVals) {
   }).filter(Boolean);
 
   const portChartUrl = captureCanvas(document.getElementById('port-drill-chart'));
+  const { portfolios: nwPortfoliosExp } = buildPortfolioBreakdown(tab, activeM);
+  const nwEntryExp = nwPortfoliosExp.find(p => p.name === d.title);
+  const pctOfNWExp = nwEntryExp ? nwEntryExp.pct : null;
   const portChartModeLabels = { mktval: 'Market Value', cost: 'Cost', uplpct: 'Unrealised P/L %' };
   const portChartLabel = portChartModeLabels[_portChartMode] || 'Portfolio Value';
   const chartSec = portChartUrl ? `<div style="margin-bottom:24px;"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:12px;">Portfolio Value · ${portChartLabel}</p><div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px;"><img src="${portChartUrl}" style="width:100%;display:block;border-radius:6px;"/></div></div>` : '';
@@ -6416,6 +6440,9 @@ function buildPortfolioDrillExportCard(maskVals) {
       <div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;">
         <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:4px;">Market Value</p>
         <p style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:#f0efe8;">${maskVals?'••••••':fmtMC(totalMV,currency)}</p></div>
+      ${pctOfNWExp!=null?`<div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;">
+        <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:4px;">% of Net Worth</p>
+        <p style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:#f0efe8;">${pctOfNWExp.toFixed(1)}%</p></div>`:''}
       ${totalCost>0?`<div style="background:#161616;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;">
         <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555450;margin-bottom:4px;">Cost Basis</p>
         <p style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:#888780;">${maskVals?'••••••':fmtMC(totalCost,currency)}</p></div>`:''}
