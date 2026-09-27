@@ -2232,7 +2232,7 @@ function openCashInvestDrill(tab) {
   overlay.style.display = 'block';
   panel.style.display   = 'flex';
   requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 function renderCashInvestDrillContent(tab) {
@@ -2469,7 +2469,7 @@ function openContributionSplitDrill() {
   overlay.style.display = 'block';
   panel.style.display   = 'flex';
   requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 function renderContributionSplitDrillContent() {
@@ -2592,7 +2592,7 @@ function openCondoDrill() {
   overlay.style.display = 'block';
   panel.style.display   = 'flex';
   requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 function renderCondoDrillContent() {
@@ -4798,6 +4798,27 @@ function navBackAll() {
 // has been unreliable specifically in iOS standalone PWA mode, occasionally
 // leaving a drill panel (and the body scroll lock) stuck open. This closes
 // everything immediately, then syncs the history stack to match.
+// Body-scroll lock for the drill panels / bottom sheets, which are all
+// position:fixed overlays that need the page underneath to stop scrolling
+// while they're open. Counter-based rather than a bare on/off flag: several
+// of the open* functions below can stack (panel 2 opens on top of panel 1),
+// and a bare "set to '' " reset only in one closer meant any path that set
+// 'hidden' without going through that exact closer left body scroll — mouse
+// wheel, trackpad, and PageUp/PageDown alike — dead until a full reload.
+// unlockBodyScroll(true) forces the counter to 0 regardless of how many
+// locks are outstanding; closeDrillAll (the universal "everything's closed
+// now" path) always calls it that way, so even a missed decrement somewhere
+// else can't leave scroll stuck once the whole drill system is dismissed.
+let _bodyScrollLockCount = 0;
+function lockBodyScroll() {
+  _bodyScrollLockCount++;
+  document.body.style.overflow = 'hidden';
+}
+function unlockBodyScroll(force) {
+  _bodyScrollLockCount = force ? 0 : Math.max(0, _bodyScrollLockCount - 1);
+  if (_bodyScrollLockCount === 0) document.body.style.overflow = '';
+}
+
 function dismissAllDrills() {
   if (document.getElementById('export-modal')) closeExportModal();
   closeAssetDrill();
@@ -4899,7 +4920,7 @@ function openPortfolioDrill(tab, cardIdx) {
   overlay.style.display = 'block';
   panel.style.display   = 'flex';
   requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 function renderPortfolioDrillContent(d, tab, cardIdx, viewingM) {
@@ -5211,7 +5232,7 @@ function openDrill(tab, cardIdx, assetName, assetIdx) {
   overlay.style.display = 'block';
   panel2.style.display  = 'flex';
   requestAnimationFrame(() => { panel2.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 function closeAssetDrill() {
@@ -5221,9 +5242,12 @@ function closeAssetDrill() {
   panel2.style.transform = 'translateY(100%)';
   setTimeout(() => { panel2.style.display = 'none'; }, 320);
   if (drillChartInst) { drillChartInst.destroy(); drillChartInst = null; }
-  // If panel1 isn't open (direct asset open), close everything
+  // If panel1 isn't open (direct asset open), close everything; otherwise
+  // just release this panel's own lock and leave panel1's in place.
   if (panel1.style.display === 'none' || panel1.style.transform === 'translateY(100%)') {
     closeDrillAll();
+  } else {
+    unlockBodyScroll();
   }
 }
 
@@ -5238,7 +5262,7 @@ function closeDrillAll() {
     panel2.style.display  = 'none';
     overlay.style.display = 'none';
   }, 320);
-  document.body.style.overflow = '';
+  unlockBodyScroll(true);
   if (drillChartInst) { drillChartInst.destroy(); drillChartInst = null; }
   if (portChartInst)  { portChartInst.destroy();  portChartInst  = null; }
   if (ciDrillBarChartInst)   { ciDrillBarChartInst.destroy();   ciDrillBarChartInst   = null; }
@@ -5279,7 +5303,7 @@ function openAssetClassDrill(tab, classIdx) {
   overlay.style.display = 'block';
   panel.style.display   = 'flex';
   requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 function renderAssetClassDrillContent(tab, c, classIdx, viewingM) {
@@ -5371,7 +5395,7 @@ function openSubclassDrill(tab, classIdx, subIdx) {
   overlay.style.display = 'block';
   panel.style.display   = 'flex';
   requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 // Name-based variant used when opening a subclass from inside an already-open
@@ -5398,7 +5422,7 @@ function openSubclassDrillByName(tab, className, subclassName, viewingM) {
   overlay.style.display = 'block';
   panel.style.display   = 'flex';
   requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 function renderSubclassDrillContent(tab, className, subclassName, viewingM) {
@@ -5620,7 +5644,7 @@ function openHHAssetClassDrill(classIdx) {
   overlay.style.display = 'block';
   panel.style.display   = 'flex';
   requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 function renderHHAssetClassDrillContent(c, classIdx, viewingM) {
@@ -5718,7 +5742,7 @@ function openHHSubclassDrill(classIdx, subIdx) {
   overlay.style.display = 'block';
   panel.style.display   = 'flex';
   requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 // Name-based variant used from inside an already-open household class drill —
@@ -5743,7 +5767,7 @@ function openHHSubclassDrillByName(className, subclassName, viewingM) {
   overlay.style.display = 'block';
   panel.style.display   = 'flex';
   requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
 }
 
 function renderHHSubclassDrillContent(className, subclassName, viewingM) {
