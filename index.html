@@ -475,7 +475,7 @@
     <div>
       <p class="gate-label">Protected</p>
       <h1 class="gate-title">VS NP<br>Dashboard</h1>
-      <p class="gate-version">v18.17</p>
+      <p class="gate-version">v18.18</p>
     </div>
     <div>
       <div class="gate-input-wrap">
@@ -496,7 +496,7 @@
       <span class="topbar-title">Net Worth Dashboard</span>
     </div>
     <div class="topbar-right">
-      <span class="version-badge">v18.17</span>
+      <span class="version-badge">v18.18</span>
       <span class="last-updated" id="last-updated">&mdash;</span>
       <button class="refresh-btn" id="refresh-btn">&#8635;<span class="refresh-label">&nbsp;Refresh</span></button>
       <button class="install-btn" id="install-btn">⊕ Install App</button>
@@ -582,6 +582,13 @@
     <div id="allocation-bar-section" style="margin-top:36px;margin-bottom:36px;display:none;">
       <p class="donut-section-title">Current Allocation</p>
       <div class="sunburst-breadcrumb" id="sunburst-breadcrumb"></div>
+      <div class="filter-bar" id="sunburst-pctmode-bar" style="margin-bottom:8px;">
+        <span class="filter-label">%</span>
+        <div style="display:flex;gap:6px;">
+          <button class="filter-pill active" id="pctmode-within" onclick="setSunburstPctMode(currentTab,'within')">Within</button>
+          <button class="filter-pill"        id="pctmode-nw"     onclick="setSunburstPctMode(currentTab,'nw')">Of Net Worth</button>
+        </div>
+      </div>
       <div class="sunburst-wrap" id="sunburst-wrap"></div>
       <div class="filter-bar" id="donut-view-bar" style="display:none;margin-bottom:12px;">
         <span class="filter-label">View</span>
@@ -601,6 +608,13 @@
     <div id="hh-current-allocation-section" style="margin-top:36px;margin-bottom:36px;display:none;">
       <p class="donut-section-title">Household Current Allocation</p>
       <div class="sunburst-breadcrumb" id="hh-sunburst-breadcrumb"></div>
+      <div class="filter-bar" id="hh-sunburst-pctmode-bar" style="margin-bottom:8px;">
+        <span class="filter-label">%</span>
+        <div style="display:flex;gap:6px;">
+          <button class="filter-pill active" id="pctmode-within-household" onclick="setSunburstPctMode('household','within')">Within</button>
+          <button class="filter-pill"        id="pctmode-nw-household"     onclick="setSunburstPctMode('household','nw')">Of Net Worth</button>
+        </div>
+      </div>
       <div class="sunburst-wrap" id="hh-sunburst-wrap"></div>
       <div class="filter-bar" id="hh-donut-filter-bar" style="margin-bottom:14px;">
         <span class="filter-label" style="white-space:nowrap;">Viewing</span>
@@ -713,7 +727,7 @@
 
 <script>
 // CONFIG
-const VERSION  = 'v18.17';
+const VERSION  = 'v18.18';
 const PASSWORD = 'vsnp2026';
 
 // PRIVACY MODE
@@ -3273,6 +3287,10 @@ function renderAllocationBar(tab) {
     document.getElementById('view-portfolio').classList.toggle('active', donutViewMode[tab] === 'portfolio');
     document.getElementById('view-assetClass').classList.toggle('active', donutViewMode[tab] === 'assetClass');
   }
+  const withinBtn = document.getElementById('pctmode-within');
+  const nwBtn = document.getElementById('pctmode-nw');
+  if (withinBtn) withinBtn.classList.toggle('active', (sunburstPctMode[tab] || 'within') === 'within');
+  if (nwBtn) nwBtn.classList.toggle('active', sunburstPctMode[tab] === 'nw');
   renderDonutFilter(tab);
   renderSunburst(tab);
 
@@ -3558,6 +3576,20 @@ function sunburstWrapId(tab) { return tab === 'household' ? 'hh-sunburst-wrap' :
 function sunburstCrumbId(tab) { return tab === 'household' ? 'hh-sunburst-breadcrumb' : 'sunburst-breadcrumb'; }
 
 const sunburstState = {}; // per-tab: { root, focus }
+// Per-tab toggle for the wedge percentage labels: 'within' (default — a
+// wedge's share of whatever ring is currently focused) or 'nw' (its raw
+// share of net worth). See setSunburstPctMode / relPctOf.
+const sunburstPctMode = { ink: 'within', fang: 'within', household: 'within' };
+function setSunburstPctMode(tab, mode) {
+  if (sunburstPctMode[tab] === mode) return;
+  sunburstPctMode[tab] = mode;
+  const suffix = tab === 'household' ? '-household' : '';
+  const withinBtn = document.getElementById('pctmode-within' + suffix);
+  const nwBtn = document.getElementById('pctmode-nw' + suffix);
+  if (withinBtn) withinBtn.classList.toggle('active', mode === 'within');
+  if (nwBtn) nwBtn.classList.toggle('active', mode === 'nw');
+  renderSunburst(tab); // rebuild — clicked()'s focus-restore logic keeps the current ring in view
+}
 
 async function renderSunburst(tab) {
   const wrap = document.getElementById(sunburstWrapId(tab));
@@ -3739,13 +3771,16 @@ async function renderSunburst(tab) {
     return radialThicknessPx(d) >= 22 && arcLenPxFor(d) >= 24;
   }
   function fmtPctLabel(pct) { return `${pct.toFixed(1)}%`; }
-  // Percentages in the wedge labels are relative to whatever's currently
-  // focused (e.g. a subclass's share of its own class), not of net worth —
-  // every visible ring is always exactly one level below the focus node, so
-  // the focus's own pct (100 for the unfocused root) is the right denominator
-  // for all of them. Updated in clicked() each time the focus changes.
+  // Percentages in the wedge labels default to "within" — relative to
+  // whatever's currently focused (e.g. a subclass's share of its own class),
+  // not of net worth — since every visible ring is always exactly one level
+  // below the focus node, the focus's own pct (100 for the unfocused root)
+  // is the right denominator. The toggle lets a person flip to the raw
+  // %-of-net-worth figure instead; sunburstPctMode is read fresh each call
+  // so the toggle button just re-renders and this picks up the new value.
   let focusPctBasis = (initialFocus.data && initialFocus.data.pct != null) ? initialFocus.data.pct : 100;
   function relPctOf(d) {
+    if ((sunburstPctMode[tab] || 'within') === 'nw') return d.data.pct;
     return focusPctBasis > 0 ? (d.data.pct / focusPctBasis * 100) : d.data.pct;
   }
   // Rebuilds each label's tspans (name, plus a percent line when there's
@@ -4118,6 +4153,10 @@ function renderHouseholdCurrentAllocation() {
     return;
   }
   section.style.display = 'block';
+  const withinBtnHH = document.getElementById('pctmode-within-household');
+  const nwBtnHH = document.getElementById('pctmode-nw-household');
+  if (withinBtnHH) withinBtnHH.classList.toggle('active', (sunburstPctMode.household || 'within') === 'within');
+  if (nwBtnHH) nwBtnHH.classList.toggle('active', sunburstPctMode.household === 'nw');
   renderSunburst('household');
   const sorted = [...classes].sort((a,b) => b.pct - a.pct);
   const total = sorted.reduce((s,c) => s + c.pct, 0);
